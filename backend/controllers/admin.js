@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const Admin = require('../models/Admin'); // Assuming you have an Admin model
+const Request = require('../models/InstituteRequest'); // Assuming you have a Request model
 
 exports.login = async (req, res) => {
     const errors = validationResult(req);
@@ -51,6 +52,17 @@ exports.login = async (req, res) => {
 exports.logout = (req, res) => {
     res.clearCookie('adminToken'); // Clear the HTTP-only cookie
     res.json({ msg: 'Logged out successfully' });
+};
+
+exports.manageRequests = async (req, res) => {
+    try {
+        const requests = await Request.find(); // Fetch all requests from the database
+        console.log('Requests:', requests); // Add this line to log the requests
+        res.status(200).json(requests);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
 };
 
 
