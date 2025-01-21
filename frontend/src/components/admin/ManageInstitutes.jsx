@@ -35,7 +35,7 @@ const ManageInstitutes = () => {
   });
 
   const handleAddUser = () => {
-    navigate('/manage-requests');
+    navigate('/admin/manage-requests');
   };
 
   const handleFilter = () => {

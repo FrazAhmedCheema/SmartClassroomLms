@@ -1,31 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import InstituteForm1 from '../../components/sub-admin/InstituteForm1';
 import InstituteForm2 from '../../components/sub-admin/InstituteForm2';
 import InstituteForm3 from '../../components/sub-admin/InstituteForm3';
 import InstituteForm4 from '../../components/sub-admin/InstituteForm4';
 import InstituteForm5 from '../../components/sub-admin/InstituteForm5';
 import logo from '../../assets/logo.png';
+import axios from 'axios';
 
-const InstituteRegistration = () => {
+
+
+const RegisterInstitute = () => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     instituteName: '',
-    numberOfStudents: '',
+    numberOfStudents: 0, // Change this to a number
     region: '',
     name: '',
     email: '',
     institutePhoneNumber: '',
-    field1: '',
+
     domainName: ''
   });
 
   const handleNext = () => {
+    // Ensure numberOfStudents is a number
+    if (step === 1 && typeof formData.numberOfStudents === 'string') {
+      setFormData({
+        ...formData,
+        numberOfStudents: parseInt(formData.numberOfStudents, 10)
+      });
+    }
     setStep(step + 1);
   };
 
   const handlePrevious = () => {
     setStep(step - 1);
   };
+
+  const submitRegistrationForm = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/sub-admin/registerInstitute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData) // Correctly wrap formData in the body
+      });
+      
+      if (response.status === 201) {
+        const data = await response.json(); // Ensure the response is parsed correctly
+        console.log('Registration request processed:', data);
+      } else {
+        const errorData = await response.json(); // Capture error message from the server
+        console.error('Registration failed:', errorData);
+      }
+    } catch (error) {
+      console.error('An error occurred during registration:', error);
+    }
+  };
+  
+  useEffect(() => {
+    if (step === 6) {
+      submitRegistrationForm();
+    }
+  }, [step]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-white">
@@ -55,4 +93,4 @@ const InstituteRegistration = () => {
   );
 };
 
-export default InstituteRegistration;
+export default RegisterInstitute;

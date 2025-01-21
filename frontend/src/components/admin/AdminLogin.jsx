@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye } from "lucide-react";
+import logo from "../../assets/logo.png";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ const AdminLogin = () => {
     }
     if (!formData.password) {
       errors.password = "Password is required";
-    } else if (formData.password.length < 6) {
+    } else if (formData.password.length < 4) {
       errors.password = "Password must be at least 6 characters long";
     }
     return errors;
@@ -33,12 +34,13 @@ const AdminLogin = () => {
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
     } else {
-      fetch("http://localhost:8080/admin/login", { // Ensure this URL is correct
+      fetch("http://localhost:8080/admin/login", { 
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
+        credentials: "include",
       })
         .then((response) => {
           if (!response.ok) {
@@ -51,7 +53,7 @@ const AdminLogin = () => {
             setServerError(data.error);
           } else {
             console.log("Form submitted:", data);
-            navigate("/admin-dashboard");
+            navigate("/admin/dashboard");
           }
         })
         .catch((error) => {
@@ -73,23 +75,12 @@ const AdminLogin = () => {
     setServerError("");
   };
 
-  const handleDummyLogin = () => {
-    navigate("/admin-dashboard");
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
-      <div className="w-full max-w-md p-8 rounded-lg bg-white shadow-lg">
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="w-full max-w-md p-8 bg-blue-50 rounded-lg shadow-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl mt-2 text-[#155a8a]">
-            Smart Classr
-            {/* <span className="inline-block">
-              <span className="text-[#155a8a]">😊</span>
-              <span className="text-[#155a8a]">😊</span>
-            </span> */}
-            oom
-          </h1>
-          <h2 className="text-xl mt-2 text-[#155a8a]">
+          <img src={logo} alt="Logo" className="h-16 mt-2 mx-auto" />
+          <h2 className="text-xl mt-2" style={{ color: '#1b68b3' }}>
             LOGIN TO YOUR ADMIN DASHBOARD
           </h2>
         </div>
@@ -103,9 +94,9 @@ const AdminLogin = () => {
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border-2 border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-[#155a8a] bg-white text-black"
+                 placeholder="Enter username or email"
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#155a8a] bg-white text-black"
               />
-              
             </div>
             {errors.username && <p className="text-red-500 text-sm mt-1">{errors.username}</p>}
           </div>
@@ -118,6 +109,7 @@ const AdminLogin = () => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
+                placeholder="Enter password"
                 className="w-full px-4 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#155a8a] bg-white text-black"
               />
               <button
@@ -130,7 +122,7 @@ const AdminLogin = () => {
             </div>
             {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
             <div className="text-right mt-1">
-              <Link to="/forget-password" className="text-sm hover:underline text-[#155a8a]">
+              <Link to="/forget-password" className="text-sm hover:underline" style={{ color: '#1b68b3' }}>
                 Forget Password
               </Link>
             </div>
@@ -145,13 +137,6 @@ const AdminLogin = () => {
             LOGIN
           </button>
         </form>
-
-        <button
-          onClick={handleDummyLogin}
-          className="w-full mt-4 text-white py-2 px-4 rounded-md transition-colors bg-gray-500 hover:bg-gray-700"
-        >
-          Dummy Login
-        </button>
       </div>
     </div>
   );

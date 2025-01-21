@@ -1,8 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const InstituteForm4 = ({ onNext, onPrevious, formData, setFormData }) => {
+  const [errors, setErrors] = useState({});
+  const [showError, setShowError] = useState(false);
+
+  const validate = (name, value) => {
+    let error = '';
+    if (name === 'domainName' && !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) {
+      error = 'Domain name format is invalid';
+    }
+    setErrors({ ...errors, [name]: error });
+  };
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    validate(name, value);
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const isFormValid = () => {
+    return formData.domainName && !Object.values(errors).some((error) => error);
+  };
+
+  const handleNext = () => {
+    if (isFormValid()) {
+      onNext();
+    } else {
+      setShowError(true);
+    }
   };
 
   return (
@@ -23,8 +48,10 @@ const InstituteForm4 = ({ onNext, onPrevious, formData, setFormData }) => {
           onChange={handleChange}
           className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black"
         />
+        {errors.domainName && <p className="text-red-500 text-sm mt-1">{errors.domainName}</p>}
         <p className="text-sm text-gray-500 mt-1">E.g. example.edu</p>
       </div>
+      {showError && <p className="text-red-500 text-sm mt-1">Please fill out all fields correctly before proceeding.</p>}
       <div className="flex justify-between gap-2">
         <button
           type="button"
@@ -36,7 +63,7 @@ const InstituteForm4 = ({ onNext, onPrevious, formData, setFormData }) => {
         <button 
           type="button" 
           className="w-3/4 px-4 py-2 mt-4 text-white bg-[#1b68b3] rounded-md hover:bg-[#145a8a] focus:outline-none focus:ring-2 focus:ring-blue-400"
-          onClick={onNext}
+          onClick={handleNext}
         >
           Next
         </button>
