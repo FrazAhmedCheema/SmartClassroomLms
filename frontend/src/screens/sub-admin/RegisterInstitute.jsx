@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import InstituteForm1 from '../../components/sub-admin/InstituteForm1';
 import InstituteForm2 from '../../components/sub-admin/InstituteForm2';
 import InstituteForm3 from '../../components/sub-admin/InstituteForm3';
@@ -86,6 +87,13 @@ const RegisterInstitute = () => {
           <div className="text-center text-[#1b68b3]">
             <h1 className="text-2xl font-bold mb-6">Thanks for your interest</h1>
             <p className="text-lg" style={{ color: '#1b68b3' }}>We will get back to you soon.</p>
+          </div>
+        )}
+        {step !== 6 && (
+          <div className="text-center mt-4">
+            <Link to="sub-admin/login" className="hover:underline" style={{ color: '#1b68b3' }}>
+              Already have a registered account?
+            </Link>
           </div>
         )}
       </div>
