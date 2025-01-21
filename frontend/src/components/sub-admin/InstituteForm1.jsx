@@ -4,6 +4,8 @@ import axios from 'axios';
 
 const InstituteForm1 = ({ onNext, formData, setFormData }) => {
   const [countries, setCountries] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [showError, setShowError] = useState(false);
 
   useEffect(() => {
     axios.get('https://restcountries.com/v3.1/all')
@@ -21,12 +23,39 @@ const InstituteForm1 = ({ onNext, formData, setFormData }) => {
       });
   }, []);
 
+  const validate = (name, value) => {
+    let error = '';
+    if (name === 'instituteName' && value.length < 3) {
+      error = 'Institute name must be at least 3 characters long';
+    } else if (name === 'numberOfStudents' && value === '') {
+      error = 'Please select the number of students';
+    } else if (name === 'region' && value === '') {
+      error = 'Please select a region';
+    }
+    setErrors({ ...errors, [name]: error });
+  };
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    validate(name, value);
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleSelectChange = (selectedOption) => {
+    validate('region', selectedOption.value);
     setFormData({ ...formData, region: selectedOption.value });
+  };
+
+  const isFormValid = () => {
+    return formData.instituteName && formData.numberOfStudents && formData.region && !Object.values(errors).some((error) => error);
+  };
+
+  const handleNext = () => {
+    if (isFormValid()) {
+      onNext();
+    } else {
+      setShowError(true);
+    }
   };
 
   return (
@@ -41,6 +70,7 @@ const InstituteForm1 = ({ onNext, formData, setFormData }) => {
           onChange={handleChange}
           className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black"
         />
+        {errors.instituteName && <p className="text-red-500 text-sm mt-1">{errors.instituteName}</p>}
       </div>
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-gray-500">Number of students and staff</h2>
@@ -50,6 +80,7 @@ const InstituteForm1 = ({ onNext, formData, setFormData }) => {
           onChange={handleChange}
           className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black"
         >
+          <option value="">Select number of students</option>
           <option value="0-100">0-100</option>
           <option value="100-500">100-500</option>
           <option value="500-1000">500-1000</option>
@@ -57,6 +88,7 @@ const InstituteForm1 = ({ onNext, formData, setFormData }) => {
           <option value="2000-5000">2000-5000</option>
           <option value="5000-10000">5000-10000</option>
         </select>
+        {errors.numberOfStudents && <p className="text-red-500 text-sm mt-1">{errors.numberOfStudents}</p>}
       </div>
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-gray-500">Region</h2>
@@ -67,11 +99,13 @@ const InstituteForm1 = ({ onNext, formData, setFormData }) => {
           className="w-full mt-2 text-black"
           placeholder="Select Region"
         />
+        {errors.region && <p className="text-red-500 text-sm mt-1">{errors.region}</p>}
       </div>
+      {showError && <p className="text-red-500 text-sm mt-1">Please fill out all fields correctly before proceeding.</p>}
       <button 
         type="button" 
         className="w-full px-4 py-2 mt-4 text-white bg-[#1b68b3] rounded-md hover:bg-[#145a8a] focus:outline-none focus:ring-2 focus:ring-blue-400"
-        onClick={onNext}
+        onClick={handleNext}
       >
         Next
       </button>

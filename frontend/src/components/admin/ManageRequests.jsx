@@ -27,7 +27,6 @@ const ManageRequests = () => {
       email: 'rehman@tlh.edu.pk',
       status: 'pending'
     },
-    // Add more sample data if needed
   ]);
 
   const handleApprove = (id) => {
@@ -126,4 +125,4 @@ const ManageRequests = () => {
   );
 };
 
-export default ManageRequests;
+export default  ManageRequests;
