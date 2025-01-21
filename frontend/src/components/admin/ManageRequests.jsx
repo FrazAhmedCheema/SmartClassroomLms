@@ -1,37 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, CheckCircle, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
+import axios from 'axios';
 
 const ManageRequests = () => {
-    
-  const [requests, setRequests] = useState([
-    {
-      id: 1,
-      institute: 'Lums University',
-      admin: 'Ali',
-      email: 'ali@gift.edu.pk',
-      status: 'pending'
-    },
-    {
-      id: 2,
-      institute: 'Bahria University',
-      admin: 'Zain',
-      email: 'zain@pu.edu.pk',
-      status: 'pending'
-    },
-    {
-      id: 3,
-      institute: 'Punjab College',
-      admin: 'Rehman',
-      email: 'rehman@tlh.edu.pk',
-      status: 'pending'
-    },
-  ]);
+  const [requests, setRequests] = useState([]);
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      
+      try {
+        const response = await axios.get('http://localhost:8080/admin/manage-requests',{
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+          });
+        setRequests(response.data);
+      } catch (error) {
+        console.error('Error fetching requests:', error);
+      }
+    };
+
+    fetchRequests();
+  }, []);
 
   const handleApprove = (id) => {
     const updatedRequests = requests.map(request =>
-      request.id === id ? { ...request, status: 'approved' } : request
+      request._id === id ? { ...request, status: 'approved' } : request
     );
     setRequests(updatedRequests);
     alert(`Request approved for institute ID: ${id}`);
@@ -39,7 +35,7 @@ const ManageRequests = () => {
 
   const handleReject = (id) => {
     const updatedRequests = requests.map(request =>
-      request.id === id ? { ...request, status: 'rejected' } : request
+      request._id === id ? { ...request, status: 'rejected' } : request
     );
     setRequests(updatedRequests);
     alert(`Request rejected for institute ID: ${id}`);
@@ -78,30 +74,30 @@ const ManageRequests = () => {
                 <tr className="bg-white text-gray-800">
                   <th className="px-6 py-3 text-left">RequestID</th>
                   <th className="px-6 py-3 text-left">Institute</th>
-                  <th className="px-6 py-3 text-left">Admin</th>
+                  <th className="px-6 py-3 text-left">Institute Admin</th>
                   <th className="px-6 py-3 text-left">Email</th>
-                  <th className="px-6 py-3 text-left">Status</th>
+                  {/* <th className="px-6 py-3 text-left">Status</th> */}
                   <th className="px-6 py-3 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {requests.map((request) => (
-                  <tr key={request.id} className="border-t text-gray-700">
-                    <td className="px-6 py-4">{request.id}</td>
-                    <td className="px-6 py-4">{request.institute}</td>
-                    <td className="px-6 py-4">{request.admin}</td>
+                  <tr key={request._id} className="border-t text-gray-700">
+                    <td className="px-6 py-4">{request._id}</td>
+                    <td className="px-6 py-4">{request.instituteName}</td>
+                    <td className="px-6 py-4">{request.name}</td>
                     <td className="px-6 py-4">{request.email}</td>
-                    <td className="px-6 py-4">{request.status}</td>
+                    {/* <td className="px-6 py-4">{request.status}</td> */}
                     <td className="px-6 py-4">
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => handleApprove(request.id)}
+                          onClick={() => handleApprove(request._id)}
                           className="bg-green-600 text-white px-3 py-1 rounded text-sm"
                         >
                           <CheckCircle className="w-5 h-5" />
                         </button>
                         <button
-                          onClick={() => handleReject(request.id)}
+                          onClick={() => handleReject(request._id)}
                           className="bg-red-600 text-white px-3 py-1 rounded text-sm"
                         >
                           <XCircle className="w-5 h-5" />
@@ -125,4 +121,4 @@ const ManageRequests = () => {
   );
 };
 
-export default  ManageRequests;
+export default ManageRequests;

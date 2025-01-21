@@ -11,6 +11,8 @@ router.get('/dashboard', auth, (req, res) => {
     res.status(200).send('Authorized');
 });
 
+router.get('/manage-requests', auth, adminController.manageRequests);
+
 router.post('/logout', adminController.logout);
 
 module.exports = router;
