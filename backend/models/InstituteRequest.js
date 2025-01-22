@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const AutoIncrement = require('mongoose-sequence')(mongoose);
 
 const InstituteRequestSchema = new mongoose.Schema({
     instituteName: {
@@ -29,6 +30,8 @@ const InstituteRequestSchema = new mongoose.Schema({
         type: String,
         required: true
     }
-});
+}, { timestamps: true });
+
+InstituteRequestSchema.plugin(AutoIncrement, { inc_field: 'requestId' });
 
 module.exports = mongoose.model('InstituteRequest', InstituteRequestSchema);

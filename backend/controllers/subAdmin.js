@@ -1,6 +1,7 @@
 const Institute = require('../models/InstituteRequest');
 
 exports.registerInstitute = async (req, res) => {
+
     const { instituteName, numberOfStudents, region, name, email, institutePhoneNumber, domainName } = req.body;
 
     if (!instituteName || typeof instituteName !== 'string') {
@@ -35,6 +36,7 @@ exports.registerInstitute = async (req, res) => {
             institutePhoneNumber,
             domainName
         });
+        console.log('New institute:', newInstitute);
 
         await newInstitute.save();
         res.status(201).json({ message: 'Registration request processed!' });
