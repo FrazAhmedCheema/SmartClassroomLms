@@ -4,21 +4,20 @@ require('dotenv').config();
 console.log('Auth middleware loaded'); // Add this line to verify the middleware is loaded
 
 module.exports = function (req, res, next) {
-    console.log('Auth middleware called'); // Add this line to verify the middleware is called
-
-    const token = req.cookies.adminToken; 
-
-    console.log('Token:', token); // Add this line to log the token
+    const token = req.cookies.adminToken;
 
     if (!token) {
-        return res.status(401).json({ msg: 'No token, authorization denied' });
+        console.info('No token provided. Access denied.');
+        return res.status(401).json({ msg: 'Unauthorized: No token provided.' });
     }
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.admin = decoded.admin; 
+        req.admin = decoded.admin;
+        console.info('Token verified successfully.');
         next();
     } catch (err) {
-        res.status(401).json({ msg: 'Token is not valid' });
+        console.warn('Invalid token. Access denied.');
+        res.status(401).json({ msg: 'Unauthorized: Invalid token.' });
     }
 };
