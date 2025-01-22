@@ -6,7 +6,6 @@ import InstituteForm3 from '../../components/sub-admin/InstituteForm3';
 import InstituteForm4 from '../../components/sub-admin/InstituteForm4';
 import InstituteForm5 from '../../components/sub-admin/InstituteForm5';
 import logo from '../../assets/logo.png';
-import axios from 'axios';
 
 
 
@@ -14,7 +13,7 @@ const RegisterInstitute = () => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     instituteName: '',
-    numberOfStudents: 0, // Change this to a number
+    numberOfStudents: '', // Change this to a string
     region: '',
     name: '',
     email: '',
@@ -24,13 +23,6 @@ const RegisterInstitute = () => {
   });
 
   const handleNext = () => {
-    // Ensure numberOfStudents is a number
-    if (step === 1 && typeof formData.numberOfStudents === 'string') {
-      setFormData({
-        ...formData,
-        numberOfStudents: parseInt(formData.numberOfStudents, 10)
-      });
-    }
     setStep(step + 1);
   };
 
