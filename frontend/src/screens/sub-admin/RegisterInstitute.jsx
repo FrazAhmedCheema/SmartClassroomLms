@@ -83,7 +83,7 @@ const RegisterInstitute = () => {
         )}
         {step !== 6 && (
           <div className="text-center mt-4">
-            <Link to="sub-admin/login" className="hover:underline" style={{ color: '#1b68b3' }}>
+            <Link to="/sub-admin/login" className="hover:underline" style={{ color: '#1b68b3' }}>
               Already have a registered account?
             </Link>
           </div>
