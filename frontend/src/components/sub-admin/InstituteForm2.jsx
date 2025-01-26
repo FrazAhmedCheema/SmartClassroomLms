@@ -1,40 +1,48 @@
-import React, { useState } from "react";
-import Select from "react-select";
-import countryData from "../../data/countryData"; // Import the JSON structure
+import React, { useState, useEffect } from "react";
+import countryData from "../../data/countryData";
 
 const InstituteForm2 = ({ onNext, onPrevious, formData, setFormData }) => {
   const [errors, setErrors] = useState({});
   const [showError, setShowError] = useState(false);
 
-  const countries = countryData.map((country) => ({
-    value: country.phone,
-    label: `${country.label} (+${country.phone})`,
-    phoneLength: country.phoneLength,
-  }));
+  useEffect(() => {
+    const selectedCountry = countryData.find(
+      (country) => country.label === formData.region
+    );
+    if (selectedCountry) {
+      setFormData((prevData) => ({
+        ...prevData,
+        countryCode: selectedCountry.phone,
+      }));
+    }
+  }, [formData.region, setFormData]);
 
   const validateOnSubmit = () => {
     let newErrors = {};
 
-    // Validate name
-    if (!formData.name || formData.name.length < 3) {
-      newErrors.name = "Name must be at least 3 characters long";
+    // Validate Admin Name
+    if (!formData.instituteAdminName || formData.instituteAdminName.length < 3) {
+      newErrors.instituteAdminName = "Name must be at least 3 characters long.";
+    } else if (/\d/.test(formData.instituteAdminName)) {
+      newErrors.instituteAdminName = "Name must not contain numbers.";
     }
 
-    // Validate email
-    if (!formData.email || !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email format is invalid";
+    // Validate Email
+    if (!formData.instituteAdminEmail || !/\S+@\S+\.\S+/.test(formData.instituteAdminEmail)) {
+      newErrors.instituteAdminEmail = "Email format is invalid.";
     }
 
-    // Validate phone number
-    const selectedCountry = countries.find((country) => country.value === formData.countryCode);
-    if (!formData.countryCode) {
-      newErrors.institutePhoneNumber = "Please select a country code";
-    } else if (!/^\d+$/.test(formData.institutePhoneNumber)) {
-      newErrors.institutePhoneNumber = "Phone number must contain only digits";
-    } else if (selectedCountry) {
-      const expectedLength = selectedCountry.phoneLength;
-      if (formData.institutePhoneNumber.length !== expectedLength) {
-        newErrors.institutePhoneNumber = `Phone number must be ${expectedLength} digits long (excluding the country code)`;
+    // Validate Phone Number
+    const fullPhoneNumber = formData.institutePhoneNumber || "";
+    if (!/^\+\d+$/.test(fullPhoneNumber)) {
+      newErrors.institutePhoneNumber = "Phone number must contain only digits, including the country code.";
+    } else {
+      const phoneWithoutCountryCode = fullPhoneNumber.replace(`+${formData.countryCode}`, "");
+      const selectedCountry = countryData.find(
+        (country) => country.phone === formData.countryCode
+      );
+      if (selectedCountry && phoneWithoutCountryCode.length !== selectedCountry.phoneLength) {
+        newErrors.institutePhoneNumber = `Phone number must be ${selectedCountry.phoneLength} digits long (excluding the country code).`;
       }
     }
 
@@ -44,59 +52,42 @@ const InstituteForm2 = ({ onNext, onPrevious, formData, setFormData }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+  
+    if (name === "institutePhoneNumber") {
+      // Remove existing country code to avoid duplication
+      const onlyDigits = value.replace(/\D/g, ""); // Remove all non-digit characters
+      const countryCode = formData.countryCode || "+92"; // Default country code if not set
+      const withoutCountryCode = onlyDigits.startsWith(countryCode.replace("+", ""))
+        ? onlyDigits.slice(countryCode.length)
+        : onlyDigits;
+  
+      setFormData((prevData) => ({
+        ...prevData,
+        [name]: `+${countryCode}${withoutCountryCode}`, // Prepend country code only once
+      }));
+    } else if (name === "instituteAdminName") {
+      // Prevent numbers in Admin Name
+      if (!/\d/.test(value)) {
+        setFormData((prevData) => ({
+          ...prevData,
+          [name]: value,
+        }));
+      }
+    } else {
+      setFormData((prevData) => ({
+        ...prevData,
+        [name]: value,
+      }));
+    }
   };
-
-  const handleSelectChange = (selectedOption) => {
-    setFormData({ ...formData, countryCode: selectedOption.value });
-  };
+  
 
   const handleNext = () => {
     if (validateOnSubmit()) {
-      const selectedCountry = countries.find((country) => country.value === formData.countryCode);
-      if (selectedCountry) {
-        formData.institutePhoneNumber = `+${selectedCountry.value}${formData.institutePhoneNumber}`;
-      }
       onNext();
     } else {
       setShowError(true);
     }
-  };
-
-  const customStyles = {
-    control: (base) => ({
-      ...base,
-      minHeight: "2.5rem",
-      borderRadius: "0.375rem",
-      borderColor: "#d1d5db",
-      backgroundColor: "#f9fafb",
-      boxShadow: "none",
-      "&:hover": { borderColor: "#1b68b3" },
-    }),
-    menu: (base) => ({
-      ...base,
-      zIndex: 9999, // Ensure it stays on top
-      maxHeight: "200px",
-      overflowY: "auto",
-      backgroundColor: "#fff",
-    }),
-    singleValue: (base) => ({
-      ...base,
-      color: "black", // Ensure the selected text is black
-    }),
-    option: (base, state) => ({
-      ...base,
-      backgroundColor: state.isFocused ? "#E5F6FF" : "#fff",
-      color: "#000", // Text color for the dropdown options
-    }),
-    input: (base) => ({
-      ...base,
-      color: "black", // Input text color
-    }),
-    placeholder: (base) => ({
-      ...base,
-      color: "#6B7280", // Placeholder text color (gray-500)
-    }),
   };
 
   return (
@@ -107,58 +98,53 @@ const InstituteForm2 = ({ onNext, onPrevious, formData, setFormData }) => {
       <p className="text-center text-gray-500 mb-6">
         You'll be the Institute account admin since you're creating the account.
       </p>
-      
+
       <div className="space-y-4">
-        {/* Name Field */}
+        {/* Admin Name Field */}
         <div>
-          <h2 className="text-lg font-semibold text-gray-500">Name</h2>
+          <h2 className="text-lg font-semibold text-gray-500">Admin Name <span className="text-red-500">*</span></h2>
           <input
             type="text"
-            name="name"
+            name="instituteAdminName"
             placeholder="Enter your name"
-            value={formData.name}
+            value={formData.instituteAdminName}
             onChange={handleChange}
             className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black"
           />
-          {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+          {errors.instituteAdminName && (
+            <p className="text-red-500 text-sm mt-1">{errors.instituteAdminName}</p>
+          )}
         </div>
 
-        {/* Email Field */}
+        {/* Admin Email Field */}
         <div>
-          <h2 className="text-lg font-semibold text-gray-500">Email</h2>
+          <h2 className="text-lg font-semibold text-gray-500">Admin Email <span className="text-red-500">*</span></h2>
           <input
             type="email"
-            name="email"
+            name="instituteAdminEmail"
             placeholder="Enter your email"
-            value={formData.email}
+            value={formData.instituteAdminEmail}
             onChange={handleChange}
             className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black"
           />
-          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+          {errors.instituteAdminEmail && (
+            <p className="text-red-500 text-sm mt-1">{errors.instituteAdminEmail}</p>
+          )}
         </div>
 
         {/* Phone Number Field */}
         <div>
-          <h2 className="text-lg font-semibold text-gray-500">Institute Phone Number</h2>
-          <div className="flex items-center gap-2">
-            <div className="w-1/3">
-              <Select
-                options={countries}
-                value={countries.find((option) => option.value === formData.countryCode)}
-                onChange={handleSelectChange}
-                styles={customStyles}
-                placeholder="Code"
-              />
-            </div>
-            <input
-              type="tel"
-              name="institutePhoneNumber"
-              placeholder="Enter institute phone number"
-              value={formData.institutePhoneNumber}
-              onChange={handleChange}
-              className="w-2/3 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black"
-            />
-          </div>
+          <h2 className="text-lg font-semibold text-gray-500">
+            Institute Phone Number <span className="text-red-500">*</span>
+          </h2>
+          <input
+            type="tel"
+            name="institutePhoneNumber"
+            placeholder="Enter institute phone number"
+            value={formData.institutePhoneNumber}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black"
+          />
           {errors.institutePhoneNumber && (
             <p className="text-red-500 text-sm mt-1">{errors.institutePhoneNumber}</p>
           )}
