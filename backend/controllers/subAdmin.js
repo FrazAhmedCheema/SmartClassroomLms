@@ -1,8 +1,9 @@
 const Institute = require('../models/InstituteRequest');
+const bcrypt = require('bcrypt');
 
 exports.registerInstitute = async (req, res) => {
 
-    const { instituteName, numberOfStudents, region, name, email, institutePhoneNumber, domainName } = req.body;
+    const { instituteName, numberOfStudents, region, instituteAdminName, instituteAdminEmail, institutePhoneNumber, domainName, username, password } = req.body;
 
     if (!instituteName || typeof instituteName !== 'string') {
         return res.status(400).json({ error: 'Invalid instituteName' });
@@ -13,11 +14,11 @@ exports.registerInstitute = async (req, res) => {
     if (!region || typeof region !== 'string') {
         return res.status(400).json({ error: 'Invalid region' });
     }
-    if (!name || typeof name !== 'string') {
-        return res.status(400).json({ error: 'Invalid name' });
+    if (!instituteAdminName || typeof instituteAdminName !== 'string') {
+        return res.status(400).json({ error: 'Invalid instituteAdminName' });
     }
-    if (!email || typeof email !== 'string' || !email.includes('@')) {
-        return res.status(400).json({ error: 'Invalid email' });
+    if (!instituteAdminEmail || typeof instituteAdminEmail !== 'string' || !instituteAdminEmail.includes('@')) {
+        return res.status(400).json({ error: 'Invalid instituteAdminEmail' });
     }
     if (!institutePhoneNumber || typeof institutePhoneNumber !== 'string') {
         return res.status(400).json({ error: 'Invalid institutePhoneNumber' });
@@ -25,16 +26,26 @@ exports.registerInstitute = async (req, res) => {
     if (!domainName || typeof domainName !== 'string') {
         return res.status(400).json({ error: 'Invalid domainName' });
     }
+    if (!username || typeof username !== 'string') {
+        return res.status(400).json({ error: 'Invalid username' });
+    }
+    if (!password || typeof password !== 'string') {
+        return res.status(400).json({ error: 'Invalid password' });
+    }
 
     try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+
         const newInstitute = new Institute({
             instituteName,
             numberOfStudents,
             region,
-            name,
-            email,
+            instituteAdminName,
+            instituteAdminEmail,
             institutePhoneNumber,
-            domainName
+            domainName,
+            username,
+            password: hashedPassword
         });
         console.log('New institute:', newInstitute);
 

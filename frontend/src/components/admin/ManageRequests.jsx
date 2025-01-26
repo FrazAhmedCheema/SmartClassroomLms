@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Mail, CheckCircle, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ManageRequests = () => {
   const [requests, setRequests] = useState([]);
@@ -56,12 +58,14 @@ const ManageRequests = () => {
       instituteName: requestToApprove.instituteName,
       numberOfStudents: requestToApprove.numberOfStudents.toString(),
       region: requestToApprove.region,
-      instituteAdminName: requestToApprove.name,
-      instituteAdminEmail: requestToApprove.email,
+      instituteAdminName: requestToApprove.instituteAdminName,
+      instituteAdminEmail: requestToApprove.instituteAdminEmail,
       institutePhoneNumber: requestToApprove.institutePhoneNumber,
       domainName: requestToApprove.domainName,
       status: 'active',
-      requestId : requestToApprove.requestId
+      requestId: requestToApprove.requestId,
+      username: requestToApprove.username, // Include username
+      password: requestToApprove.password, // Include password
     };
 
     try {
@@ -77,7 +81,9 @@ const ManageRequests = () => {
       if (response.ok) {
         const updatedRequests = requests.filter(request => request._id !== id);
         setRequests(updatedRequests);
-        alert(`Request approved for institute ID: ${id}`);
+        toast.success(`Request approved for institute: ${requestToApprove.instituteName}`, {
+          position: 'top-right', // Use string-based position for reliability
+        });
       } else {
         console.error('Failed to approve request:', response.statusText);
       }
@@ -108,7 +114,9 @@ const ManageRequests = () => {
       if (response.ok) {
         const updatedRequests = requests.filter(request => request._id !== id);
         setRequests(updatedRequests);
-        alert(`Request rejected for institute ID: ${id}`);
+        toast.error(`Request rejected for institute: ${requestToReject.instituteName}`, {
+          position: toast.POSITION.TOP_RIGHT
+        });
       } else {
         console.error('Failed to reject request:', response.statusText);
       }
@@ -118,7 +126,7 @@ const ManageRequests = () => {
   };
 
   const handleMail = (email) => {
-    const fromEmail = 'your-email@example.com'; // Replace with the actual sender email
+    const fromEmail = '211370234@gift.edu.pk'; // Replace with the actual sender email
     window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=&body=&from=${fromEmail}`, '_blank');
   };
 
@@ -132,6 +140,7 @@ const ManageRequests = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
+      <ToastContainer />
       <header className=" p-4 rounded-lg shadow-md mb-6" style={{ backgroundColor: '#1b68b3' }}>
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-bold text-white">Manage Requests</h1>
@@ -147,7 +156,7 @@ const ManageRequests = () => {
           <div key={request._id} className="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow">
 <div className="mb-3">
   <h2 className="text-lg font-semibold " style={{ color: '#1b68b3' }}>{request.instituteName}</h2>
-  <p className="text-gray-600 text-sm">{request.name} | {request.region}</p>
+  <p className="text-gray-600 text-sm">{request.instituteAdminName} | {request.region}</p>
   <p className="text-gray-500 text-xs">
     {request.createdAt
       ? `${formatDistanceToNow(new Date(request.createdAt))} ago`
@@ -156,7 +165,7 @@ const ManageRequests = () => {
 </div>
 
             <div className="space-y-1 text-gray-700">
-              <p><strong>Admin Email:</strong> {request.email}</p>
+              <p><strong>Admin Email:</strong> {request.instituteAdminEmail}</p>
               <p><strong>Institute Phone:</strong> {request.institutePhoneNumber}</p>
               <p><strong>Domain:</strong> {request.domainName}</p>
               <p><strong>Students:</strong> {request.numberOfStudents}</p>

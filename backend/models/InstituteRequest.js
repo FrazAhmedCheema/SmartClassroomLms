@@ -14,11 +14,11 @@ const InstituteRequestSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    name: {
+    instituteAdminName: {
         type: String,
         required: true
     },
-    email: {
+    instituteAdminEmail: {
         type: String,
         required: true
     },
@@ -27,6 +27,14 @@ const InstituteRequestSchema = new mongoose.Schema({
         required: true
     },
     domainName: {
+        type: String,
+        required: true
+    },
+    username: {
+        type: String,
+        required: true
+    },
+    password: {
         type: String,
         required: true
     }

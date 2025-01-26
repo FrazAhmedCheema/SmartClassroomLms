@@ -9,6 +9,8 @@ const approveInstituteSchema = new mongoose.Schema({
   instituteAdminEmail: { type: String, required: true },
   institutePhoneNumber: { type: String, required: true },
   domainName: { type: String, required: true },
+  username: { type: String, required: true },
+  password: { type: String, required: true },
   status: { type: String, default: 'active' }
 }, { timestamps: true });
 
