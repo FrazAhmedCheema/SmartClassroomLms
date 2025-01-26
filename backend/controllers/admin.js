@@ -104,8 +104,8 @@ exports.approveInstitute = async (req, res) => {
       port: 465,
       secure: true,
       auth: {
-          user: '211370234@gift.edu.pk', // Your Gmail address
-          pass: 'eyyh uxno ztbi xfjo'     // Replace with the generated app password
+          user: process.env.EMAIL_USER, // Your Gmail address
+          pass: process.env.EMAIL_PASS     // Replace with the generated app password
       }
   });
   
