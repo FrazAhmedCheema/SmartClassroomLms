@@ -39,7 +39,7 @@ const InstituteForm4 = ({ onNext, onPrevious, formData, setFormData }) => {
         Enter your institution's domain name. You’ll use it to set up custom email addresses, like info@example.edu. We'll walk you through verifying that your institution owns this domain later.
       </p>
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-500">Your domain name</h2>
+        <h2 className="text-lg font-semibold text-gray-500">Your domain name <span className="text-red-500">*</span></h2>
         <input 
           type="text" 
           name="domainName"

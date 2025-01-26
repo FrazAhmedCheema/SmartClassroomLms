@@ -25,8 +25,12 @@ const InstituteForm1 = ({ onNext, formData, setFormData }) => {
 
   const validate = (name, value) => {
     let error = '';
-    if (name === 'instituteName' && value.length < 3) {
-      error = 'Institute name must be at least 3 characters long';
+    if (name === 'instituteName') {
+      if (value.length < 3) {
+        error = 'Institute name must be at least 3 characters long';
+      } else if (!/^[A-Za-z\s]+$/.test(value)) {
+        error = 'Institute name must contain only alphabets';
+      }
     } else if (name === 'numberOfStudents' && value === '') {
       error = 'Please select the number of students';
     } else if (name === 'region' && value === '') {
@@ -45,6 +49,7 @@ const InstituteForm1 = ({ onNext, formData, setFormData }) => {
     validate('region', selectedOption.value);
     setFormData({ ...formData, region: selectedOption.value });
   };
+  
 
   const isFormValid = () => {
     return formData.instituteName && formData.numberOfStudents && formData.region && !Object.values(errors).some((error) => error);
@@ -61,7 +66,7 @@ const InstituteForm1 = ({ onNext, formData, setFormData }) => {
   return (
     <form>
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-500">Institute Name</h2>
+        <h2 className="text-lg font-semibold text-gray-500">Institute Name <span className="text-red-500">*</span></h2>
         <input 
           type="text" 
           name="instituteName"
@@ -73,7 +78,7 @@ const InstituteForm1 = ({ onNext, formData, setFormData }) => {
         {errors.instituteName && <p className="text-red-500 text-sm mt-1">{errors.instituteName}</p>}
       </div>
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-500">Number of students and staff</h2>
+        <h2 className="text-lg font-semibold text-gray-500">Number of students and staff <span className="text-red-500">*</span></h2>
         <select 
           name="numberOfStudents"
           value={formData.numberOfStudents}
@@ -91,7 +96,7 @@ const InstituteForm1 = ({ onNext, formData, setFormData }) => {
         {errors.numberOfStudents && <p className="text-red-500 text-sm mt-1">{errors.numberOfStudents}</p>}
       </div>
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-500">Region</h2>
+        <h2 className="text-lg font-semibold text-gray-500">Region <span className="text-red-500">*</span></h2>
         <Select 
           options={countries} 
           value={countries.find(option => option.value === formData.region)}
