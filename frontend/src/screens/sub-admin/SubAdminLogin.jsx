@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.png';
+import { FaEye, FaEyeSlash } from 'react-icons/fa'; // Import custom eye icons
 
 const SubAdminLogin = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: ''
+    email: '',
+    password: '' // Added password field
   });
   const [errors, setErrors] = useState({});
   const [showError, setShowError] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // State to toggle password visibility
 
   const validate = (name, value) => {
     let error = '';
@@ -25,14 +28,14 @@ const SubAdminLogin = () => {
   };
 
   const isFormValid = () => {
-    return formData.email && !Object.values(errors).some((error) => error);
+    return formData.email && formData.password && !Object.values(errors).some((error) => error); // Check password field
   };
 
-  const handleSubmit = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (isFormValid()) {
-      // Navigate to SetLoginPassword
-      navigate('/sub-admin/set-login-password', { state: { email: formData.email } });
+      // Simple navigation after login validation
+      navigate('/sub-admin/dashboard');
     } else {
       setShowError(true);
     }
@@ -50,7 +53,7 @@ const SubAdminLogin = () => {
           <p className="text-blue-700">Please login to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleLogin}>
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-gray-500">Email</h2>
             <input 
@@ -64,13 +67,31 @@ const SubAdminLogin = () => {
             {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>
 
+          <div className="mb-4 relative">
+            <h2 className="text-lg font-semibold text-gray-500">Password</h2>
+            <input 
+              type={showPassword ? "text" : "password"} // Toggle input type
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Enter Password"
+              className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black"
+            />
+            <span 
+              onClick={() => setShowPassword(!showPassword)} // Toggle password visibility
+              className="absolute right-3 top-10 cursor-pointer"
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />} {/* Custom eye icons */}
+            </span>
+          </div>
+
           {showError && <p className="text-red-500 text-sm mt-1">Please fill out all fields correctly before proceeding.</p>}
           
           <button 
             type="submit"
             className="w-full px-4 py-2 mt-4 text-white bg-[#1b68b3] rounded-md hover:bg-[#145a8a] focus:outline-none focus:ring-2 focus:ring-blue-400"
           >
-            Next
+            Login
           </button>
 
           <div className="mt-4 text-center">
