@@ -5,10 +5,15 @@ import { formatDistanceToNow } from 'date-fns';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+import ComposeEmailModal from './ComposeEmailModal';
+
+
 const ManageRequests = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedInstitute, setSelectedInstitute] = useState(null);
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -16,6 +21,7 @@ const ManageRequests = () => {
         const response = await fetch('http://localhost:8080/admin/manage-requests', {
           method: 'GET',
           credentials: 'include',
+          
           headers: {
             'Content-Type': 'application/json',
           },
@@ -125,9 +131,30 @@ const ManageRequests = () => {
     }
   };
 
-  const handleMail = (email) => {
-    const fromEmail = '211370234@gift.edu.pk'; // Replace with the actual sender email
-    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=&body=&from=${fromEmail}`, '_blank');
+  const handleOpenMailModal = (institute) => {
+    console.log('Opening mail modal for:', institute);
+    setSelectedInstitute(institute);
+    setIsModalOpen(true);
+  };
+
+
+
+  const handleSendEmail = async ({ subject, body }) => {
+    if (!selectedInstitute) return;
+    try {
+      const response = await fetch(`http://localhost:8080/admin/manage-institutes/${selectedInstitute._id}/email`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, body, mailType: 'request' }),
+      });
+
+      if (!response.ok) throw new Error('Failed to send email');
+
+      alert(`Email sent successfully to ${selectedInstitute.instituteName}`);
+    } catch (error) {
+      console.error('Error sending email:', error.message);
+    }
   };
 
   if (loading) {
@@ -139,6 +166,7 @@ const ManageRequests = () => {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-gray-100 p-6">
       <ToastContainer />
       <header className=" p-4 rounded-lg shadow-md mb-6" style={{ backgroundColor: '#1b68b3' }}>
@@ -186,7 +214,7 @@ const ManageRequests = () => {
                 Reject
               </button>
               <button
-                onClick={() => handleMail(request.email)}
+                onClick={() => handleOpenMailModal(request)}
                 className="flex items-center bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors"
               >
                 <Mail className="w-5 h-5 mr-1" />
@@ -197,6 +225,13 @@ const ManageRequests = () => {
         ))}
       </div>
     </div>
+    <ComposeEmailModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSend={handleSendEmail}
+        recipientEmail={selectedInstitute?.instituteName || ''}
+      />
+    </>
   );
 };
 
