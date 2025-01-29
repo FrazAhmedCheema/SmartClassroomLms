@@ -3,9 +3,10 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 const Admin = require('../models/Admin'); // Assuming you have an Admin model
-const Request = require('../models/InstituteRequest'); // Assuming you have a Request model
+const InstituteRequest = require('../models/InstituteRequest'); // Assuming you have a Request model
 const ApproveInstitute = require('../models/approveInstitute');
-
+const Notification = require('../models/Notification');
+const { notifyAdmins } = require('../app'); // Import WebSocket notification function
 
 exports.login = async (req, res) => {
     const errors = validationResult(req);
@@ -40,7 +41,7 @@ exports.login = async (req, res) => {
             httpOnly: true, // Prevents JavaScript from accessing it
             secure: process.env.NODE_ENV === 'production', // Sends cookie over HTTPS in production
             sameSite: 'strict', // Prevents CSRF attacks
-            maxAge: 5 * 60 * 1000, // Token expiration (5 minutes)
+            maxAge: 60 * 60 * 1000, // Token expiration (5 minutes)
         });
 
         console.log('Cookie set:', token); // Add this line to log the token
@@ -59,8 +60,7 @@ exports.logout = (req, res) => {
 
 exports.manageRequests = async (req, res) => {
     try {
-        const requests = await Request.find();
-        console.info('Requests fetched successfully:', requests.length);
+        const requests = await InstituteRequest.find();
         res.status(200).json(requests);
     } catch (err) {
         console.error('Error fetching requests:', err.message);
@@ -68,12 +68,8 @@ exports.manageRequests = async (req, res) => {
     }
 };
 
-
-
-
 exports.approveInstitute = async (req, res) => {
-    console.log('Approve Institute route accessed'); // Add this line to verify the route is accessed
-    console.log('Request body:', req.body);
+
   try {
     const requestToApprove = req.body;
 
@@ -95,12 +91,12 @@ exports.approveInstitute = async (req, res) => {
     await newInstitute.save();
 
     // Delete the request from InstituteRequest using requestId
-    await Request.findOneAndDelete({ requestId: requestToApprove.requestId });
+    await InstituteRequest.findOneAndDelete({ requestId: requestToApprove.requestId });
     console.log('Deleted request with requestId:', requestToApprove.requestId);
 
     // Send approval email
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
+      host: 'smtp.hostinger.com',
       port: 465,
       secure: true,
       auth: {
@@ -108,10 +104,11 @@ exports.approveInstitute = async (req, res) => {
           pass: process.env.EMAIL_PASS     // Replace with the generated app password
       }
   });
-  
+  console.log('Email : ',process.env.EMAIL_USER);
 
     const mailOptions = {
-        from: process.env.EMAIL_USER,
+      
+        from: process.env.EMAIL_SENDER,
         to: requestToApprove.instituteAdminEmail,
         subject: 'Your Institute Has Been Approved for SmartClassroomLms 🎉',
         html: `<p>Dear <strong>${requestToApprove.instituteAdminName}</strong>,</p>
@@ -148,35 +145,34 @@ exports.approveInstitute = async (req, res) => {
 };
 
 exports.rejectInstitute = async (req, res) => {
-    console.log('Reject Institute route accessed'); // Add this line to verify the route is accessed
-    console.log('Request body:', req.body);
+
     try {
         const { requestId } = req.body;
 
         // Find the request to get the email and other details
-        const requestToReject = await Request.findOne({ requestId });
+        const requestToReject = await InstituteRequest.findOne({ requestId });
         if (!requestToReject) {
             return res.status(404).json({ message: 'Request not found' });
         }
 
         // Delete the request from InstituteRequest using requestId
-        await Request.findOneAndDelete({ requestId });
+        await InstituteRequest.findOneAndDelete({ requestId });
         console.log('Deleted request with requestId:', requestId);
 
         // Send rejection email
         const transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 465,
-            secure: true,
-            auth: {
-                user: '211370234@gift.edu.pk', // Your Gmail address
-                pass: 'eyyh uxno ztbi xfjo'     // Replace with the generated app password
-            }
-        });
+          host: 'smtp.hostinger.com',
+          port: 465,
+          secure: true,
+          auth: {
+              user: process.env.EMAIL_USER, // Your Gmail address
+              pass: process.env.EMAIL_PASS     // Replace with the generated app password
+          }
+      });
 
         const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: requestToReject.instituteAdminEmail,
+          from: process.env.EMAIL_SENDER,
+          to: requestToApprove.instituteAdminEmail,
             subject: 'Update on Your Request for SmartClassroomLms',
             html: `<p>Dear <strong>${requestToReject.instituteAdminName}</strong>,</p>
                    <p>We regret to inform you that your request for onboarding <strong>SmartClassroomLms</strong> has not been approved at this time.</p>
@@ -203,6 +199,118 @@ exports.rejectInstitute = async (req, res) => {
     }
 };
 
+exports.manageInstitutes = async (req, res) => {
+    try {
+      const { page = 1, limit = 10 } = req.query;
+  
+      const totalInstitutes = await ApproveInstitute.countDocuments();
+      const institutes = await ApproveInstitute.find()
+        .select('instituteId instituteName instituteAdminName status') // Fetch only required fields
+        .skip((page - 1) * limit)
+        .limit(Number(limit));
+  
+      res.status(200).json({
+        institutes,
+        totalPages: Math.ceil(totalInstitutes / limit),
+        currentPage: Number(page),
+      });
+    } catch (err) {
+      console.error('Error fetching institutes:', err.message);
+      res.status(500).json({ msg: 'Internal server error. Please try again later.' });
+    }
+  };
+  
+
+  exports.updateInstituteStatus = async (req, res) => {
+    try {
+      const { id } = req.params; // Use _id or instituteId consistently
+      const { status } = req.body;
+  
+      const institute = await ApproveInstitute.findOneAndUpdate(
+        { _id: id }, // Change to instituteId if needed
+        { status },
+        { new: true }
+      ).select('instituteId instituteName instituteAdminName status');
+  
+      if (!institute) {
+        return res.status(404).json({ msg: 'Institute not found' });
+      }
+  
+      res.status(200).json({ msg: 'Status updated successfully', institute });
+    } catch (err) {
+      console.error('Error updating status:', err.message);
+      res.status(500).json({ msg: 'Internal server error' });
+    }
+  };
+  
+
+  exports.deleteInstitute = async (req, res) => {
+    try {
+      const { id } = req.params; // Use instituteId here
+      console.log('Institute ID:', id);
+      const institute = await ApproveInstitute.findOneAndDelete({ _id: id }); // Query by instituteId
+      console.log('Deleted institute:', institute);
+      if (!institute) {
+        return res.status(404).json({ msg: 'Institute not found' });
+      }
+  
+      res.status(200).json({ msg: 'Institute deleted successfully' });
+    } catch (err) {
+      console.error('Error deleting institute:', err.message);
+      res.status(500).json({ msg: 'Internal server error' });
+    }
+  };
+
+exports.sendEmail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { subject, body } = req.body;
+    const mailType = req.body.mailType? req.body.mailType :'registered'; 
+     
+
+    let institute ;
+    if(mailType === 'request'){
+       institute = await InstituteRequest.findById(id).select('instituteAdminEmail instituteAdminName');
+
+      if (!institute) return res.status(404).json({ msg: 'Institute not found' });
+    }else{
+       institute = await ApproveInstitute.findById(id).select('instituteAdminEmail instituteAdminName');
+      if (!institute) return res.status(404).json({ msg: 'Institute not found' });
+    
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.hostinger.com',
+      port: 465,
+      secure: true,
+      auth: {
+          user: process.env.EMAIL_USER, // Your Gmail address
+          pass: process.env.EMAIL_PASS     // Replace with the generated app password
+      }
+  });
+
+    const mailOptions = {
+      from: process.env.EMAIL_SENDER,
+      to: institute.instituteAdminEmail,
+      subject,
+      text: body,
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.status(200).json({ msg: 'Email sent successfully' });
+  } catch (error) {
+    console.error('Error sending email:', error.message);
+    res.status(500).json({ msg: 'Internal server error' });
+  }
+};
 
 
-
+exports.getNotifications = async (req, res) => {
+  try {
+      const notifications = await Notification.find().sort({ createdAt: -1 });
+      res.status(200).json(notifications);
+  } catch (err) {
+      console.error('Error fetching notifications:', err.message);
+      res.status(500).json({ msg: 'Internal server error. Please try again later.' });
+  }
+};
