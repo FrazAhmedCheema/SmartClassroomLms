@@ -18,7 +18,7 @@ router.patch('/manage-institutes/:id/status', auth, adminController.updateInstit
 router.delete('/manage-institutes/:id', auth, adminController.deleteInstitute);
 router.post('/manage-institutes/:id/email', auth, adminController.sendEmail);
 
-router.get('/notifications', adminController.getNotifications);
+router.get('/notifications',auth, adminController.getNotifications);
 
 router.get('/manage-requests', auth, adminController.manageRequests);
 router.post('/approve-institute', auth,adminController.approveInstitute);

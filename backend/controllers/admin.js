@@ -6,7 +6,6 @@ const Admin = require('../models/Admin'); // Assuming you have an Admin model
 const InstituteRequest = require('../models/InstituteRequest'); // Assuming you have a Request model
 const ApproveInstitute = require('../models/approveInstitute');
 const Notification = require('../models/Notification');
-const { notifyAdmins } = require('../app'); // Import WebSocket notification function
 
 exports.login = async (req, res) => {
     const errors = validationResult(req);
@@ -200,26 +199,37 @@ exports.rejectInstitute = async (req, res) => {
 };
 
 exports.manageInstitutes = async (req, res) => {
-    try {
-      const { page = 1, limit = 10 } = req.query;
-  
+  try {
+      let { page = 1, limit = 10 } = req.query;
+      page = Math.max(Number(page), 1); // Ensure page is at least 1
+      limit = Math.max(Number(limit), 1); // Ensure limit is at least 1
+
       const totalInstitutes = await ApproveInstitute.countDocuments();
       const institutes = await ApproveInstitute.find()
-        .select('instituteId instituteName instituteAdminName status') // Fetch only required fields
-        .skip((page - 1) * limit)
-        .limit(Number(limit));
-  
+          .select('instituteId instituteName instituteAdminName status') // Fetch only required fields
+          .skip((page - 1) * limit)
+          .limit(limit);
+
+      if (institutes.length === 0) {
+          return res.status(200).json({
+              institutes: [],
+              totalPages: Math.ceil(totalInstitutes / limit),
+              currentPage: page,
+              message: 'No institutes found.',
+          });
+      }
+
       res.status(200).json({
-        institutes,
-        totalPages: Math.ceil(totalInstitutes / limit),
-        currentPage: Number(page),
+          institutes,
+          totalPages: Math.ceil(totalInstitutes / limit),
+          currentPage: page,
       });
-    } catch (err) {
+  } catch (err) {
       console.error('Error fetching institutes:', err.message);
       res.status(500).json({ msg: 'Internal server error. Please try again later.' });
-    }
-  };
-  
+  }
+};
+
 
   exports.updateInstituteStatus = async (req, res) => {
     try {
