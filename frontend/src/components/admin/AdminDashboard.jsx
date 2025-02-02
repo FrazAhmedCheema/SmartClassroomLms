@@ -72,6 +72,15 @@ const AdminDashboard = () => {
     };
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await axios.post('http://localhost:8080/admin/logout', {}, { withCredentials: true });
+      navigate('/admin/login');
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
@@ -95,6 +104,12 @@ const AdminDashboard = () => {
               alt="Profile"
               className="w-10 h-10 rounded-full border-2 border-white"
             />
+            <button
+              onClick={handleLogout}
+              className="text-white font-medium bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>
