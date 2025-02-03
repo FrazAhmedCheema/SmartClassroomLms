@@ -4,6 +4,8 @@ import { Building2, ClipboardList } from 'lucide-react';
 import axios from 'axios';
 import logo from '../../assets/logo.png';
 import { io } from 'socket.io-client';
+import Swal from 'sweetalert2';
+import AdminNavbar from './AdminNavbar';
 
 const socket = io('http://localhost:8080', { withCredentials: true });
 
@@ -73,12 +75,33 @@ const AdminDashboard = () => {
   }, []);
 
   const handleLogout = async () => {
-    try {
-      await axios.post('http://localhost:8080/admin/logout', {}, { withCredentials: true });
-      navigate('/admin/login');
-    } catch (err) {
-      console.error('Logout error:', err);
-    }
+    Swal.fire({
+      title: 'Are you sure?',
+      text: 'Do you want to logout?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, logout!',
+      cancelButtonText: 'Cancel',
+      background: '#fff',
+      borderRadius: '1rem',
+      customClass: {
+        title: 'text-xl font-bold text-gray-800',
+        content: 'text-md text-gray-600',
+        confirmButton: 'px-4 py-2 text-white rounded-lg text-sm font-medium',
+        cancelButton: 'px-4 py-2 text-white rounded-lg text-sm font-medium'
+      }
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await axios.post('http://localhost:8080/admin/logout', {}, { withCredentials: true });
+          navigate('/admin/login');
+        } catch (err) {
+          console.error('Logout error:', err);
+        }
+      }
+    });
   };
 
   if (loading) {
@@ -93,28 +116,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className=" shadow-sm" style={{ backgroundColor: '#1b68b3' }}>
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <img src={logo} alt="Logo" className="h-14 filter invert brightness-0" />
-          <div className="flex items-center space-x-4">
-            <span className="text-white font-medium">Welcome, Admin</span>
-            <img
-              src="/api/placeholder/40/40"
-              alt="Profile"
-              className="w-10 h-10 rounded-full border-2 border-white"
-            />
-            <button
-              onClick={handleLogout}
-              className="text-white font-medium bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
+      <AdminNavbar />
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Welcome Section */}
         <div className="text-center mb-12">
