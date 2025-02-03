@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, CheckCircle, XCircle } from 'lucide-react';
+import { Mail, CheckCircle, XCircle, ArrowLeft } from 'lucide-react'; // Add ArrowLeft import
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import Swal from 'sweetalert2';
 
 import ComposeEmailModal from './ComposeEmailModal';
-
+import AdminNavbar from './AdminNavbar';
 
 const ManageRequests = () => {
   const [requests, setRequests] = useState([]);
@@ -60,75 +61,117 @@ const ManageRequests = () => {
     const requestToApprove = requests.find(request => request._id === id);
     if (!requestToApprove) return;
 
-    const approvedData = {
-      instituteName: requestToApprove.instituteName,
-      numberOfStudents: requestToApprove.numberOfStudents.toString(),
-      region: requestToApprove.region,
-      instituteAdminName: requestToApprove.instituteAdminName,
-      instituteAdminEmail: requestToApprove.instituteAdminEmail,
-      institutePhoneNumber: requestToApprove.institutePhoneNumber,
-      domainName: requestToApprove.domainName,
-      status: 'active',
-      requestId: requestToApprove.requestId,
-      username: requestToApprove.username, // Include username
-      password: requestToApprove.password, // Include password
-    };
-
-    try {
-      const response = await fetch('http://localhost:8080/admin/approve-institute', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(approvedData)
-      });
-
-      if (response.ok) {
-        const updatedRequests = requests.filter(request => request._id !== id);
-        setRequests(updatedRequests);
-        toast.success(`Request approved for institute: ${requestToApprove.instituteName}`, {
-          position: 'top-right', // Use string-based position for reliability
-        });
-      } else {
-        console.error('Failed to approve request:', response.statusText);
+    Swal.fire({
+      title: 'Are you sure?',
+      text: `Do you want to approve the request for ${requestToApprove.instituteName}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, approve!',
+      cancelButtonText: 'Cancel',
+      background: '#fff',
+      borderRadius: '1rem',
+      customClass: {
+        title: 'text-xl font-bold text-gray-800',
+        content: 'text-md text-gray-600',
+        confirmButton: 'px-4 py-2 text-white rounded-lg text-sm font-medium',
+        cancelButton: 'px-4 py-2 text-white rounded-lg text-sm font-medium'
       }
-    } catch (error) {
-      console.error('Error occurred while approving request:', error.message);
-    }
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        const approvedData = {
+          instituteName: requestToApprove.instituteName,
+          numberOfStudents: requestToApprove.numberOfStudents.toString(),
+          region: requestToApprove.region,
+          instituteAdminName: requestToApprove.instituteAdminName,
+          instituteAdminEmail: requestToApprove.instituteAdminEmail,
+          institutePhoneNumber: requestToApprove.institutePhoneNumber,
+          domainName: requestToApprove.domainName,
+          status: 'active',
+          requestId: requestToApprove.requestId,
+          username: requestToApprove.username,
+          password: requestToApprove.password,
+        };
+
+        try {
+          const response = await fetch('http://localhost:8080/admin/approve-institute', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(approvedData)
+          });
+
+          if (response.ok) {
+            const updatedRequests = requests.filter(request => request._id !== id);
+            setRequests(updatedRequests);
+            toast.success(`Request approved for institute: ${requestToApprove.instituteName}`, {
+              position: 'top-right',
+            });
+          } else {
+            console.error('Failed to approve request:', response.statusText);
+          }
+        } catch (error) {
+          console.error('Error occurred while approving request:', error.message);
+        }
+      }
+    });
   };
 
   const handleReject = async (id) => {
     const requestToReject = requests.find(request => request._id === id);
     if (!requestToReject) return;
 
-    const rejectedData = {
-      requestId: requestToReject.requestId,
-      status: 'rejected'
-    };
-
-    try {
-      const response = await fetch('http://localhost:8080/admin/reject-institute', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(rejectedData)
-      });
-
-      if (response.ok) {
-        const updatedRequests = requests.filter(request => request._id !== id);
-        setRequests(updatedRequests);
-        toast.error(`Request rejected for institute: ${requestToReject.instituteName}`, {
-          position: toast.POSITION.TOP_RIGHT
-        });
-      } else {
-        console.error('Failed to reject request:', response.statusText);
+    Swal.fire({
+      title: 'Are you sure?',
+      text: `Do you want to reject the request for ${requestToReject.instituteName}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, reject!',
+      cancelButtonText: 'Cancel',
+      background: '#fff',
+      borderRadius: '1rem',
+      customClass: {
+        title: 'text-xl font-bold text-gray-800',
+        content: 'text-md text-gray-600',
+        confirmButton: 'px-4 py-2 text-white rounded-lg text-sm font-medium',
+        cancelButton: 'px-4 py-2 text-white rounded-lg text-sm font-medium'
       }
-    } catch (error) {
-      console.error('Error occurred while rejecting request:', error.message);
-    }
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        const rejectedData = {
+          requestId: requestToReject.requestId,
+          status: 'rejected'
+        };
+
+        try {
+          const response = await fetch('http://localhost:8080/admin/reject-institute', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(rejectedData)
+          });
+
+          if (response.ok) {
+            const updatedRequests = requests.filter(request => request._id !== id);
+            setRequests(updatedRequests);
+            toast.error(`Request rejected for institute: ${requestToReject.instituteName}`, {
+              position: toast.POSITION.TOP_RIGHT
+            });
+          } else {
+            console.error('Failed to reject request:', response.statusText);
+          }
+        } catch (error) {
+          console.error('Error occurred while rejecting request:', error.message);
+        }
+      }
+    });
   };
 
   const handleOpenMailModal = (institute) => {
@@ -157,6 +200,10 @@ const ManageRequests = () => {
     }
   };
 
+  const handleBack = () => {
+    navigate('/admin/dashboard');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -167,62 +214,66 @@ const ManageRequests = () => {
 
   return (
     <>
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gray-100">
       <ToastContainer />
-      <header className=" p-4 rounded-lg shadow-md mb-6" style={{ backgroundColor: '#1b68b3' }}>
-        <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold text-white">Manage Requests</h1>
-          <div className="flex items-center space-x-2">
-            <span className="text-white">ADMIN</span>
-            <div className="w-8 h-8 bg-gray-400 rounded-full"></div>
-          </div>
+      <AdminNavbar title="Manage Requests" />
+      <div className="p-6">
+        {/* Fixed hover color for back button */}
+        <div className="mb-6">
+          <button
+            onClick={handleBack}
+            className="flex items-center text-gray-700 hover:text-blue-600 px-3 py-2 rounded-lg transition-colors bg-white shadow-sm hover:bg-gray-50"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Dashboard
+          </button>
         </div>
-      </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {requests.map((request) => (
-          <div key={request._id} className="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow">
-<div className="mb-3">
-  <h2 className="text-lg font-semibold " style={{ color: '#1b68b3' }}>{request.instituteName}</h2>
-  <p className="text-gray-600 text-sm">{request.instituteAdminName} | {request.region}</p>
-  <p className="text-gray-500 text-xs">
-    {request.createdAt
-      ? `${formatDistanceToNow(new Date(request.createdAt))} ago`
-      : 'Timestamp not available'}
-  </p>
-</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {requests.map((request) => (
+            <div key={request._id} className="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow">
+              <div className="mb-3">
+                <h2 className="text-lg font-semibold " style={{ color: '#1b68b3' }}>{request.instituteName}</h2>
+                <p className="text-gray-600 text-sm">{request.instituteAdminName} | {request.region}</p>
+                <p className="text-gray-500 text-xs">
+                  {request.createdAt
+                    ? `${formatDistanceToNow(new Date(request.createdAt))} ago`
+                    : 'Timestamp not available'}
+                </p>
+              </div>
 
-            <div className="space-y-1 text-gray-700">
-              <p><strong>Admin Email:</strong> {request.instituteAdminEmail}</p>
-              <p><strong>Institute Phone:</strong> {request.institutePhoneNumber}</p>
-              <p><strong>Domain:</strong> {request.domainName}</p>
-              <p><strong>Students:</strong> {request.numberOfStudents}</p>
+              <div className="space-y-1 text-gray-700">
+                <p><strong>Admin Email:</strong> {request.instituteAdminEmail}</p>
+                <p><strong>Institute Phone:</strong> {request.institutePhoneNumber}</p>
+                <p><strong>Domain:</strong> {request.domainName}</p>
+                <p><strong>Students:</strong> {request.numberOfStudents}</p>
+              </div>
+              <div className="mt-4 flex justify-between items-center">
+                <button
+                  onClick={() => handleApprove(request._id)}
+                  className="flex items-center bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors"
+                >
+                  <CheckCircle className="w-5 h-5 mr-1" />
+                  Approve
+                </button>
+                <button
+                  onClick={() => handleReject(request._id)}
+                  className="flex items-center bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
+                >
+                  <XCircle className="w-5 h-5 mr-1" />
+                  Reject
+                </button>
+                <button
+                  onClick={() => handleOpenMailModal(request)}
+                  className="flex items-center bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors"
+                >
+                  <Mail className="w-5 h-5 mr-1" />
+                  Email
+                </button>
+              </div>
             </div>
-            <div className="mt-4 flex justify-between items-center">
-              <button
-                onClick={() => handleApprove(request._id)}
-                className="flex items-center bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors"
-              >
-                <CheckCircle className="w-5 h-5 mr-1" />
-                Approve
-              </button>
-              <button
-                onClick={() => handleReject(request._id)}
-                className="flex items-center bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
-              >
-                <XCircle className="w-5 h-5 mr-1" />
-                Reject
-              </button>
-              <button
-                onClick={() => handleOpenMailModal(request)}
-                className="flex items-center bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors"
-              >
-                <Mail className="w-5 h-5 mr-1" />
-                Email
-              </button>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
     <ComposeEmailModal
