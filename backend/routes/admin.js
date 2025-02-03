@@ -13,6 +13,7 @@ router.get('/dashboard', auth, (req, res) => {
 });
 
 router.get('/manage-institutes', auth, adminController.manageInstitutes);
+router.put('/manage-institutes/:id', auth, adminController.updateInstitute);
 router.patch('/manage-institutes/:id/status', auth, adminController.updateInstituteStatus);
 
 router.delete('/manage-institutes/:id', auth, adminController.deleteInstitute);

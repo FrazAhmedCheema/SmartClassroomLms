@@ -324,3 +324,38 @@ exports.getNotifications = async (req, res) => {
       res.status(500).json({ msg: 'Internal server error. Please try again later.' });
   }
 };
+
+exports.updateInstitute = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = {
+      instituteName: req.body.instituteName,
+      instituteId: req.body.instituteId,
+      instituteAdminName: req.body.instituteAdminName,
+      status: req.body.status
+    };
+
+    const institute = await ApproveInstitute.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true }
+    );
+
+    if (!institute) {
+      return res.status(404).json({ message: 'Institute not found' });
+    }
+
+    res.status(200).json({ 
+      success: true,
+      message: 'Institute updated successfully',
+      institute 
+    });
+  } catch (error) {
+    console.error('Error updating institute:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error updating institute',
+      error: error.message 
+    });
+  }
+};
