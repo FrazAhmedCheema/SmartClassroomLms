@@ -10,6 +10,7 @@ import SubAdminLogin from './screens/sub-admin/SubAdminLogin';
 import SubAdminDashboard from './screens/sub-admin/SubAdminDashboard';
 import ManageStudents from './screens/sub-admin/ManageStudents';
 import ManageTeachers from './screens/sub-admin/ManageTeachers';
+import AdminNotifications from './components/admin/AdminNotifications';
 // ...import other components as needed...
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/manage-institutes" element={<ManageInstitutes />} />
         <Route path="/admin/manage-requests" element={<ManageRequests />} />
+        <Route path="/admin/notifications" element={<AdminNotifications />} />
         <Route path="/sub-admin/login" element={<SubAdminLogin />} />
         <Route path="/sub-admin/dashboard" element={<SubAdminDashboard />} />
         <Route path="/sub-admin/students" element={<ManageStudents />} />
