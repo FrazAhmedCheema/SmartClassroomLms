@@ -125,7 +125,7 @@ exports.approveInstitute = async (req, res) => {
                <p>Welcome to the future of education! 🚀</p>
                <p>Best regards,<br>
                Administrator, SmartClassroomLms<br>
-               <a href="mailto:support@smartclassroomlms.com">support@smartclassroomlms.com</a></p>`
+               <a href="mailto:admin@smartclassroomlms.com">support@smartclassroomlms.com</a></p>`
     };
 
     transporter.sendMail(mailOptions, (error, info) => {
@@ -180,7 +180,7 @@ exports.rejectInstitute = async (req, res) => {
                    <p>We appreciate your understanding and look forward to the possibility of collaborating with your institute at a later stage.</p>
                    <p>Best regards,<br>
                    Administrator, SmartClassroomLms<br>
-                   <a href="mailto:support@smartclassroomlms.com">support@smartclassroomlms.com</a></p>`
+                   <a href="mailto:admin@smartclassroomlms.com">support@smartclassroomlms.com</a></p>`
         };
 
         transporter.sendMail(mailOptions, (error, info) => {
@@ -316,14 +316,29 @@ exports.sendEmail = async (req, res) => {
 
 
 exports.getNotifications = async (req, res) => {
+  const limit = req.query.limit ? parseInt(req.query.limit) : undefined;
   try {
-      const notifications = await Notification.find().sort({ createdAt: -1 });
-      res.status(200).json(notifications);
-  } catch (err) {
-      console.error('Error fetching notifications:', err.message);
-      res.status(500).json({ msg: 'Internal server error. Please try again later.' });
+      const notifications = await fetchNotifications(limit);
+      res.status(200).json({ notifications });
+  } catch (error) {
+      res.status(500).json({ error: "Failed to fetch notifications" });
   }
 };
+
+// Function to fetch notifications in new-to-old order
+async function fetchNotifications(limit) {
+  try {
+      let query = Notification.find().sort({ createdAt: -1 }); // Sorting in descending order
+      if (limit) {
+          query = query.limit(limit);
+      }
+      const notifications = await query.exec();
+      return notifications;
+  } catch (error) {
+      throw new Error("Error fetching notifications");
+  }
+}
+
 
 exports.updateInstitute = async (req, res) => {
   try {

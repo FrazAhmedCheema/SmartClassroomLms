@@ -176,3 +176,4 @@ const ManageInstitutes = () => {
 };
 
 export default ManageInstitutes;
+
