@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './index.css'; // Updated to include Tailwind CSS
 import RegisterInstitute from './screens/sub-admin/RegisterInstitute';
@@ -6,6 +5,7 @@ import AdminLogin from './components/admin/AdminLogin';
 import AdminDashboard from "./components/admin/AdminDashboard";
 import ManageInstitutes from './components/admin/ManageInstitutes';
 import ManageRequests from './components/admin/ManageRequests';
+import AdminNotifications from './components/admin/AdminNotifications';
 import SubAdminLogin from './screens/sub-admin/SubAdminLogin';
 import SubAdminDashboard from './screens/sub-admin/SubAdminDashboard';
 import ManageStudents from './screens/sub-admin/ManageStudents';
@@ -22,21 +22,18 @@ function App() {
         <Route path="/register" element={<RegisterInstitute />} />
         
         {/* Admin Routes */}
-        <Route path="/admin/*">
-          <Route path="login" element={<AdminLogin />} />
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="manage-institutes" element={<ManageInstitutes />} />
-          <Route path="manage-requests" element={<ManageRequests />} />
-        </Route>
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/manage-institutes" element={<ManageInstitutes />} />
+        <Route path="/admin/manage-requests" element={<ManageRequests />} />
+        <Route path="/admin/notifications" element={<AdminNotifications />} />
 
         {/* Sub-Admin Routes */}
-        <Route path="/sub-admin/*">
-          <Route path="login" element={<SubAdminLogin />} />
-          <Route path="dashboard" element={<SubAdminDashboard />} />
-          <Route path="students" element={<ManageStudents />} />
-          <Route path="teachers" element={<ManageTeachers />} />
-          <Route path="classes" element={<ViewClasses />} />
-        </Route>
+        <Route path="/sub-admin/login" element={<SubAdminLogin />} />
+        <Route path="/sub-admin/dashboard" element={<SubAdminDashboard />} />
+        <Route path="/sub-admin/students" element={<ManageStudents />} />
+        <Route path="/sub-admin/teachers" element={<ManageTeachers />} />
+        <Route path="/sub-admin/classes" element={<ViewClasses />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />

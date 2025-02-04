@@ -5,9 +5,6 @@ import Swal from 'sweetalert2';
 const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) => {
   const [editableInstituteId, setEditableInstituteId] = useState(null);
   const [editFormData, setEditFormData] = useState({
-    instituteName: '',
-    instituteId: '',
-    instituteAdminName: '',
     status: ''
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -15,8 +12,8 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
 
   const handleEditClick = (institute) => {
     Swal.fire({
-      title: 'Update Institute',
-      text: `Do you want to edit ${institute.instituteName}'s information?`,
+      title: 'Update Institute Status',
+      text: `Do you want to edit the status of ${institute.instituteName}?`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#3085d6',
@@ -27,9 +24,6 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
       if (result.isConfirmed) {
         setEditableInstituteId(institute._id);
         setEditFormData({
-          instituteName: institute.instituteName,
-          instituteId: institute.instituteId,
-          instituteAdminName: institute.instituteAdminName,
           status: institute.status
         });
       }
@@ -38,15 +32,6 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
 
   const handleSaveClick = async (id) => {
     const instituteToUpdate = institutes.find(inst => inst._id === id);
-    
-    if (!editFormData.instituteName || !editFormData.instituteId || !editFormData.instituteAdminName) {
-      Swal.fire({
-        title: 'Error!',
-        text: 'All fields are required',
-        icon: 'error'
-      });
-      return;
-    }
 
     Swal.fire({
       title: 'Save Changes?',
@@ -90,7 +75,7 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
 
             Swal.fire({
               title: 'Updated!',
-              text: 'Institute information has been updated successfully.',
+              text: 'Institute status has been updated successfully.',
               icon: 'success',
               timer: 1500
             });
@@ -99,7 +84,7 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
           console.error('Error updating institute:', error);
           Swal.fire({
             title: 'Error!',
-            text: error.message || 'Failed to update institute information.',
+            text: error.message || 'Failed to update institute status.',
             icon: 'error'
           });
         }
@@ -109,7 +94,7 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
 
   const handleDelete = async (id) => {
     const instituteToDelete = institutes.find(institute => institute._id === id);
-    
+
     Swal.fire({
       title: 'Are you sure?',
       text: `Do you want to delete ${instituteToDelete.instituteName}?`,
@@ -140,7 +125,7 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
             const updatedInstitutes = institutes.filter(institute => institute._id !== id);
             setInstitutes(updatedInstitutes);
             setFilteredInstitutes(updatedInstitutes);
-            
+
             Swal.fire({
               title: 'Deleted!',
               text: 'Institute has been deleted successfully.',
@@ -197,9 +182,6 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
   const handleCancel = () => {
     setEditableInstituteId(null);
     setEditFormData({
-      instituteName: '',
-      instituteId: '',
-      instituteAdminName: '',
       status: ''
     });
   };
@@ -220,40 +202,13 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
           {institutes.map((institute) => (
             <tr key={institute._id} className="border-t text-gray-700">
               <td className="px-6 py-4">
-                {editableInstituteId === institute._id ? (
-                  <input
-                    type="text"
-                    value={editFormData.instituteId}
-                    onChange={(e) => setEditFormData({ ...editFormData, instituteId: e.target.value })}
-                    className="w-full px-2 py-1 border rounded bg-white text-black"
-                  />
-                ) : (
-                  institute.instituteId
-                )}
+                {institute.instituteId}
               </td>
               <td className="px-6 py-4">
-                {editableInstituteId === institute._id ? (
-                  <input
-                    type="text"
-                    value={editFormData.instituteName}
-                    onChange={(e) => setEditFormData({ ...editFormData, instituteName: e.target.value })}
-                    className="w-full px-2 py-1 border rounded bg-white text-black"
-                  />
-                ) : (
-                  institute.instituteName
-                )}
+                {institute.instituteName}
               </td>
               <td className="px-6 py-4">
-                {editableInstituteId === institute._id ? (
-                  <input
-                    type="text"
-                    value={editFormData.instituteAdminName}
-                    onChange={(e) => setEditFormData({ ...editFormData, instituteAdminName: e.target.value })}
-                    className="w-full px-2 py-1 border rounded bg-white text-black"
-                  />
-                ) : (
-                  institute.instituteAdminName
-                )}
+                {institute.instituteAdminName}
               </td>
               <td className="px-6 py-4">
                 {editableInstituteId === institute._id ? (
@@ -328,3 +283,8 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
 };
 
 export default InstitutesTable;
+
+
+
+
+
