@@ -24,7 +24,7 @@ const Sidebar = () => {
               </Link>
             </li>
             <li>
-              <Link to="/sub-admin/courses" className="flex items-center gap-3 py-2 px-4 hover:bg-white hover:text-blue-800 rounded transition-all duration-200">
+              <Link to="/sub-admin/classes" className="flex items-center gap-3 py-2 px-4 hover:bg-white hover:text-blue-800 rounded transition-all duration-200">
                 <FaBook /> Manage Courses
               </Link>
             </li>
