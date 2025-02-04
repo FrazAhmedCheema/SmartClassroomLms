@@ -21,7 +21,7 @@ const SubAdminDashboard = () => {
       <div className="ml-64 pt-20 p-8">
         {/* Quick Actions Section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Quick Actions</h2>
+          <h2 className="text-2xl pt-20 font-bold text-gray-800 mb-4">Quick Actions</h2>
           <div className="grid grid-cols-3 gap-6">
             <Link to="/sub-admin/students" className="bg-white p-6 rounded-lg shadow-md hover:bg-blue-800 hover:text-white transition-all duration-300 flex flex-col items-center group">
               <FaUsers className="text-4xl text-blue-600 mb-2 group-hover:text-white transition-colors" />
@@ -31,7 +31,7 @@ const SubAdminDashboard = () => {
               <FaChalkboardTeacher className="text-4xl text-blue-600 mb-2 group-hover:text-white transition-colors" />
               <span className="text-gray-700 font-semibold group-hover:text-white transition-colors">Manage Teachers</span>
             </Link>
-            <Link to="/sub-admin/courses" className="bg-white p-6 rounded-lg shadow-md hover:bg-blue-800 hover:text-white transition-all duration-300 flex flex-col items-center group">
+            <Link to="/sub-admin/classes" className="bg-white p-6 rounded-lg shadow-md hover:bg-blue-800 hover:text-white transition-all duration-300 flex flex-col items-center group">
               <FaBook className="text-4xl text-blue-600 mb-2 group-hover:text-white transition-colors" />
               <span className="text-gray-700 font-semibold group-hover:text-white transition-colors">View Classes</span>
             </Link>

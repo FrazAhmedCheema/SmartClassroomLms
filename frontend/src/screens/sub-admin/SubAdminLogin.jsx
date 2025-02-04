@@ -79,7 +79,7 @@ const SubAdminLogin = () => {
             />
             <span 
               onClick={() => setShowPassword(!showPassword)} // Toggle password visibility
-              className="absolute right-3 top-10 cursor-pointer"
+              className="absolute right-3 top-3/4 transform -translate-y-1/2 cursor-pointer text-gray-500"
             >
               {showPassword ? <FaEyeSlash /> : <FaEye />} {/* Custom eye icons */}
             </span>
