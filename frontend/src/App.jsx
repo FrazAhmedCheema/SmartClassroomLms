@@ -19,7 +19,7 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/register" element={<RegisterInstitute />} />
+        <Route path="/sub-admin/register" element={<RegisterInstitute />} />
         
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
