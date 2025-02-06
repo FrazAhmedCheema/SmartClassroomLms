@@ -6,17 +6,18 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa'; // Import custom eye icons
 const SubAdminLogin = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: '',
-    password: '' // Added password field
+    username: '', // changed from email to username
+    password: '' 
   });
   const [errors, setErrors] = useState({});
   const [showError, setShowError] = useState(false);
   const [showPassword, setShowPassword] = useState(false); // State to toggle password visibility
+  const [isLoading, setIsLoading] = useState(false); // new loading state
 
   const validate = (name, value) => {
     let error = '';
-    if (name === 'email' && !/\S+@\S+\.\S+/.test(value)) {
-      error = 'Please enter a valid email address';
+    if (name === 'username' && !value.trim()) {
+      error = 'Username is required';
     }
     setErrors({ ...errors, [name]: error });
   };
@@ -28,21 +29,49 @@ const SubAdminLogin = () => {
   };
 
   const isFormValid = () => {
-    return formData.email && formData.password && !Object.values(errors).some((error) => error); // Check password field
+    return formData.username && formData.password && !Object.values(errors).some((error) => error); // Check password field
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (isFormValid()) {
-      // Simple navigation after login validation
-      navigate('/sub-admin/dashboard');
-    } else {
+    // Validate form fields before sending request
+    if (!formData.username || !formData.password || Object.values(errors).some(err => err)) {
       setShowError(true);
+      return;
+    }
+    setShowError(false); // Clear errors
+
+    try {
+      const response = await fetch("http://localhost:8080/sub-admin/login", {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify(formData),
+         credentials: "include",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed");
+      }
+      localStorage.setItem('subAdminUsername', formData.username);
+      // Show spinner then delay navigation
+      setIsLoading(true);
+      setTimeout(() => {
+        navigate('/sub-admin/dashboard');
+      }, 1500); // 1.5 seconds delay
+    } catch (error) {
+      setShowError(true);
+      alert(error.message || "Login failed. Please try again.");
     }
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-white">
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-50">
+          {/* Simple spinner element */}
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      )}
       <div className="fixed top-0 w-full flex flex-col items-center">
         <img src={logo} alt="Logo" className="h-16 mt-4" />
         <hr className="w-full border-gray-300 mt-4" />
@@ -55,16 +84,16 @@ const SubAdminLogin = () => {
 
         <form onSubmit={handleLogin}>
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-gray-500">Email</h2>
+            <h2 className="text-lg font-semibold text-gray-500">Username</h2> {/* Changed label */}
             <input 
-              type="email"
-              name="email"
-              value={formData.email}
+              type="text" // updated input type for username
+              name="username" // changed field name
+              value={formData.username} // updated state reference
               onChange={handleChange}
-              placeholder="Enter Email"
+              placeholder="Enter Username" // updated placeholder text
               className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black"
             />
-            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+            {errors.username && <p className="text-red-500 text-sm mt-1">{errors.username}</p>}
           </div>
 
           <div className="mb-4 relative">

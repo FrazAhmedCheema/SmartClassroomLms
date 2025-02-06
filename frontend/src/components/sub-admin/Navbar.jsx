@@ -8,7 +8,7 @@ import profilePic from '../../assets/admin-profile-picture.jpg';
 const Navbar = () => {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  const handleLogout = async() => {
     Swal.fire({
       title: 'Logout',
       text: 'Are you sure you want to logout?',
@@ -26,18 +26,30 @@ const Navbar = () => {
         confirmButton: 'px-4 py-2 text-white rounded-lg text-sm font-medium',
         cancelButton: 'px-4 py-2 text-white rounded-lg text-sm font-medium'
       }
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        localStorage.removeItem('subAdminToken');
-        navigate('/sub-admin/login');
+        // Send logout request
+       const response = await fetch("http://localhost:8080/sub-admin/logout", {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        })
         
-        // Show success message
-        Swal.fire({
-          title: 'Logged Out!',
-          text: 'You have been successfully logged out.',
-          icon: 'success',
-          timer: 1500,
-          showConfirmButton: false
+        .then(() => {
+          localStorage.removeItem('subAdminUsername');
+          navigate('/sub-admin/login');
+          Swal.fire({
+            title: 'Logged Out!',
+            text: 'You have been successfully logged out.',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+          });
+        })
+        .catch((error) => {
+          navigate('/sub-admin/login');
+          console.error("Logout failed:", error);
+          alert("Logout failed. Please try again.");
         });
       }
     });

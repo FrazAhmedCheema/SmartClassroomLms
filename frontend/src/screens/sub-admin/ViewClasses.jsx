@@ -3,13 +3,41 @@ import { Search, Users, ChevronDown, ChevronUp, UserCircle, Calendar, Clock, Fil
 import Navbar from '../../components/sub-admin/Navbar';
 import Sidebar from '../../components/sub-admin/Sidebar';
 import { useNavigate } from 'react-router-dom';
-import { useClasses } from '../../context/ClassesContext';
+import Swal from 'sweetalert2';
 
 const ViewClasses = () => {
   const navigate = useNavigate();
   const [expandedClass, setExpandedClass] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const { classesData } = useClasses();
+
+  // Dummy classesData for display
+  const classesData = [
+    {
+      id: 1,
+      name: 'Math 101',
+      teacher: { name: 'John Doe', email: 'john.doe@example.com', expertise: 'Mathematics' },
+      schedule: 'Monday 10:00 AM - 12:00 PM',
+      totalStudents: 30,
+      students: [
+        { id: 1, rollNo: '001', name: 'Alice', status: 'active' },
+        { id: 2, rollNo: '002', name: 'Bob', status: 'inactive' },
+        // ...more students
+      ],
+    },
+    {
+      id: 2,
+      name: 'Physics 101',
+      teacher: { name: 'Jane Smith', email: 'jane.smith@example.com', expertise: 'Physics' },
+      schedule: 'Wednesday 2:00 PM - 4:00 PM',
+      totalStudents: 25,
+      students: [
+        { id: 3, rollNo: '003', name: 'Charlie', status: 'active' },
+        { id: 4, rollNo: '004', name: 'David', status: 'inactive' },
+        // ...more students
+      ],
+    },
+    // ...more classes
+  ];
 
   const handleBack = () => {
     navigate('/sub-admin/dashboard');
@@ -24,8 +52,19 @@ const ViewClasses = () => {
     setExpandedClass(expandedClass === classId ? null : classId);
   };
 
-  const handleClassClick = (classId) => {
-    navigate(`/sub-admin/classes/${classId}`);
+  const handleClassClick = (e, classId) => {
+    e.stopPropagation(); // Add this to prevent event bubbling
+    const selectedClass = classesData.find(cls => cls.id === classId);
+    if (selectedClass) {
+      navigate(`/sub-admin/classes/${classId}`);
+    } else {
+      Swal.fire({
+        title: 'Error!',
+        text: 'Class not found',
+        icon: 'error',
+        confirmButtonText: 'Go Back'
+      });
+    }
   };
 
   return (
@@ -67,7 +106,7 @@ const ViewClasses = () => {
           {filteredClasses.map((cls) => (
             <div key={cls.id} 
                  className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
-                 onClick={() => handleClassClick(cls.id)}>
+                 onClick={(e) => handleClassClick(e, cls.id)}> {/* Update this line */}
               <div className="p-6 cursor-pointer hover:bg-blue-50 transition-colors duration-200" onClick={() => toggleExpand(cls.id)}>
                 <div className="flex justify-between items-center">
                   <div className="space-y-2">

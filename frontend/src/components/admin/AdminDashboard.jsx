@@ -55,6 +55,10 @@ const AdminDashboard = () => {
           withCredentials: true,
           headers: { "Content-Type": "application/json" },
         });
+        if (response.status === 403) {
+          navigate("/admin/login");
+          
+        }
   
         if (response.status === 200) {
           setDashboardData(response.data.dashboardData);
