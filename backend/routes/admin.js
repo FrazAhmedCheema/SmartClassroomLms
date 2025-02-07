@@ -1,33 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/admin');
-const { check } = require('express-validator');
-const auth = require('../middleware/auth');
+const { authorizeAdmin } = require('../middleware/auth');
 
-
+// Define routes with proper callback functions
 router.post('/login', adminController.login);
-
-router.get('/dashboard', auth, (req, res) => {
-    console.log('Dashboard route accessed'); 
-    res.status(200).send('Authorized');
-});
-
-router.get('/manage-institutes', auth, adminController.manageInstitutes);
-router.put('/manage-institutes/:id', auth, adminController.updateInstitute);
-router.patch('/manage-institutes/:id/status', auth, adminController.updateInstituteStatus);
-
-router.delete('/manage-institutes/:id', auth, adminController.deleteInstitute);
-router.post('/manage-institutes/:id/email', auth, adminController.sendEmail);
-
-router.get('/notifications', auth, (req, res) => {
-    const limit = req.query.limit;
-    adminController.getNotifications(req, res, limit);
-});
-
-router.get('/manage-requests', auth, adminController.manageRequests);
-router.post('/approve-institute', auth,adminController.approveInstitute);
-router.post('/reject-institute', auth, adminController.rejectInstitute);
-
-router.post('/logout',auth, adminController.logout);
+router.post('/logout', authorizeAdmin, adminController.logout);
+router.get('/manage-requests', authorizeAdmin, adminController.manageRequests);
+router.post('/approve-institute', authorizeAdmin, adminController.approveInstitute);
+router.post('/reject-institute', authorizeAdmin, adminController.rejectInstitute);
+router.get('/manage-institutes', authorizeAdmin, adminController.manageInstitutes);
+router.put('/update-institute-status/:id', authorizeAdmin, adminController.updateInstituteStatus);
+router.delete('/delete-institute/:id', authorizeAdmin, adminController.deleteInstitute);
+router.post('/send-email/:id', authorizeAdmin, adminController.sendEmail);
+router.get('/notifications', authorizeAdmin, adminController.getNotifications);
+router.put('/update-institute/:id', authorizeAdmin, adminController.updateInstitute);
 
 module.exports = router;

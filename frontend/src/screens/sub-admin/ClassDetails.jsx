@@ -2,15 +2,34 @@ import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, UserCircle, Mail, Calendar, Clock, Users, BookOpen } from 'lucide-react';
 import Swal from 'sweetalert2';
-import { useClasses } from '../../context/ClassesContext';
 import Navbar from '../../components/sub-admin/Navbar';
 import Sidebar from '../../components/sub-admin/Sidebar';
 
 const ClassDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getClassById } = useClasses();
-  const classData = getClassById(id);
+  
+  // Define dummy data directly in component for testing
+  const classData = {
+    id: parseInt(id),
+    name: 'Math 101',
+    description: 'Introduction to Mathematics',
+    startDate: '2024-01-15',
+    room: 'Room 101',
+    teacher: {
+      name: 'John Doe',
+      email: 'john.doe@example.com',
+      expertise: 'Mathematics',
+      qualification: 'PhD in Mathematics',
+      experience: '10 years'
+    },
+    schedule: 'Monday 10:00 AM - 12:00 PM',
+    totalStudents: 30,
+    students: [
+      { id: 1, rollNo: '001', name: 'Alice Smith', email: 'alice@example.com', status: 'active' },
+      { id: 2, rollNo: '002', name: 'Bob Johnson', email: 'bob@example.com', status: 'inactive' }
+    ]
+  };
 
   useEffect(() => {
     if (!classData) {

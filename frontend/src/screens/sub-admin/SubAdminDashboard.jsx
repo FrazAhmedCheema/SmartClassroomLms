@@ -1,11 +1,37 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { FaUsers, FaChalkboardTeacher, FaBook } from 'react-icons/fa';
 import Navbar from '../../components/sub-admin/Navbar';
 import Sidebar from '../../components/sub-admin/Sidebar';
 
 const SubAdminDashboard = () => {
-  // Dummy data for overview
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const verifyAuth = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/sub-admin/dashboard", {
+          method: "GET",
+          credentials : 'include',
+          headers: {
+            "Content-Type": "application/json"
+          }
+        });
+        if(response.status === 200){
+          navigate('/sub-admin/dashboard');
+
+        }
+        if (!response.ok || response.status === 401 || response.status === 403) {
+          navigate('/sub-admin/login');
+        }
+
+      } catch (error) {
+        navigate('/sub-admin/login');
+      }
+    };
+    verifyAuth();
+  }, [navigate]);
+
   const stats = {
     teachers: 25,
     students: 150,
