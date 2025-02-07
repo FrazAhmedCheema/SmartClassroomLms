@@ -27,23 +27,25 @@ exports.login = async (req, res) => {
         }
 
         const payload = {
-            admin: {
-                id: admin.id,
-            },
+            id: admin.id,
+            role: 'admin'
         };
 
         // Generate JWT
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        // Clear conflicting sub-admin token before setting admin token
+        res.clearCookie('subAdminToken');
 
         // Set token in HTTP-only cookie
         res.cookie('adminToken', token, {
             httpOnly: true, // Prevents JavaScript from accessing it
             secure: process.env.NODE_ENV === 'production', // Sends cookie over HTTPS in production
             sameSite: 'strict', // Prevents CSRF attacks
-            maxAge: 60 * 60 * 1000, // Token expiration (5 minutes)
+            maxAge: 60 * 60 * 1000, // Token expiration (1 hour)
         });
 
-        console.log('Cookie set:', token); // Add this line to log the token
+        console.log('Admin cookie set:', token); // Add this line to log the token
 
         res.json({ msg: 'Logged in successfully' });
     } catch (err) {

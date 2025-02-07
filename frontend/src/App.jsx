@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import './index.css'; // Updated to include Tailwind CSS
+import './index.css'; 
 import RegisterInstitute from './screens/sub-admin/RegisterInstitute';
 import AdminLogin from './components/admin/AdminLogin';
 import AdminDashboard from "./components/admin/AdminDashboard";
@@ -12,6 +12,7 @@ import ManageStudents from './screens/sub-admin/ManageStudents';
 import ManageTeachers from './screens/sub-admin/ManageTeachers';
 import ViewClasses from './screens/sub-admin/ViewClasses';
 import LandingPage from './screens/LandingPage';
+import ClassDetails from './screens/sub-admin/ClassDetails';
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
         <Route path="/sub-admin/students" element={<ManageStudents />} />
         <Route path="/sub-admin/teachers" element={<ManageTeachers />} />
         <Route path="/sub-admin/classes" element={<ViewClasses />} />
+        <Route path="/sub-admin/classes/:id" element={<ClassDetails />} /> {/* Add this line */}
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />
