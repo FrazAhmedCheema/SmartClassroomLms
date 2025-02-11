@@ -4,8 +4,9 @@ import { LogOut, ChevronDown, Bell, Settings } from 'lucide-react'; // Add these
 import Swal from 'sweetalert2';
 import logo from '../../assets/logo.png';
 import profilePic from '../../assets/admin-profile-picture.jpg';
+import { HiMenuAlt3 } from 'react-icons/hi'; // Add this import
 
-const Navbar = () => {
+const Navbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
   const navigate = useNavigate();
 
   const handleLogout = async() => {
@@ -56,30 +57,42 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-white shadow-md px-6 py-3 fixed w-full top-0 z-50">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center">
+    <nav className="bg-white shadow-md fixed w-full top-0 z-50" style={{ height: '4rem' }}>
+      <div className="h-full px-4">
+        <div className="flex justify-between items-center h-full">
           {/* Logo and Brand Section */}
           <div className="flex items-center space-x-4">
+            <button
+              onClick={toggleSidebar}
+              className={`p-2 rounded-full transition-all duration-300 bg-[#1b68b3] hover:bg-white
+                ${isMobile ? 'block' : 'hidden'}`}
+              style={{ 
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}
+            >
+              <HiMenuAlt3 
+                size={24} 
+                onMouseEnter={(e) => e.currentTarget.style.color = '#1b68b3'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'white'}
+                style={{ color: 'white' }}  // Changed this line
+                className="transform transition-all duration-300 hover:text-[#1b68b3]"
+              />
+            </button>
             <img 
               src={logo} 
               alt="Logo" 
-              className="h-12 hover:scale-105 transition-transform duration-300" 
+              className="h-16 hover:scale-105 transition-transform duration-300" 
             />
-            <h1 className="text-2xl font-bold text-blue-800 hidden md:block">
-              Smart Classroom LMS
-            </h1>
+
           </div>
 
           {/* Right Section */}
-          <div className="flex items-center space-x-6">
-          
-
+          <div className="flex items-center space-x-4">
             {/* Profile Section */}
             <div className="flex items-center space-x-3 bg-gray-100 px-4 py-2 rounded-lg">
               <div className="flex flex-col text-right">
                 <span className="text-gray-600 text-sm">Welcome,</span>
-                <span className="text-gray-800 font-bold">Sub Admin</span>
+                <span className=" font-bold"  style={{ color: '#1b68b3' }}>Sub Admin</span>
               </div>
               <div className="relative">
                 <img 
@@ -87,14 +100,14 @@ const Navbar = () => {
                   alt="Profile" 
                   className="w-10 h-10 rounded-full border-2 border-white hover:border-blue-300 transition-colors cursor-pointer"
                 />
-                <ChevronDown className="w-4 h-4 text-white absolute bottom-0 right-0 bg-blue-600 rounded-full p-[2px]" />
+                <ChevronDown className="w-4 h-4 text-white absolute bottom-0 right-0 bg-[#1b68b3] rounded-full p-[2px]" />
               </div>
             </div>
 
             {/* Logout Button */}
             <button 
               onClick={handleLogout}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 
+              className="flex items-center space-x-2 bg-[#1b68b3] hover:bg-[#154d85] text-white px-4 py-2 
                        rounded-lg transition-all duration-300 shadow-md hover:shadow-lg
                        transform hover:-translate-y-0.5"
             >
@@ -109,3 +122,9 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
+
+
+
+
+

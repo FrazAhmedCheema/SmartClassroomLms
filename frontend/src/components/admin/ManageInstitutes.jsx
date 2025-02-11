@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, PlusCircle, ArrowLeft } from 'lucide-react';
+import { Search, Filter, PlusCircle, ArrowLeft, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import AdminNavbar from './AdminNavbar';
 import InstitutesTable from './InstitutesTable';
 import Swal from 'sweetalert2';
@@ -89,88 +90,120 @@ const ManageInstitutes = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <div className="flex-1 flex flex-col">
-        <AdminNavbar title="Manage Institutes" />
-        <main className="flex-1 p-6">
-          <div className="mb-6">
-            <button
-              onClick={handleBack}
-              className="flex items-center text-gray-700 hover:text-blue-600 px-3 py-2 rounded-lg transition-colors bg-white shadow-sm hover:bg-gray-50"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Back to Dashboard
-            </button>
-          </div>
+    <div className="min-h-screen" style={{ backgroundColor: "#e6f0ff" }}>
+      <AdminNavbar title="Manage Institutes" />
+      <main className="p-4 md:p-6 pt-8">
+        {/* Back to Dashboard Button */}
+        <div className="mb-4">
+          <button
+            onClick={handleBack}
+            className="flex items-center space-x-2 text-white hover:text-[#1b68b3] transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Back to Dashboard</span>
+          </button>
+        </div>
 
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-4 border-b flex justify-between items-center bg-gray-50">
-              <div className="flex items-center space-x-4">
-                <h2 className="text-xl font-semibold text-black">Institutes</h2>
-                <div className="relative w-64">
-                  <input
-                    type="text"
-                    placeholder="SEARCH"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-4 py-2 bg-white text-black rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <Search className="absolute right-3 top-2.5 w-5 h-5 text-gray-500" />
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white rounded-xl shadow-md overflow-hidden"
+          >
+            {/* Header Section */}
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
+                <div className="flex items-center space-x-3">
+                  <Building2 className="w-8 h-8 text-[#1b68b3]" />
+                  <div className="flex flex-col space-y-2">
+                    <h1 className="text-2xl font-bold text-[#1b68b3] flex items-center">
+                      <Building2 className="w-7 h-7 mr-2" />
+                      Institutes Management
+                    </h1>
+                    <p className="text-gray-600">Manage all institutes in the system</p>
+                  </div>
                 </div>
-                <button
-                  onClick={handleSearch}
-                  className="flex items-center space-x-2 text-gray-500 hover:text-gray-700 bg-gray-200 px-3 py-2 rounded-full"
-                >
-                  <Filter className="w-5 h-5" />
-                  <span>Search</span>
-                </button>
+                <div className="flex items-center space-x-4">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search institutes..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full px-4 py-2 pl-10 rounded-lg border-2 border-[#1b68b3] 
+                               focus:border-[#154d85] focus:outline-none transition-all
+                               bg-white text-gray-600 placeholder-gray-400"
+                    />
+                    <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+                  </div>
+                  <button
+                    onClick={handleSearch}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all flex items-center space-x-2"
+                  >
+                    <Filter size={20} />
+                    <span>Filter</span>
+                  </button>
+                  <button
+                    onClick={handleAddInstitute}
+                    className="px-4 py-2 bg-[#1b68b3] text-white rounded-lg hover:bg-[#154d85] transition-all flex items-center space-x-2"
+                  >
+                    <PlusCircle size={20} />
+                    <span>Add Institute</span>
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={handleAddInstitute}
-                className="bg-blue-700 text-white px-4 py-2 rounded flex items-center space-x-2"
-              >
-                <PlusCircle className="w-5 h-5" />
-                <span>ADD INSTITUTE</span>
-              </button>
             </div>
 
-            {loading ? (
-              <p className="text-center py-4">Loading...</p>
-            ) : error ? (
-              <p className="text-center py-4 text-red-500">{error}</p>
-            ) : message ? (
-              <p className="text-center py-4 text-gray-500">{message}</p>
-            ) : (
-              <InstitutesTable
-                institutes={filteredInstitutes}
-                setInstitutes={setInstitutes}
-                setFilteredInstitutes={setFilteredInstitutes}
-              />
-            )}
+            {/* Content Section */}
+            <div className="p-6">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1b68b3]"></div>
+                </div>
+              ) : error ? (
+                <div className="text-center py-8 text-red-500">{error}</div>
+              ) : message ? (
+                <div className="text-center py-8 text-gray-500">{message}</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <InstitutesTable
+                    institutes={filteredInstitutes}
+                    setInstitutes={setInstitutes}
+                    setFilteredInstitutes={setFilteredInstitutes}
+                  />
+                </div>
+              )}
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex justify-center space-x-4 p-4">
-                <button
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <span className="text-gray-800">Page {currentPage} of {totalPages}</span>
-                <button
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </div>
-        </main>
-      </div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center space-x-4 mt-6">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg disabled:opacity-50 hover:bg-gray-200 transition-all"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-4 py-2 bg-white text-gray-800 rounded-lg">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg disabled:opacity-50 hover:bg-gray-200 transition-all"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      </main>
     </div>
   );
 };

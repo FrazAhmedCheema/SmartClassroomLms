@@ -35,7 +35,7 @@ function App() {
         <Route path="/sub-admin/students" element={<ManageStudents />} />
         <Route path="/sub-admin/teachers" element={<ManageTeachers />} />
         <Route path="/sub-admin/classes" element={<ViewClasses />} />
-        <Route path="/sub-admin/classes/:id" element={<ClassDetails />} /> {/* Add this line */}
+        <Route path="/sub-admin/classes/:id" element={<ClassDetails />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />

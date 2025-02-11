@@ -190,12 +190,12 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
     <>
       <table className="w-full">
         <thead>
-          <tr className="bg-gray-100 text-gray-800">
-            <th className="px-6 py-3 text-left">InstituteID</th>
-            <th className="px-6 py-3 text-left">Name</th>
-            <th className="px-6 py-3 text-left">Admin</th>
-            <th className="px-6 py-3 text-left">Status</th>
-            <th className="px-6 py-3 text-left">Actions</th>
+          <tr className="text-white" style={{ backgroundColor: '#1b68b3' }}>
+            <th className="px-6 py-3 text-left font-semibold">InstituteID</th>
+            <th className="px-6 py-3 text-left font-semibold">Name</th>
+            <th className="px-6 py-3 text-left font-semibold">Admin</th>
+            <th className="px-6 py-3 text-left font-semibold">Status</th>
+            <th className="px-6 py-3 text-left font-semibold">Actions</th>
           </tr>
         </thead>
         <tbody>

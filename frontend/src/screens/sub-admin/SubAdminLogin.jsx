@@ -65,52 +65,56 @@ const SubAdminLogin = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-white">
+    <div className="flex flex-col items-center justify-center min-h-screen" style={{ backgroundColor: "#e6f0ff" }}>
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-50">
-          {/* Simple spinner element */}
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2" style={{ borderColor: "#1b68b3" }}></div>
         </div>
       )}
       <div className="fixed top-0 w-full flex flex-col items-center">
         <img src={logo} alt="Logo" className="h-16 mt-4" />
         <hr className="w-full border-gray-300 mt-4" />
       </div>
-      <div className="w-full max-w-md p-8 bg-blue-50 rounded-lg shadow-md mt-20">
+      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md mt-20">
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-center text-blue-700 mb-6">Welcome back!</h2>
-          <p className="text-blue-700">Please login to your account</p>
+          <h2 className="text-2xl font-bold text-center mb-6" style={{ color: "#1b68b3" }}>Welcome back!</h2>
+          <p style={{ color: "#1b68b3" }}>Please login to your account</p>
         </div>
 
         <form onSubmit={handleLogin}>
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-gray-500">Username</h2> {/* Changed label */}
+            <h2 className="text-lg font-semibold text-gray-600">
+              Username <span className="text-red-500">*</span>
+            </h2>
             <input 
-              type="text" // updated input type for username
-              name="username" // changed field name
-              value={formData.username} // updated state reference
+              type="text"
+              name="username"
+              value={formData.username}
               onChange={handleChange}
-              placeholder="Enter Username" // updated placeholder text
-              className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black"
+              placeholder="Enter Username"
+              className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#1b68b3] bg-white text-black"
             />
             {errors.username && <p className="text-red-500 text-sm mt-1">{errors.username}</p>}
           </div>
 
           <div className="mb-4 relative">
-            <h2 className="text-lg font-semibold text-gray-500">Password</h2>
+            <h2 className="text-lg font-semibold text-gray-600">
+              Password <span className="text-red-500">*</span>
+            </h2>
             <input 
-              type={showPassword ? "text" : "password"} // Toggle input type
+              type={showPassword ? "text" : "password"}
               name="password"
               value={formData.password}
               onChange={handleChange}
               placeholder="Enter Password"
-              className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black"
+              className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#1b68b3] bg-white text-black"
             />
             <span 
-              onClick={() => setShowPassword(!showPassword)} // Toggle password visibility
-              className="absolute right-3 top-3/4 transform -translate-y-1/2 cursor-pointer text-gray-500"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-3/4 transform -translate-y-1/2 cursor-pointer"
+              style={{ color: "#1b68b3" }}
             >
-              {showPassword ? <FaEyeSlash /> : <FaEye />} {/* Custom eye icons */}
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
             </span>
           </div>
 
@@ -118,14 +122,16 @@ const SubAdminLogin = () => {
           
           <button 
             type="submit"
-            className="w-full px-4 py-2 mt-4 text-white bg-[#1b68b3] rounded-md hover:bg-[#145a8a] focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full px-4 py-2 mt-4 text-white rounded-md hover:bg-[#154d85] focus:outline-none focus:ring-2 focus:ring-[#1b68b3] transition-colors duration-300"
+            style={{ backgroundColor: "#1b68b3" }}
           >
             Login
           </button>
 
           <div className="mt-4 text-center">
-            <Link to="/sub-admin/register" className="text-blue-700 hover:underline">
-              Don't have an account? Register now
+            <span className="text-gray-600">Don't have an account? </span>
+            <Link to="/sub-admin/register" style={{ color: "#1b68b3" }} className="hover:underline font-medium">
+              Register now
             </Link>
           </div>
         </form>
