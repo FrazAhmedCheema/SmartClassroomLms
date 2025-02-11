@@ -22,6 +22,7 @@ const RegisterInstitute = () => {
     username: '',
     password: '',
   });
+  const [error, setError] = useState(null);
 
   const handleNext = () => {
     if (step === 6) {
@@ -48,16 +49,20 @@ const RegisterInstitute = () => {
       if (response.status === 201) {
         const data = await response.json();
         console.log('Registration request processed:', data);
+        setStep(7); // Move to the final "thank you" step
       } else {
         const errorData = await response.json();
+        if (errorData.error === 'Username already exists') {
+          setError('The username you entered already exists. Please choose a different username.');
+        } else {
+          setError(errorData.error || 'Registration failed');
+        }
         console.error('Registration failed:', errorData);
       }
     } catch (error) {
+      setError('An error occurred during registration');
       console.error('An error occurred during registration:', error);
     }
-
-    // Move to the final "thank you" step
-    setStep(7);
   };
 
   return (
@@ -73,7 +78,12 @@ const RegisterInstitute = () => {
         {step === 4 && <InstituteForm4 onNext={handleNext} onPrevious={handlePrevious} formData={formData} setFormData={setFormData} />}
         {step === 5 && <InstituteForm5 onNext={handleNext} onPrevious={handlePrevious} formData={formData} />}
         {step === 6 && <InstituteForm6 onNext={handleNext} onPrevious={handlePrevious} formData={formData} setFormData={setFormData} />}
-        {step === 7 && (
+        {error && (
+          <div className="text-center text-red-500">
+            <p>{error}</p>
+          </div>
+        )}
+        {step === 7 && !error && (
           <div className="text-center text-[#1b68b3]">
             <h1 className="text-2xl font-bold mb-6">Thanks for your interest</h1>
             <p className="text-lg" style={{ color: '#1b68b3' }}>We will get back to you soon.</p>

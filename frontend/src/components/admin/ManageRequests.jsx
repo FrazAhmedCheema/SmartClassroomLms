@@ -119,6 +119,7 @@ const ManageRequests = () => {
           if (response.ok) {
             const updatedRequests = requests.filter(request => request._id !== id);
             setRequests(updatedRequests);
+            setFilteredRequests(updatedRequests); // Update filtered requests
             toast.success(`Request approved for institute: ${requestToApprove.instituteName}`, {
               position: 'top-right',
             });
@@ -159,6 +160,9 @@ const ManageRequests = () => {
           requestId: requestToReject.requestId,
           status: 'rejected'
         };
+        const updatedRequests = requests.filter(request => request._id !== id);
+        setRequests(updatedRequests);
+        setFilteredRequests(updatedRequests); 
 
         try {
           const response = await fetch('http://localhost:8080/admin/reject-institute', {
@@ -171,8 +175,7 @@ const ManageRequests = () => {
           });
 
           if (response.ok) {
-            const updatedRequests = requests.filter(request => request._id !== id);
-            setRequests(updatedRequests);
+// Update filtered requests
             toast.error(`Request rejected for institute: ${requestToReject.instituteName}`, {
               position: toast.POSITION.TOP_RIGHT
             });
@@ -195,7 +198,7 @@ const ManageRequests = () => {
   const handleSendEmail = async ({ subject, body }) => {
     if (!selectedInstitute) return;
     try {
-      const response = await fetch(`http://localhost:8080/admin/manage-institutes/${selectedInstitute._id}/email`, {
+      const response = await fetch(`http://localhost:8080/admin/send-email/${selectedInstitute._id}`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -347,7 +350,8 @@ const ManageRequests = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSend={handleSendEmail}
-        recipientEmail={selectedInstitute?.instituteName || ''}
+        recipientName={selectedInstitute?.instituteName || ''}
+        recipientEmail={selectedInstitute?.instituteAdminEmail || ''}
       />
     </div>
   );

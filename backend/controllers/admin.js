@@ -173,7 +173,7 @@ exports.rejectInstitute = async (req, res) => {
 
         const mailOptions = {
           from: process.env.EMAIL_SENDER,
-          to: requestToApprove.instituteAdminEmail,
+          to: requestToReject.instituteAdminEmail,
             subject: 'Update on Your Request for SmartClassroomLms',
             html: `<p>Dear <strong>${requestToReject.instituteAdminName}</strong>,</p>
                    <p>We regret to inform you that your request for onboarding <strong>SmartClassroomLms</strong> has not been approved at this time.</p>
@@ -208,7 +208,7 @@ exports.manageInstitutes = async (req, res) => {
 
       const totalInstitutes = await ApproveInstitute.countDocuments();
       const institutes = await ApproveInstitute.find()
-          .select('instituteId instituteName instituteAdminName status') // Fetch only required fields
+          .select('instituteId instituteName instituteAdminName instituteAdminEmail status') // Fetch only required fields
           .skip((page - 1) * limit)
           .limit(limit);
 
