@@ -1,33 +1,54 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { FaHome, FaUsers, FaChalkboardTeacher, FaBook } from 'react-icons/fa';
+import { HiMenuAlt3 } from 'react-icons/hi';
+import useMediaQuery from '../../hooks/useMediaQuery';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, toggle, isMobile }) => {
+  const location = useLocation();
+
+  const isActiveLink = (path) => {
+    return location.pathname === path;
+  };
+
   return (
-    <div className="bg-blue-800 text-white h-screen w-64 fixed left-0 top-0 pt-20">
+    <div 
+      className={`fixed left-0 h-screen transition-all duration-300 overflow-hidden z-40
+        ${isOpen ? 'w-64' : isMobile ? 'w-0' : 'w-20'}`}
+      style={{ 
+        background: 'linear-gradient(to bottom, #1b68b3, #154d85)',
+        color: 'white',
+        top: '4rem'
+      }}
+    >
       <div className="p-4">
         <nav>
-          <ul className="space-y-2">
-            <li>
-              <Link to="/sub-admin/dashboard" className="flex items-center gap-3 py-2 px-4 hover:bg-white hover:text-blue-800 rounded transition-all duration-200">
-                <FaHome /> Dashboard
-              </Link>
-            </li>
-            <li>
-              <Link to="/sub-admin/students" className="flex items-center gap-3 py-2 px-4 hover:bg-white hover:text-blue-800 rounded transition-all duration-200">
-                <FaUsers /> Manage Students
-              </Link>
-            </li>
-            <li>
-              <Link to="/sub-admin/teachers" className="flex items-center gap-3 py-2 px-4 hover:bg-white hover:text-blue-800 rounded transition-all duration-200">
-                <FaChalkboardTeacher /> Manage Teachers
-              </Link>
-            </li>
-            <li>
-              <Link to="/sub-admin/classes" className="flex items-center gap-3 py-2 px-4 hover:bg-white hover:text-blue-800 rounded transition-all duration-200">
-                <FaBook /> Manage Courses
-              </Link>
-            </li>
+          <ul className="space-y-3">
+            {[
+              { path: '/sub-admin/dashboard', icon: <FaHome size={20} />, title: 'Dashboard' },
+              { path: '/sub-admin/students', icon: <FaUsers size={20} />, title: 'Students' },
+              { path: '/sub-admin/teachers', icon: <FaChalkboardTeacher size={20} />, title: 'Teachers' },
+              { path: '/sub-admin/classes', icon: <FaBook size={20} />, title: 'Courses' },
+            ].map((item) => (
+              <li key={item.path}>
+                <Link
+                  to={item.path}
+                  className={`flex items-center gap-3 py-3 px-4 rounded-lg transition-all duration-200
+                    ${isActiveLink(item.path) 
+                      ? 'bg-white shadow-lg' 
+                      : 'hover:bg-opacity-20 hover:bg-white'}`}
+                  style={{ 
+                    color: isActiveLink(item.path) ? '#1b68b3' : 'white',
+                    fontWeight: isActiveLink(item.path) ? '600' : '400'
+                  }}
+                >
+                  <span className="min-w-[24px]">{item.icon}</span>
+                  <span className={`whitespace-nowrap ${!isOpen && !isMobile ? 'hidden' : 'block'}`}>
+                    {item.title}
+                  </span>
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
       </div>
@@ -36,3 +57,6 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
+
+
+
