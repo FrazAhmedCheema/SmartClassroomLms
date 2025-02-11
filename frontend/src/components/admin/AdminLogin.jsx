@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye } from "lucide-react";
+import { FaEye, FaEyeSlash } from 'react-icons/fa'; // Change import to match SubAdminLogin
 import logo from "../../assets/logo.png";
 
 const AdminLogin = () => {
@@ -81,13 +81,15 @@ const AdminLogin = () => {
         <div className="text-center mb-8">
           <img src={logo} alt="Logo" className="h-16 mt-2 mx-auto" />
           <h2 className="text-xl mt-2" style={{ color: '#1b68b3' }}>
-            LOGIN TO YOUR ADMIN DASHBOARD
+            Login to your admin dashboard
           </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-gray-600 mb-2">Username or Email</label>
+            <label className="block text-gray-600 mb-2">
+              Username or Email <span className="text-red-500">*</span>
+            </label>
             <div className="flex">
               <input
                 type="text"
@@ -102,7 +104,9 @@ const AdminLogin = () => {
           </div>
 
           <div>
-            <label className="block text-gray-600 mb-2">Password</label>
+            <label className="block text-gray-600 mb-2">
+              Password <span className="text-red-500">*</span>
+            </label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -110,15 +114,15 @@ const AdminLogin = () => {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Enter password"
-                className="w-full px-4 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#155a8a] bg-white text-black"
+                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#1b68b3] bg-white text-black"
               />
-              <button
-                type="button"
+              <span 
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white p-1 rounded-full"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer"
+                style={{ color: "#1b68b3" }}
               >
-                <Eye className="h-5 w-5 text-black" />
-              </button>
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </span>
             </div>
             {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
             <div className="text-right mt-1">

@@ -1,34 +1,36 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate  ,Link} from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   GraduationCap, Users, BookOpen, Clock, Mail, Home, Info, 
-  CheckCircle, Award, Globe, MessageCircle 
+  CheckCircle, Award, Globe, MessageCircle, BookOpenCheck, 
+  GraduationCap as Courses, HelpCircle 
 } from 'lucide-react';
 import logo from '../assets/logo2.png';
 import landingImage from '../assets/landingpage1.webp';
+import landingImage2 from '../assets/landingpage2.jpg';
 
 const LandingPage = () => {
   const navigate = useNavigate();
 
   const features = [
     {
-      icon: <GraduationCap className="w-12 h-12 text-blue-600" />, 
+      icon: <GraduationCap className="w-12 h-12" style={{ color: "#1b68b3" }} />, 
       title: "Smart Learning", 
       description: "Enhanced learning experience with modern tools."
     },
     {
-      icon: <Users className="w-12 h-12 text-blue-600" />, 
+      icon: <Users className="w-12 h-12" style={{ color: "#1b68b3" }} />, 
       title: "Interactive Classes", 
       description: "Real-time collaboration between teachers and students."
     },
     {
-      icon: <Clock className="w-12 h-12 text-blue-600" />, 
+      icon: <Clock className="w-12 h-12" style={{ color: "#1b68b3" }} />, 
       title: "24/7 Support", 
       description: "Round-the-clock assistance for all users."
     },
     {
-      icon: <BookOpen className="w-12 h-12 text-blue-600" />, 
+      icon: <BookOpen className="w-12 h-12" style={{ color: "#1b68b3" }} />, 
       title: "Rich Resources", 
       description: "Access to comprehensive learning materials."
     }
@@ -37,6 +39,9 @@ const LandingPage = () => {
   const navLinks = [
     { href: "#home", label: "Home", icon: <Home className="w-5 h-5" /> },
     { href: "#about", label: "About", icon: <Info className="w-5 h-5" /> },
+    { href: "#courses", label: "Courses", icon: <Courses className="w-5 h-5" /> },
+    { href: "#features", label: "Features", icon: <BookOpenCheck className="w-5 h-5" /> },
+    { href: "#help", label: "Help", icon: <HelpCircle className="w-5 h-5" /> },
     { href: "#contact", label: "Contact", icon: <Mail className="w-5 h-5" /> }
   ];
 
@@ -45,18 +50,20 @@ const LandingPage = () => {
       initial={{ opacity: 0 }} 
       animate={{ opacity: 1 }} 
       transition={{ duration: 1 }}
-      className="min-h-screen bg-gradient-to-br from-white via-blue-50 to-gray-100"
+      className="min-h-screen bg-gradient-to-br from-white via-[#e6f0ff] to-gray-100"
     >
       {/* Enhanced Navbar */}
       <motion.nav 
         initial={{ y: -50 }} 
         animate={{ y: 0 }} 
         transition={{ duration: 0.8 }}
-        className="bg-gradient-to-r from-blue-800 to-blue-900 shadow-lg"
+        
+        className="from-[#1b68b3] to-[#154d85] shadow-lg"
+        style={{ backgroundColor: "#1b68b3" }}
       >
         <div className="max-w-10xl mx-auto px-8 py-3 flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <img src={logo} alt="Logo" className="h-12 animate-fade-in brightness-0 invert" />
+            <img src={logo} alt="Logo" className="h-16 animate-fade-in brightness-0 invert" />
           </div>
           
           {/* Updated Navigation Links with new hover effects */}
@@ -91,9 +98,10 @@ const LandingPage = () => {
               whileHover={{ scale: 1.05 }} 
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate('/sub-admin/login')}
-              className="px-5 py-2 bg-white text-blue-800 font-semibold 
-                       hover:bg-blue-50 rounded-lg transition-all duration-300 
-                       shadow-md hover:shadow-xl"
+              className="px-5 py-2 bg-white font-semibold 
+                       rounded-lg transition-all duration-300 
+                       shadow-md hover:shadow-xl hover:bg-[#1b68b3] hover:text-white"
+              style={{ color: "#1b68b3" }}
             >
               Sign In
             </motion.button>
@@ -101,7 +109,8 @@ const LandingPage = () => {
               whileHover={{ scale: 1.05 }} 
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate('/sub-admin/register')}
-              className="px-5 py-2 bg-blue-700 hover:bg-blue-600 text-white font-semibold 
+              style={{ backgroundColor: "#1b68b3" }}
+              className="px-5 py-2 text-white font-semibold 
                        rounded-lg transition-all duration-300 shadow-md hover:shadow-xl
                        border-2 border-white/20"
             >
@@ -121,7 +130,7 @@ const LandingPage = () => {
           className="w-full md:w-1/2 text-center md:text-left"
         >
           <h1 className="text-5xl font-extrabold text-gray-900 mb-6 leading-tight">
-            Transform Your <span className="text-blue-800">Educational</span> Experience Today
+            Transform Your <span style={{ color: "#1b68b3" }}>Educational</span> Experience Today
           </h1>
           <p className="text-xl text-gray-700 mb-12">
             Join the next generation of smart learning with modern tools and real-time collaboration.
@@ -130,23 +139,28 @@ const LandingPage = () => {
             <motion.button 
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/register')}
-              className="px-8 py-4 bg-blue-800 hover:bg-blue-900 text-white text-lg font-semibold 
-                         rounded-lg transition-all duration-300 shadow-lg hover:shadow-2xl"
+
+              onClick={() => navigate('/sub-admin/register')}
+              style={{ color: "white", borderColor: "#1b68b3" }}
+              className="px-8 py-4 text-lg font-semibold border-2 
+                         rounded-lg hover:bg-[#e6f0ff] shadow-lg hover:shadow-2xl  transition-all duration-300"
+    
             >
               Get Started
+              
             </motion.button>
             <motion.button 
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              className="px-8 py-4 bg-white text-blue-700 text-lg font-semibold border-2 
-                         border-blue-300 rounded-lg hover:bg-blue-50 transition-all duration-300"
+              style={{ color: "white", borderColor: "#1b68b3" }}
+              className="px-8 py-4 text-lg font-semibold border-2 
+                         rounded-lg hover:bg-[#e6f0ff] shadow-lg hover:shadow-2xl  transition-all duration-300"
             >
               Learn More
             </motion.button>
           </div>
         </motion.div>
-
+        {/* shadow-lg hover:shadow-2xl */}
         {/* Enhanced Features Grid with Animations */}
         <motion.div 
           initial={{ x: 50, opacity: 0 }} 
@@ -172,7 +186,7 @@ const LandingPage = () => {
               <motion.div 
                 className="bg-gradient-to-br from-blue-50 to-blue-100 
                          p-4 rounded-lg flex items-center justify-center mr-4
-                         group-hover:from-blue-100 group-hover:to-blue-200
+                         group-hover:from-blue-600 group-hover:to-blue-800
                          transition-all duration-300"
                 whileHover={{ rotate: [0, -10, 10, -10, 0] }}
                 transition={{ duration: 0.5 }}
@@ -185,7 +199,7 @@ const LandingPage = () => {
                 </motion.div>
               </motion.div>
               <div className="transform transition-all duration-300 group-hover:translate-x-2">
-                <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-blue-600">
+                <h3 className="text-xl font-bold text-gray-800 mb-2 ">
                   {feature.title}
                 </h3>
                 <p className="text-gray-600 leading-relaxed text-sm group-hover:text-gray-700">
@@ -223,7 +237,7 @@ const LandingPage = () => {
             transition={{ duration: 0.6 }}
             className="text-4xl font-bold text-center text-gray-900 mb-16 tracking-tight"
           >
-            Our <span className="text-blue-800">Mission</span> & Vision
+            Our <span style={{ color: "#1b68b3" }}>Mission</span> & Vision
           </motion.h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
@@ -234,7 +248,7 @@ const LandingPage = () => {
               className="space-y-6"
             >
               <div className="flex items-center space-x-4 bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all">
-                <CheckCircle className="w-12 h-12 text-blue-600" />
+                <CheckCircle className="w-12 h-12" style={{ color: "#1b68b3" }} />
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">Our Commitment</h3>
                   <p className="text-gray-600">
@@ -244,7 +258,7 @@ const LandingPage = () => {
               </div>
 
               <div className="flex items-center space-x-4 bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all">
-                <Award className="w-12 h-12 text-blue-600" />
+                <Award className="w-12 h-12" style={{ color: "#1b68b3" }} />
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">Our Goal</h3>
                   <p className="text-gray-600">
@@ -254,7 +268,7 @@ const LandingPage = () => {
               </div>
 
               <div className="flex items-center space-x-4 bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all">
-                <Globe className="w-12 h-12 text-blue-600" />
+                <Globe className="w-12 h-12" style={{ color: "#1b68b3" }} />
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">Global Reach</h3>
                   <p className="text-gray-600">
@@ -293,6 +307,7 @@ const LandingPage = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.6 }}
                 className="absolute -bottom-6 -right-6 bg-blue-600 text-white p-4 rounded-lg shadow-xl"
+                style={{ backgroundColor: "#1b68b3" }}
               >
                 <h4 className="text-xl font-bold">2000+ Happy Learners</h4>
                 <p className="text-sm">And growing every day!</p>
@@ -316,10 +331,47 @@ const LandingPage = () => {
             transition={{ duration: 0.6 }}
             className="text-4xl font-bold text-center text-gray-900 mb-16 tracking-tight"
           >
-            Get In <span className="text-blue-600">Touch</span>
+            Get In <span style={{ color: "#1b68b3" }}>Touch</span>
           </motion.h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          
+            <motion.div 
+              initial={{ x: 50, opacity: 0 }}
+              whileInView={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="relative h-[500px]" // Added fixed height
+            >
+              <motion.div
+                animate={{ 
+                  rotate: [0, 5, -5, 0],
+                  scale: [1, 1.02, 0.98, 1]
+                }}
+                transition={{
+                  duration: 5,
+                  repeat: Infinity,
+                  repeatType: "mirror"
+                }}
+                className="bg-white rounded-2xl overflow-hidden shadow-2xl h-full" // Added h-full
+              >
+                <img 
+                  src={landingImage2}
+                  alt="Contact Us" 
+                  className="w-full h-full object-cover"
+                />
+              </motion.div>
+              {/* Stats div moved outside of image container */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+                className="absolute -bottom-6 -left-6 text-white p-4 rounded-lg shadow-xl"
+                style={{ backgroundColor: "#1b68b3" }}
+              >
+                <h4 className="text-xl font-bold">24/7 Support</h4>
+                <p className="text-sm">Contact whenever you need!</p>
+              </motion.div>
+            </motion.div>
             <motion.div 
               initial={{ x: -50, opacity: 0 }}
               whileInView={{ x: 0, opacity: 1 }}
@@ -330,7 +382,7 @@ const LandingPage = () => {
                 whileHover={{ scale: 1.05 }}
                 className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all flex items-center space-x-4"
               >
-                <MessageCircle className="w-12 h-12 text-blue-600" />
+                <MessageCircle className="w-12 h-12" style={{ color: "#1b68b3" }} />
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">Email Support</h3>
                   <p className="text-gray-600">support@edutech.com</p>
@@ -341,61 +393,29 @@ const LandingPage = () => {
                 whileHover={{ scale: 1.05 }}
                 className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all flex items-center space-x-4"
               >
-                <Globe className="w-12 h-12 text-blue-600" />
+                <Globe className="w-12 h-12" style={{ color: "#1b68b3" }} />
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">Our Location</h3>
-                  <p className="text-gray-600">123 EduTech Lane, Knowledge City, USA</p>
+                  <p className="text-gray-600">123 SmartClassroomLTD Lane, Gujranwala City, Pakistan</p>
                 </div>
               </motion.div>
 
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                className="w-full bg-blue-600 text-white py-4 rounded-xl hover:bg-blue-700 transition-all shadow-lg"
+                className="w-full  text-white py-4 rounded-xl hover:bg-blue-700 transition-all shadow-lg"
+              style={{ backgroundColor: "#1b68b3" }}
               >
                 Schedule a Consultation
               </motion.button>
             </motion.div>
 
-            <motion.div 
-              initial={{ x: 50, opacity: 0 }}
-              whileInView={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="relative"
-            >
-              <motion.div
-                animate={{ 
-                  translateY: [0, 10, -10, 0],
-                }}
-                transition={{
-                  duration: 4,
-                  repeat: Infinity,
-                  repeatType: "mirror"
-                }}
-                className="bg-white rounded-2xl overflow-hidden shadow-2xl"
-              >
-                <img 
-                  src="https://via.placeholder.com/600x400" 
-                  alt="Contact Us" 
-                  className="w-full h-full object-cover"
-                />
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.6 }}
-                className="absolute -bottom-6 -left-6 bg-blue-600 text-white p-4 rounded-lg shadow-xl"
-              >
-                <h4 className="text-xl font-bold">24/7 Support</h4>
-                <p className="text-sm">We're always here to help!</p>
-              </motion.div>
-            </motion.div>
           </div>
         </div>
       </motion.section>
 
       {/* Footer */}
-      <footer className="bg-blue-800 text-white py-12">
+      <footer style={{ backgroundColor: "#1b68b3" }} className="text-white py-12">
         <div className="max-w-7xl mx-auto px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <h4 className="text-xl font-bold mb-4">Quick Links</h4>
@@ -431,7 +451,7 @@ const LandingPage = () => {
           </div>
         </div>
         <div className="text-center mt-8 border-t border-blue-800 pt-6">
-          <p>&copy; 2024 EduTech. All Rights Reserved.</p>
+          <p>&copy; 2025 SmartClassroomLTD. All Rights Reserved.</p>
         </div>
       </footer>
 

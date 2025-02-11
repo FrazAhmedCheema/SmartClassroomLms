@@ -94,8 +94,9 @@ const ViewClasses = () => {
                     placeholder="Search classes or teachers..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-4 py-2 pl-10 rounded-lg border-2 border-gray-200 
-                             focus:border-[#1b68b3] focus:outline-none transition-all"
+                    className="w-full px-4 py-2 pl-10 rounded-lg border-2 border-[#1b68b3] 
+                             focus:border-[#154d85] focus:outline-none transition-all
+                             bg-white text-gray-600 placeholder-gray-400"
                   />
                   <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
                 </div>

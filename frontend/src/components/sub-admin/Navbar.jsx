@@ -81,11 +81,9 @@ const Navbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
             <img 
               src={logo} 
               alt="Logo" 
-              className="h-10 hover:scale-105 transition-transform duration-300" 
+              className="h-16 hover:scale-105 transition-transform duration-300" 
             />
-            <h1 className="text-xl font-bold text-[#1b68b3] hidden md:block">
-              Smart Classroom LMS
-            </h1>
+
           </div>
 
           {/* Right Section */}
@@ -94,7 +92,7 @@ const Navbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
             <div className="flex items-center space-x-3 bg-gray-100 px-4 py-2 rounded-lg">
               <div className="flex flex-col text-right">
                 <span className="text-gray-600 text-sm">Welcome,</span>
-                <span className="text-gray-800 font-bold">Sub Admin</span>
+                <span className=" font-bold"  style={{ color: '#1b68b3' }}>Sub Admin</span>
               </div>
               <div className="relative">
                 <img 

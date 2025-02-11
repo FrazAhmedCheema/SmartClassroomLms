@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, CheckCircle, XCircle, ArrowLeft } from 'lucide-react'; // Add ArrowLeft import
+import { motion } from 'framer-motion'; // Add this import
+import { Mail, CheckCircle, XCircle, ArrowLeft, Search, ClipboardList } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { toast, ToastContainer } from 'react-toastify';
@@ -12,6 +13,8 @@ import AdminNavbar from './AdminNavbar';
 const ManageRequests = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredRequests, setFilteredRequests] = useState([]);
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedInstitute, setSelectedInstitute] = useState(null);
@@ -56,6 +59,15 @@ const ManageRequests = () => {
 
     fetchRequests();
   }, [navigate]);
+
+  useEffect(() => {
+    // Filter requests whenever searchTerm changes
+    const filtered = requests.filter(request =>
+      request.instituteName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.instituteAdminName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredRequests(filtered);
+  }, [searchTerm, requests]);
 
   const handleApprove = async (id) => {
     const requestToApprove = requests.find(request => request._id === id);
@@ -180,8 +192,6 @@ const ManageRequests = () => {
     setIsModalOpen(true);
   };
 
-
-
   const handleSendEmail = async ({ subject, body }) => {
     if (!selectedInstitute) return;
     try {
@@ -204,22 +214,12 @@ const ManageRequests = () => {
     navigate('/admin/dashboard');
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16"></div>
-      </div>
-    );
-  }
-
   return (
-    <>
-    <div className="min-h-screen bg-gray-100">
-      <ToastContainer />
+    <div className="min-h-screen" style={{ backgroundColor: "#e6f0ff" }}>
       <AdminNavbar title="Manage Requests" />
-      <div className="p-6">
-        {/* Fixed hover color for back button */}
-        <div className="mb-6">
+      <main className="p-4 md:p-6 pt-8">
+        {/* Back to Dashboard Button */}
+        <div className="mb-4">
           <button
             onClick={handleBack}
             className="flex items-center text-gray-700 hover:text-blue-600 px-3 py-2 rounded-lg transition-colors bg-white shadow-sm hover:bg-gray-50"
@@ -229,60 +229,127 @@ const ManageRequests = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {requests.map((request) => (
-            <div key={request._id} className="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow">
-              <div className="mb-3">
-                <h2 className="text-lg font-semibold " style={{ color: '#1b68b3' }}>{request.instituteName}</h2>
-                <p className="text-gray-600 text-sm">{request.instituteAdminName} | {request.region}</p>
-                <p className="text-gray-500 text-xs">
-                  {request.createdAt
-                    ? `${formatDistanceToNow(new Date(request.createdAt))} ago`
-                    : 'Timestamp not available'}
-                </p>
-              </div>
-
-              <div className="space-y-1 text-gray-700">
-                <p><strong>Admin Email:</strong> {request.instituteAdminEmail}</p>
-                <p><strong>Institute Phone:</strong> {request.institutePhoneNumber}</p>
-                <p><strong>Domain:</strong> {request.domainName}</p>
-                <p><strong>Students:</strong> {request.numberOfStudents}</p>
-              </div>
-              <div className="mt-4 flex justify-between items-center">
-                <button
-                  onClick={() => handleApprove(request._id)}
-                  className="flex items-center bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors"
-                >
-                  <CheckCircle className="w-5 h-5 mr-1" />
-                  Approve
-                </button>
-                <button
-                  onClick={() => handleReject(request._id)}
-                  className="flex items-center bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
-                >
-                  <XCircle className="w-5 h-5 mr-1" />
-                  Reject
-                </button>
-                <button
-                  onClick={() => handleOpenMailModal(request)}
-                  className="flex items-center bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors"
-                >
-                  <Mail className="w-5 h-5 mr-1" />
-                  Email
-                </button>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white rounded-xl shadow-md overflow-hidden"
+          >
+            {/* Header Section */}
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
+                <div className="flex items-center space-x-3">
+                  <ClipboardList className="w-8 h-8 text-[#1b68b3]" />
+                  <div className="flex flex-col space-y-2">
+                    <h1 className="text-2xl font-bold text-[#1b68b3] flex items-center">
+                      <ClipboardList className="w-7 h-7 mr-2" />
+                      Institute Requests
+                    </h1>
+                    <p className="text-gray-600">Manage institute registration requests</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search requests..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full px-4 py-2 pl-10 rounded-lg border-2 border-[#1b68b3] 
+                               focus:border-[#154d85] focus:outline-none transition-all
+                               bg-white text-gray-600 placeholder-gray-400"
+                    />
+                    <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+                  </div>
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
-    </div>
-    <ComposeEmailModal
+
+            {/* Content Section */}
+            <div className="p-6">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1b68b3]"></div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredRequests.map((request) => (
+                    <div key={request._id} className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100">
+                      <div className="mb-4">
+                        <h2 className="text-xl font-bold  mb-2"style={{ color: "#1b68b3" }}>{request.instituteName}</h2>
+                        <div className="flex items-center text-gray-600 text-sm space-x-2">
+                          <span>{request.instituteAdminName}</span>
+                          <span>•</span>
+                          <span>{request.region}</span>
+                        </div>
+                        <p className="text-gray-500 text-xs mt-1">
+                          {request.createdAt
+                            ? `${formatDistanceToNow(new Date(request.createdAt))} ago`
+                            : 'Timestamp not available'}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2 text-gray-700 mb-6">
+                        <p className="flex items-center justify-between">
+                          <span className="font-medium">Admin Email:</span>
+                          <span className="text-gray-600">{request.instituteAdminEmail}</span>
+                        </p>
+                        <p className="flex items-center justify-between">
+                          <span className="font-medium">Phone:</span>
+                          <span className="text-gray-600">{request.institutePhoneNumber}</span>
+                        </p>
+                        <p className="flex items-center justify-between">
+                          <span className="font-medium">Domain:</span>
+                          <span className="text-gray-600">{request.domainName}</span>
+                        </p>
+                        <p className="flex items-center justify-between">
+                          <span className="font-medium">Students:</span>
+                          <span className="text-gray-600">{request.numberOfStudents}</span>
+                        </p>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                        <button
+                          onClick={() => handleApprove(request._id)}
+                          className="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleOpenMailModal(request)}
+                          className="flex items-center bg-[#1b68b3] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#154d85] transition-colors"
+                        >
+                          <Mail className="w-4 h-4 mr-2" />
+                          Email
+                        </button>
+                        <button
+                          onClick={() => handleReject(request._id)}
+                          className="flex items-center bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      </main>
+      <ComposeEmailModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSend={handleSendEmail}
         recipientEmail={selectedInstitute?.instituteName || ''}
       />
-    </>
+    </div>
   );
 };
 

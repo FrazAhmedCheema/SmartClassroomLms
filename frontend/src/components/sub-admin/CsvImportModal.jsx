@@ -218,7 +218,7 @@ const CsvImportModal = ({ isOpen, onClose, apiEndpoint, entityType, onImportSucc
             disabled={isSubmitting}
             className={`focus:outline-none ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:text-gray-800'}`}
           >
-            <X className="w-6 h-6 text-gray-600" />
+            <X className="w-6 h-6 text-gray-200" />
           </button>
         </div>
         
@@ -276,7 +276,8 @@ const CsvImportModal = ({ isOpen, onClose, apiEndpoint, entityType, onImportSucc
               type="button"
               onClick={handleImport}
               disabled={isSubmitting || !file}
-              className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+              style={{ backgroundColor: '#1b68b3' }}
+              className="px-5 py-2 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
               {isSubmitting ? `Uploading... ${uploadProgress}%` : `Import ${entityType}s`}
             </button>
