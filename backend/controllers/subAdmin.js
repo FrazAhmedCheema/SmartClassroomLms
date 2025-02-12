@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const Student = require('../models/student');
 const Teacher = require('../models/teacher');
 const RegisteredInstitute = require('../models/approveInstitute');
-
+const nodemailer = require('nodemailer');
 
 // ✅ Import app dynamically **after defining exports**
 let notifyAdmins;
@@ -13,6 +13,36 @@ setTimeout(() => {
     const appModule = require('../app'); // Import dynamically after module is loaded
     notifyAdmins = appModule.notifyAdmins;
 }, 1000); // Delay ensures `notifyAdmins` is available
+
+// Function to send email to institute admin
+const sendEmailToInstituteAdmin = async (instituteAdminEmail, instituteName, instituteAdminName) => {
+    try {
+        const transporter = nodemailer.createTransport({
+            host: 'smtp.hostinger.com',
+            port: 465,
+            secure: true,
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        const mailOptions = {
+            from: process.env.EMAIL_SENDER,
+            to: instituteAdminEmail,
+            subject: 'Registration Request Received',
+            html: `<p>Dear ${instituteAdminName},</p>
+                   <p>We have received your registration request for the institute <strong>${instituteName}</strong>. We will review your request and get back to you shortly.</p>
+                   <p>If you have any questions, please feel free to contact us at <a href="mailto:admin@smartclassroomlms.com">admin@smartclassroomlms.com</a>.</p>
+                   <p>Thank you,<br>SmartClassroom Team</p>`
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log('Email sent to institute admin:', instituteAdminEmail);
+    } catch (error) {
+        console.error('Error sending email to institute admin:', error);
+    }
+};
 
 exports.registerInstitute = async (req, res) => {
     const { instituteName, numberOfStudents, region, instituteAdminName, instituteAdminEmail, institutePhoneNumber, domainName, username, password } = req.body;
@@ -28,6 +58,18 @@ exports.registerInstitute = async (req, res) => {
     if (!password || typeof password !== 'string') return res.status(400).json({ error: 'Invalid password' });
 
     try {
+        // Check if the instituteAdminEmail has already sent a request
+        const existingRequest = await Institute.findOne({ instituteAdminEmail });
+        if (existingRequest) {
+            return res.status(400).json({ error: 'A request has already been sent from this email address.' });
+        }
+
+        // Check if the username already exists
+        const existingUser = await RegisteredInstitute.findOne({ username });
+        if (existingUser) {
+            return res.status(400).json({ error: 'This username is already taken.' });
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newInstitute = new Institute({
@@ -63,7 +105,11 @@ exports.registerInstitute = async (req, res) => {
             console.error("notifyAdmins is not yet available");
         }
 
+        // Send email to institute admin
+
         res.status(201).json({ message: 'Registration request processed!' });
+        await sendEmailToInstituteAdmin(instituteAdminEmail, instituteName, instituteAdminName);
+
     } catch (err) {
         console.error('Error during institute registration:', err);
         res.status(500).json({ error: err.message });

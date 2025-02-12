@@ -53,7 +53,7 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const response = await fetch(`http://localhost:8080/admin/manage-institutes/${id}`, {
+          const response = await fetch(`http://localhost:8080/admin/update-institute-status/${id}`, {
             method: 'PUT',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -115,7 +115,7 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const response = await fetch(`http://localhost:8080/admin/manage-institutes/${id}`, {
+          const response = await fetch(`http://localhost:8080/admin/delete-institute/${id}`, {
             method: 'DELETE',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' }
@@ -154,7 +154,7 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
   const handleSendEmail = async ({ subject, body }) => {
     if (!selectedInstitute) return;
     try {
-      const response = await fetch(`http://localhost:8080/admin/manage-institutes/${selectedInstitute._id}/email`, {
+      const response = await fetch(`http://localhost:8080/admin/send-email/${selectedInstitute._id}`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -276,7 +276,8 @@ const InstitutesTable = ({ institutes, setInstitutes, setFilteredInstitutes }) =
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSend={handleSendEmail}
-        recipientEmail={selectedInstitute?.instituteName || ''}
+        recipientName={selectedInstitute?.instituteName || ''}
+        recipientEmail={selectedInstitute?.instituteAdminEmail || ''}
       />
     </>
   );
