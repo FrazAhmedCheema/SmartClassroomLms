@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import axios from "axios"
 import { ChevronLeft } from "lucide-react"
+import { formatDistanceToNow } from 'date-fns'
 
 const AdminNotifications = () => {
   const navigate = useNavigate()
@@ -61,7 +62,9 @@ const AdminNotifications = () => {
                     <h3 className="font-bold text-gray-800">{notification.title}</h3>
                     <p className="text-sm text-gray-500">{notification.message}</p>
                   </div>
-                  <span className="text-xs text-gray-500">{notification.createdAt}</span>
+                  <span className="text-xs text-gray-500">
+                    {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                  </span>
                 </div>
               ))}
             </div>

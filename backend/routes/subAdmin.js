@@ -9,6 +9,7 @@ router.get('/dashboard', authorizeSubAdmin, (req, res) => {
 });
 
 router.post('/registerInstitute', subAdminController.registerInstitute);
+router.get('/verify-email/:token', subAdminController.verifyEmail);
 router.post('/add-student', authorizeSubAdmin, subAdminController.addStudent);
 router.get('/students', authorizeSubAdmin, subAdminController.getStudents);
 router.put('/edit-student/:id', authorizeSubAdmin, subAdminController.editStudent);
