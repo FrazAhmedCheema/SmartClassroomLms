@@ -13,6 +13,7 @@ import ManageTeachers from './screens/sub-admin/ManageTeachers';
 import ViewClasses from './screens/sub-admin/ViewClasses';
 import LandingPage from './screens/LandingPage';
 import ClassDetails from './screens/sub-admin/ClassDetails';
+import VerifyEmail from './screens/sub-admin/VerifyEmail';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
         <Route path="/sub-admin/teachers" element={<ManageTeachers />} />
         <Route path="/sub-admin/classes" element={<ViewClasses />} />
         <Route path="/sub-admin/classes/:id" element={<ClassDetails />} />
+        <Route path="/sub-admin/verify-email" element={<VerifyEmail />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />

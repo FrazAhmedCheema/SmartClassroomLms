@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import axios from "axios"
 import profilePic from "../../assets/admin-profile-picture.jpg"
+import { formatDistanceToNow } from 'date-fns'
 
 const socket = io("http://localhost:8080", { withCredentials: true })
 
@@ -212,7 +213,9 @@ const AdminDashboard = () => {
                     <h3 className="font-bold text-gray-800">{activity.title}</h3>
                     <p className="text-sm text-gray-500">{activity.message}</p>
                   </div>
-                  <span className="text-xs text-gray-500">{activity.createdAt}</span>
+                  <span className="text-xs text-gray-500">
+                    {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
+                  </span>
                 </div>
               ))}
             </div>
