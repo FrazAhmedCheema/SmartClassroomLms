@@ -1,13 +1,12 @@
-
 const Student = require('../models/student');
 const Teacher = require('../models/teacher');
-
 const Institute = require('../models/InstituteRequest');
 const Notification = require('../models/Notification');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const RegisteredInstitute = require('../models/approveInstitute');
+const { io } = require('../app'); // Import the io instance
 
 let notifyAdmins;
 setTimeout(() => {
@@ -98,7 +97,9 @@ exports.registerInstitute = async (req, res) => {
 exports.verifyEmail = async (req, res) => {
     try {
         const { token } = req.params;
+        console.log('Received token for verification:', token); // Debugging log
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('Decoded token:', decoded); // Debugging log
 
         const { username, hashedPassword, instituteName, numberOfStudents, region, instituteAdminName, institutePhoneNumber, domainName } = decoded;
 
@@ -115,6 +116,7 @@ exports.verifyEmail = async (req, res) => {
         });
 
         await newInstitute.save();
+        console.log('New institute saved:', newInstitute); // Debugging log
 
         // ✅ Save Notification in DB
         const notification = new Notification({
@@ -123,6 +125,7 @@ exports.verifyEmail = async (req, res) => {
             type: 'request'
         });
         await notification.save();
+        console.log('Notification saved:', notification); // Debugging log
 
         // ✅ Notify Admins via WebSocket
         if (notifyAdmins) {
@@ -131,142 +134,42 @@ exports.verifyEmail = async (req, res) => {
                 message: `New registration request from "${instituteName}"`,
                 time: new Date().toISOString()
             });
+            console.log('Admins notified'); // Debugging log
         } else {
             console.error("notifyAdmins is not yet available");
         }
 
+        // Emit a Socket.IO event to notify the client
+        req.io.emit('emailVerified', { username });
+        console.log('Socket.IO event emitted for email verification:', username); // Debugging log
+
         // ✅ Send Confirmation Email to `username`
+        await sendEmailToInstituteAdmin(username, instituteName, instituteAdminName);
+        console.log('Confirmation email sent to:', username); // Debugging log
 
         res.status(200).json({ message: 'Email verified, registration request sent!' });
-        await sendEmailToInstituteAdmin(username, instituteName, instituteAdminName);
-
     } catch (error) {
         console.error('Email verification error:', error);
         res.status(400).json({ error: 'Invalid or expired token' });
     }
 };
 
+// New endpoint to check verification status
+exports.checkVerificationStatus = async (req, res) => {
+    try {
+        const { username } = req.query;
+        const institute = await Institute.findOne({ username });
 
-
-
-
-// const Institute = require('../models/InstituteRequest');
-// const Notification = require('../models/Notification');
-// const bcrypt = require('bcrypt');
-// const jwt = require('jsonwebtoken');
-// const Student = require('../models/student');
-// const Teacher = require('../models/teacher');
-// const RegisteredInstitute = require('../models/approveInstitute');
-// const nodemailer = require('nodemailer');
-
-// // ✅ Import app dynamically **after defining exports**
-// let notifyAdmins;
-// setTimeout(() => {
-//     const appModule = require('../app'); // Import dynamically after module is loaded
-//     notifyAdmins = appModule.notifyAdmins;
-// }, 1000); // Delay ensures `notifyAdmins` is available
-
-// // Function to send email to institute admin
-// const sendEmailToInstituteAdmin = async (instituteAdminEmail, instituteName, instituteAdminName) => {
-//     try {
-//         const transporter = nodemailer.createTransport({
-//             host: 'smtp.hostinger.com',
-//             port: 465,
-//             secure: true,
-//             auth: {
-//                 user: process.env.EMAIL_USER,
-//                 pass: process.env.EMAIL_PASS
-//             }
-//         });
-
-//         const mailOptions = {
-//             from: process.env.EMAIL_SENDER,
-//             to: instituteAdminEmail,
-//             subject: 'Registration Request Received',
-//             html: `<p>Dear ${instituteAdminName},</p>
-//                    <p>We have received your registration request for the institute <strong>${instituteName}</strong>. We will review your request and get back to you shortly.</p>
-//                    <p>If you have any questions, please feel free to contact us at <a href="mailto:admin@smartclassroomlms.com">admin@smartclassroomlms.com</a>.</p>
-//                    <p>Thank you,<br>SmartClassroom Team</p>`
-//         };
-
-//         await transporter.sendMail(mailOptions);
-//         console.log('Email sent to institute admin:', instituteAdminEmail);
-//     } catch (error) {
-//         console.error('Error sending email to institute admin:', error);
-//     }
-// };
-
-// exports.registerInstitute = async (req, res) => {
-//     const { instituteName, numberOfStudents, region, instituteAdminName, instituteAdminEmail, institutePhoneNumber, domainName, username, password } = req.body;
-
-//     if (!instituteName || typeof instituteName !== 'string') return res.status(400).json({ error: 'Invalid instituteName' });
-//     if (!numberOfStudents || typeof numberOfStudents !== 'string') return res.status(400).json({ error: 'Invalid numberOfStudents' });
-//     if (!region || typeof region !== 'string') return res.status(400).json({ error: 'Invalid region' });
-//     if (!instituteAdminName || typeof instituteAdminName !== 'string') return res.status(400).json({ error: 'Invalid instituteAdminName' });
-//     if (!instituteAdminEmail || typeof instituteAdminEmail !== 'string' || !instituteAdminEmail.includes('@')) return res.status(400).json({ error: 'Invalid instituteAdminEmail' });
-//     if (!institutePhoneNumber || typeof institutePhoneNumber !== 'string') return res.status(400).json({ error: 'Invalid institutePhoneNumber' });
-//     if (!domainName || typeof domainName !== 'string') return res.status(400).json({ error: 'Invalid domainName' });
-//     if (!username || typeof username !== 'string') return res.status(400).json({ error: 'Invalid username' });
-//     if (!password || typeof password !== 'string') return res.status(400).json({ error: 'Invalid password' });
-
-//     try {
-//         // Check if the instituteAdminEmail has already sent a request
-//         const existingRequest = await Institute.findOne({ instituteAdminEmail });
-//         if (existingRequest) {
-//             return res.status(400).json({ error: 'A request has already been sent from this email address.' });
-//         }
-
-//         // Check if the username already exists
-//         const existingUser = await RegisteredInstitute.findOne({ username });
-//         if (existingUser) {
-//             return res.status(400).json({ error: 'This username is already taken.' });
-//         }
-
-//         const hashedPassword = await bcrypt.hash(password, 10);
-
-//         const newInstitute = new Institute({
-//             instituteName,
-//             numberOfStudents,
-//             region,
-//             instituteAdminName,
-//             instituteAdminEmail,
-//             institutePhoneNumber,
-//             domainName,
-//             username,
-//             password: hashedPassword
-//         });
-
-//         await newInstitute.save();
-
-//         // Save notification to the database
-//         const notification = new Notification({
-//             title: 'New Registration Request',
-//             message: `New registration request from "${instituteName}"`,
-//             type: 'request'
-//         });
-//         await notification.save();
-
-//         // ✅ Ensure `notifyAdmins` is available before calling it
-//         if (notifyAdmins) {
-//             notifyAdmins({ 
-//                 instituteName,
-//                 message: `New registration request from "${instituteName}"`, 
-//                 time: new Date().toISOString() 
-//             });
-//         } else {
-//             console.error("notifyAdmins is not yet available");
-//         }
-
-//         // Send email to institute admin
-
-//         res.status(201).json({ message: 'Registration request processed!' });
-//         await sendEmailToInstituteAdmin(username, instituteName, instituteAdminName);
-
-//     } catch (err) {
-//         console.error('Error during institute registration:', err);
-//         res.status(500).json({ error: err.message });
-//     }
-// };
+        if (institute) {
+            res.status(200).json({ verified: true });
+        } else {
+            res.status(200).json({ verified: false });
+        }
+    } catch (error) {
+        console.error('Error checking verification status:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
 
 exports.editStudent = async (req, res) => {
     try {
