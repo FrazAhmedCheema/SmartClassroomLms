@@ -15,6 +15,10 @@ import LandingPage from './screens/LandingPage';
 import ClassDetails from './screens/sub-admin/ClassDetails';
 import VerifyEmail from './screens/sub-admin/VerifyEmail';
 import SubAdminLayout from './layouts/SubAdminLayout';
+import TeacherLayout from './layouts/TeacherLayout';
+import StudentLayout from './layouts/StudentLayout';
+import TeacherDashboard from './screens/teacher/TeacherDashboard';
+import StudentDashboard from './screens/student/StudentDashboard';
 
 function App() {
   return (
@@ -42,6 +46,30 @@ function App() {
           <Route path="teachers" element={<ManageTeachers />} />
           <Route path="classes" element={<ViewClasses />} />
           <Route path="classes/:id" element={<ClassDetails />} />
+        </Route>
+
+        {/* Teacher Routes */}
+        <Route path="/teacher" element={<TeacherLayout />}>
+          <Route index element={<Navigate to="home" replace />} />
+          <Route path="home" element={<TeacherDashboard />} />
+          {/* Comment out until components are created
+          <Route path="notifications" element={<TeacherNotifications />} />
+          <Route path="classes" element={<TeacherClasses />} />
+          <Route path="todos" element={<TeacherTodos />} />
+          <Route path="settings" element={<TeacherSettings />} />
+          */}
+        </Route>
+
+        {/* Student Routes */}
+        <Route path="/student" element={<StudentLayout />}>
+          <Route index element={<Navigate to="home" replace />} />
+          <Route path="home" element={<StudentDashboard />} />
+          {/* Comment out until components are created
+          <Route path="notifications" element={<StudentNotifications />} />
+          <Route path="classes" element={<StudentClasses />} />
+          <Route path="todos" element={<StudentTodos />} />
+          <Route path="settings" element={<StudentSettings />} />
+          */}
         </Route>
 
         {/* Fallback */}
