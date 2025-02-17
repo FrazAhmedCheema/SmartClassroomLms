@@ -14,6 +14,7 @@ import ViewClasses from './screens/sub-admin/ViewClasses';
 import LandingPage from './screens/LandingPage';
 import ClassDetails from './screens/sub-admin/ClassDetails';
 import VerifyEmail from './screens/sub-admin/VerifyEmail';
+import SubAdminLayout from './layouts/SubAdminLayout';
 
 function App() {
   return (
@@ -21,7 +22,6 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/sub-admin/register" element={<RegisterInstitute />} />
         
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
@@ -32,12 +32,17 @@ function App() {
 
         {/* Sub-Admin Routes */}
         <Route path="/sub-admin/login" element={<SubAdminLogin />} />
-        <Route path="/sub-admin/dashboard" element={<SubAdminDashboard />} />
-        <Route path="/sub-admin/students" element={<ManageStudents />} />
-        <Route path="/sub-admin/teachers" element={<ManageTeachers />} />
-        <Route path="/sub-admin/classes" element={<ViewClasses />} />
-        <Route path="/sub-admin/classes/:id" element={<ClassDetails />} />
+        <Route path="/sub-admin/register" element={<RegisterInstitute />} />
         <Route path="/sub-admin/verify-email" element={<VerifyEmail />} />
+        
+        {/* Protected Sub-Admin Routes */}
+        <Route path="/sub-admin" element={<SubAdminLayout />}>
+          <Route path="dashboard" element={<SubAdminDashboard />} />
+          <Route path="students" element={<ManageStudents />} />
+          <Route path="teachers" element={<ManageTeachers />} />
+          <Route path="classes" element={<ViewClasses />} />
+          <Route path="classes/:id" element={<ClassDetails />} />
+        </Route>
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />

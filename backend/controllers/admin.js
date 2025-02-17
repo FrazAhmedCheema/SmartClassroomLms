@@ -376,3 +376,20 @@ exports.updateInstitute = async (req, res) => {
     });
   }
 };
+
+exports.getDashboardData = async (req, res) => {
+  try {
+    const institutes = await ApproveInstitute.find().select('instituteId instituteName instituteAdminName status');
+    const requests = await InstituteRequest.find().select('requestId instituteName instituteAdminName status');
+    // const
+    res.status(200).json({
+      institutes :{ count: institutes.length || 0, change: 5 }, // Dummy values
+      requests :{ count: requests.length || 0, change: -5 }, // Dummy values
+      users: { count: 100, change: 10 }, // Dummy values
+      activities: { count: 50, change: 5 } // Dummy values
+    });
+  } catch (err) {
+    console.error('Error fetching dashboard data:', err.message);
+    res.status(500).json({ msg: 'Internal server error. Please try again later.' });
+  }
+};

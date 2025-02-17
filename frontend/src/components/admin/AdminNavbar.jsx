@@ -47,19 +47,18 @@ const AdminNavbar = ({ title = "Admin Dashboard" }) => {
   }
 
   return (
-    <header className="shadow-sm" style={{ backgroundColor: "#1b68b3" }}>
-      <div className="max-w-full px-4 sm:px-6 lg:px-8"> {/* Changed from max-w-7xl to max-w-full */}
-        <div className="flex justify-between items-center py-4">
-          <div className="flex items-center space-x-4"> {/* Changed space-x-8 to space-x-4 */}
+    <header className="shadow-sm" style={{ backgroundColor: "#1b68b3", height: "64px" }}>
+      <div className="max-w-full px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center py-4" style={{ height: "64px" }}>
+          <div className="flex items-center space-x-4">
             <img
               src={logo || "/placeholder.svg"}
               alt="Logo"
-              className="h-12 hover:opacity-80 transition-opacity duration-300 ml-2" /* Added ml-2 */
+              className="h-14 hover:opacity-80 transition-opacity duration-300 ml-2"
+              style={{ height: "60px", width: "auto" }} // Control the size of the logo image
             />
-            <h1 className="text-2xl font-bold text-white hidden md:block">
-              {title}
-            </h1>
           </div>
+          <h1 className="text-white font-bold text-xl">{title}</h1>
           <div className="flex items-center space-x-6">
             <button className="relative p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all duration-300">
               <Bell className="w-6 h-6" />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import io from 'socket.io-client';
 import InstituteForm1 from '../../components/sub-admin/InstituteForm1';
 import InstituteForm2 from '../../components/sub-admin/InstituteForm2';
 import InstituteForm3 from '../../components/sub-admin/InstituteForm3';
@@ -7,6 +8,8 @@ import InstituteForm4 from '../../components/sub-admin/InstituteForm4';
 import InstituteForm5 from '../../components/sub-admin/InstituteForm5';
 import InstituteForm6 from '../../components/sub-admin/InstituteForm6';
 import logo from '../../assets/logo.png';
+
+const socket = io('http://localhost:8080');
 
 const RegisterInstitute = () => {
   const [step, setStep] = useState(1);
@@ -64,6 +67,18 @@ const RegisterInstitute = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  useEffect(() => {
+    socket.on('emailVerified', (data) => {
+      console.log('Socket.IO event received for email verification:', data);
+      setVerificationSuccess(true);
+      setVerificationSent(false);
+    });
+
+    return () => {
+      socket.off('emailVerified');
+    };
+  }, []);
+
   const handleNext = () => {
     if (step === 6) {
       submitRegistrationForm();
@@ -108,22 +123,23 @@ const RegisterInstitute = () => {
       </div>
       <div className="w-full max-w-md p-8 bg-blue-50 rounded-lg shadow-md mt-20">
         {verificationSuccess ? (
-          <div className="text-center">
-            <div className="text-green-600 mb-4">
-              <svg className="w-16 h-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          <div className="text-center p-8 bg-green-50 rounded-lg shadow-md">
+            <div className="w-16 h-16 mx-auto mb-4 text-green-500">
+              <svg className="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
               </svg>
-              <h2 className="text-2xl font-bold text-[#1b68b3] mb-2">Email Verified Successfully!</h2>
-              <p className="text-gray-600 mb-4">
-                Your registration is now complete. You can proceed to login.
-              </p>
-              <Link
-                to="/sub-admin/login"
-                className="text-white bg-[#1b68b3] px-6 py-2 rounded-lg hover:bg-[#154d85] transition-colors inline-block"
-              >
-                Proceed to Login
-              </Link>
             </div>
+            <h2 className="text-2xl font-bold mb-2" style={{ color: "#1b68b3" }}>Verification Successful!</h2>
+            <p className="text-gray-600 mb-4">
+              Thank you for verifying your email. Now you will receive a confirmation mail from our team upon your request and the way forward will be shared there.
+            </p>
+            <Link
+              to="/sub-admin/login"
+              style={{ color: "#1b68b3" }}
+              className="px-6 py-2 rounded-lg hover:bg-[#154d85] transition-colors inline-block"
+            >
+              Proceed to Login
+            </Link>
           </div>
         ) : (
           <>

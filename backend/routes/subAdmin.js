@@ -28,4 +28,6 @@ router.post('/logout', authorizeSubAdmin, subAdminController.logout);
 // Import students route
 router.post('/import-students', authorizeSubAdmin, subAdminController.importStudents);
 
+router.get('/check-verification-status', subAdminController.checkVerificationStatus);
+
 module.exports = router;

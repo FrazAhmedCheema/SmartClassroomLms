@@ -9,6 +9,7 @@ const VerifyEmail = () => {
 
   useEffect(() => {
     const verifyToken = async () => {
+      console.log('Verifying token...');
       try {
         const token = searchParams.get('token');
         if (!token) {
@@ -20,13 +21,13 @@ const VerifyEmail = () => {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
-
+        console.log('Verification response:', response); // Debugging log
         const data = await response.json();
+        console.log('Verification response:', data); // Debugging log
 
         if (response.ok && data.message === 'Email verified, registration request sent!') {
           setStatus('success');
-          // Set verification status in localStorage
-          localStorage.setItem('emailVerificationStatus', 'success');
+          console.log('Email verification successful'); // Debugging log
           // Force reload registration page after delay
           setTimeout(() => {
             navigate('/sub-admin/register', { replace: true });
@@ -65,7 +66,7 @@ const VerifyEmail = () => {
           </div>
           <h2 className="text-2xl font-bold text-[#1b68b3] mb-2">Verification Successful!</h2>
           <p className="text-gray-600 mb-4">
-            Thank you for verifying your email. Your account has been successfully activated.
+            Thank you for verifying your email. Now you will receive a confirmation mail from our team upon your request and the way forward will be shared there.
           </p>
           <p className="text-sm text-gray-500">
             You will be redirected to the registration page in 3 seconds...
