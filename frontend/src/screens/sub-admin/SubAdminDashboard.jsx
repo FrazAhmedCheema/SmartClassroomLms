@@ -7,12 +7,82 @@ import useMediaQuery from '../../hooks/useMediaQuery';
 
 const SubAdminDashboard = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [stats, setStats] = useState({
-    teachers: 25,
-    students: 150,
-    assignedCourses: 18,
-    totalCourses: 30
+    teachers: 0,
+    students: 0,
+    assignedCourses: 0,
+    totalCourses: 0
   });
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/sub-admin/dashboard", {
+          credentials: 'include',
+          headers: {
+            "Content-Type": "application/json",
+          }
+        });
+    
+        if (!response.ok) {
+          throw new Error("Authentication failed");
+        }
+    
+        const data = await response.json(); // <-- This was failing before because the response was not JSON
+        setStats(data.stats); // Make sure stats is returned in JSON
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error("Authentication error:", error);
+        navigate('/sub-admin/login');
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+
+    fetchDashboardData();
+  }, [navigate]);
+
+  // Loading spinner component
+  const LoadingSpinner = () => (
+    <div className="fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#1b68b3] mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading dashboard...</p>
+      </div>
+    </div>
+  );
+
+  // Show loading spinner while checking authentication
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center text-red-600">
+          <p className="text-xl font-semibold">Error: {error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-[#1b68b3] text-white rounded-lg hover:bg-[#154d85] transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Only render dashboard content if authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const recentActivities = [
     {

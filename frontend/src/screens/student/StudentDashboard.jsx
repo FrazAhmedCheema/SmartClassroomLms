@@ -12,7 +12,7 @@ const StudentDashboard = () => {
 
   const classes = [
     { title: 'Machine Learning', instructor: 'Umer Ramzan', color: '#1b68b3', initial: 'A' },
-    { title: 'Parallel Computing', instructor: 'Faizan-ul-Mustafa', color: '#4caf50', initial: 'B' },
+    { title: 'Parallel Computing', instructor: 'Faizan-ul-Mustafa', color: '#1b68b3', initial: 'B' },
   ];
 
   return (
@@ -62,7 +62,7 @@ const StudentDashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-xl shadow-lg p-6 mb-8"
         >
-          <h2 className="text-2xl font-bold mb-6" style={{ color: '#1b68b3' }}>Upcoming Classes</h2>
+          <h2 className="text-2xl font-bold mb-6" style={{ color: '#1b68b3' }}>Enrolled Classes</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {classes.map((classItem, index) => (
               <motion.div
@@ -86,13 +86,13 @@ const StudentDashboard = () => {
                 </div>
                 <p className="text-gray-600 text-sm mt-1">{classItem.instructor}</p>
                 <div className="flex justify-between mt-4">
-                  <button className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
+                  <button className="flex items-center space-x-2 text-gray-200 hover:text-gray-900">
                     <MessageSquare className="w-5 h-5" />
                   </button>
-                  <button className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
+                  <button className="flex items-center space-x-2 text-gray-200 hover:text-gray-900">
                     <Camera className="w-5 h-5" />
                   </button>
-                  <button className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
+                  <button className="flex items-center space-x-2 text-gray-200 hover:text-gray-900">
                     <Folder className="w-5 h-5" />
                   </button>
                 </div>
