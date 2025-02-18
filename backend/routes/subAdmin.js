@@ -5,8 +5,9 @@ const { authorizeSubAdmin } = require('../middleware/auth');
 
 router.get('/dashboard', authorizeSubAdmin, (req, res) => {
     console.log('Dashboard route accessed'); 
-    res.status(200).send('Authorized');
+    res.status(200).json({ message: "Authorized", stats: { teachers: 10, students: 50, assignedCourses: 5, totalCourses: 20 } });
 });
+
 
 router.post('/registerInstitute', subAdminController.registerInstitute);
 router.get('/verify-email/:token', subAdminController.verifyEmail);
