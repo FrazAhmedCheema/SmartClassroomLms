@@ -173,7 +173,7 @@ exports.rejectInstitute = async (req, res) => {
 
         const mailOptions = {
           from: process.env.EMAIL_SENDER,
-          to: requestToApprove.instituteAdminEmail,
+          to: requestToReject.instituteAdminEmail,
             subject: 'Update on Your Request for SmartClassroomLms',
             html: `<p>Dear <strong>${requestToReject.instituteAdminName}</strong>,</p>
                    <p>We regret to inform you that your request for onboarding <strong>SmartClassroomLms</strong> has not been approved at this time.</p>
@@ -208,7 +208,7 @@ exports.manageInstitutes = async (req, res) => {
 
       const totalInstitutes = await ApproveInstitute.countDocuments();
       const institutes = await ApproveInstitute.find()
-          .select('instituteId instituteName instituteAdminName status') // Fetch only required fields
+          .select('instituteId instituteName instituteAdminName instituteAdminEmail status') // Fetch only required fields
           .skip((page - 1) * limit)
           .limit(limit);
 
@@ -374,5 +374,22 @@ exports.updateInstitute = async (req, res) => {
       message: 'Error updating institute',
       error: error.message 
     });
+  }
+};
+
+exports.getDashboardData = async (req, res) => {
+  try {
+    const institutes = await ApproveInstitute.find().select('instituteId instituteName instituteAdminName status');
+    const requests = await InstituteRequest.find().select('requestId instituteName instituteAdminName status');
+    // const
+    res.status(200).json({
+      institutes :{ count: institutes.length || 0, change: 5 }, // Dummy values
+      requests :{ count: requests.length || 0, change: -5 }, // Dummy values
+      users: { count: 100, change: 10 }, // Dummy values
+      activities: { count: 50, change: 5 } // Dummy values
+    });
+  } catch (err) {
+    console.error('Error fetching dashboard data:', err.message);
+    res.status(500).json({ msg: 'Internal server error. Please try again later.' });
   }
 };

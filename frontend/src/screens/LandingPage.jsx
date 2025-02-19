@@ -41,7 +41,7 @@ const LandingPage = () => {
     { href: "#about", label: "About", icon: <Info className="w-5 h-5" /> },
     { href: "#courses", label: "Courses", icon: <Courses className="w-5 h-5" /> },
     { href: "#features", label: "Features", icon: <BookOpenCheck className="w-5 h-5" /> },
-    { href: "#help", label: "Help", icon: <HelpCircle className="w-5 h-5" /> },
+    // { href: "#help", label: "Help", icon: <HelpCircle className="w-5 h-5" /> },
     { href: "#contact", label: "Contact", icon: <Mail className="w-5 h-5" /> }
   ];
 

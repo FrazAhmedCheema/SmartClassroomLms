@@ -78,9 +78,10 @@ const ManageInstitutes = () => {
     });
   };
 
-  const handleSearch = () => {
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
     const filtered = institutes.filter((institute) =>
-      institute.instituteName.toLowerCase().includes(searchTerm.toLowerCase())
+      institute.instituteName.toLowerCase().includes(e.target.value.toLowerCase())
     );
     setFilteredInstitutes(filtered);
   };
@@ -133,20 +134,13 @@ const ManageInstitutes = () => {
                       type="text"
                       placeholder="Search institutes..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={handleSearch}
                       className="w-full px-4 py-2 pl-10 rounded-lg border-2 border-[#1b68b3] 
                                focus:border-[#154d85] focus:outline-none transition-all
                                bg-white text-gray-600 placeholder-gray-400"
                     />
                     <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
                   </div>
-                  <button
-                    onClick={handleSearch}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all flex items-center space-x-2"
-                  >
-                    <Filter size={20} />
-                    <span>Filter</span>
-                  </button>
                   <button
                     onClick={handleAddInstitute}
                     className="px-4 py-2 bg-[#1b68b3] text-white rounded-lg hover:bg-[#154d85] transition-all flex items-center space-x-2"
