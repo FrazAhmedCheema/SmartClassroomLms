@@ -6,6 +6,7 @@ import Navbar from '../../components/sub-admin/Navbar';
 import Sidebar from '../../components/sub-admin/Sidebar';
 import { Activity, ChevronRight } from 'lucide-react';
 import useMediaQuery from '../../hooks/useMediaQuery';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line, CartesianGrid } from 'recharts';
 
 const SubAdminDashboard = () => {
   const isMobile = useMediaQuery('(max-width: 1024px)');
@@ -26,19 +27,17 @@ const SubAdminDashboard = () => {
       try {
         const response = await fetch("http://localhost:8080/sub-admin/dashboard", {
           method: "GET",
-          credentials : 'include',
+          credentials: 'include',
           headers: {
             "Content-Type": "application/json"
           }
         });
-        if(response.status === 200){
+        if (response.status === 200) {
           navigate('/sub-admin/dashboard');
-
         }
         if (!response.ok || response.status === 401 || response.status === 403) {
           navigate('/sub-admin/login');
         }
-
       } catch (error) {
         navigate('/sub-admin/login');
       }
@@ -75,6 +74,36 @@ const SubAdminDashboard = () => {
     navigate('/sub-admin/activities');
   };
 
+  // Data for charts
+  const studentEnrollmentData = [
+    { name: 'Jan', students: 40 },
+    { name: 'Feb', students: 30 },
+    { name: 'Mar', students: 20 },
+    { name: 'Apr', students: 27 },
+    { name: 'May', students: 18 },
+    { name: 'Jun', students: 23 },
+    { name: 'Jul', students: 34 },
+  ];
+
+  const courseDistributionData = [
+    { name: 'Computer Science', value: 40 },
+    { name: 'Mathematics', value: 30 },
+    { name: 'Physics', value: 20 },
+    { name: 'Chemistry', value: 10 },
+  ];
+
+  const teacherPerformanceData = [
+    { name: 'Jan', performance: 65 },
+    { name: 'Feb', performance: 59 },
+    { name: 'Mar', performance: 80 },
+    { name: 'Apr', performance: 81 },
+    { name: 'May', performance: 56 },
+    { name: 'Jun', performance: 55 },
+    { name: 'Jul', performance: 40 },
+  ];
+
+  const COLORS = ['#1b68b3', '#2180db', '#1a5a8d', '#164c7a'];
+
   const StatCard = ({ icon: Icon, title, value }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -96,17 +125,17 @@ const SubAdminDashboard = () => {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f8fafc' }}>
-      <Navbar 
-        toggleSidebar={toggleSidebar} 
+      <Navbar
+        toggleSidebar={toggleSidebar}
         isSidebarOpen={isSidebarOpen}
         isMobile={isMobile}
       />
-      <Sidebar 
-        isOpen={isSidebarOpen} 
+      <Sidebar
+        isOpen={isSidebarOpen}
         toggle={toggleSidebar}
         isMobile={isMobile}
       />
-      
+
       <div className={`transition-all duration-300 pt-16 
         ${isSidebarOpen ? 'ml-64' : isMobile ? 'ml-0' : 'ml-20'}`}>
         <div className="p-6">
@@ -127,6 +156,69 @@ const SubAdminDashboard = () => {
             <StatCard icon={FaGraduationCap} title="Total Courses" value={stats.totalCourses} />
           </div>
 
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {/* Bar Chart - Student Enrollment */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl shadow-lg p-6"
+            >
+              <h2 className="text-xl font-bold mb-4" style={{ color: '#1b68b3' }}>Student Enrollment</h2>
+              <BarChart width={400} height={300} data={studentEnrollmentData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="students" fill="#1b68b3" />
+              </BarChart>
+            </motion.div>
+
+            {/* Pie Chart - Course Distribution */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl shadow-lg p-6"
+            >
+              <h2 className="text-xl font-bold mb-4" style={{ color: '#1b68b3' }}>Course Distribution</h2>
+              <PieChart width={400} height={300}>
+                <Pie
+                  data={courseDistributionData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {courseDistributionData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </motion.div>
+
+            {/* Line Chart - Teacher Performance */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl shadow-lg p-6"
+            >
+              <h2 className="text-xl font-bold mb-4" style={{ color: '#1b68b3' }}>Teacher Performance</h2>
+              <LineChart width={400} height={300} data={teacherPerformanceData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="performance" stroke="#1b68b3" />
+              </LineChart>
+            </motion.div>
+          </div>
+
           {/* Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {[
@@ -142,7 +234,7 @@ const SubAdminDashboard = () => {
                 <Link
                   to={action.path}
                   className="block p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-                  style={{ 
+                  style={{
                     background: 'linear-gradient(to right, #1b68b3, #2180db)',
                     color: 'white'
                   }}
@@ -169,8 +261,8 @@ const SubAdminDashboard = () => {
                   Recent Activity
                 </h2>
               </div>
-              <button 
-                onClick={handleViewAll} 
+              <button
+                onClick={handleViewAll}
                 className="text-sm px-4 py-2 rounded-lg transition-all duration-300 text-white hover:text-[#1b68b3] hover:bg-blue-50"
                 style={{ backgroundColor: '#1b68b3' }}
               >
@@ -202,7 +294,3 @@ const SubAdminDashboard = () => {
 };
 
 export default SubAdminDashboard;
-
-
-
-
