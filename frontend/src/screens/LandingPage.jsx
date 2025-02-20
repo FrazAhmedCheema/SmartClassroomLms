@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate  ,Link} from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   GraduationCap, Users, BookOpen, Clock, Mail, Home, Info, 
-  CheckCircle, Award, Globe, MessageCircle, HelpCircle 
+  CheckCircle, Award, Globe, MessageCircle, HelpCircle, BookOpenCheck 
 } from 'lucide-react';
 import logo from '../assets/logo2.png';
 import landingImage from '../assets/landingpage1.webp';
@@ -79,39 +79,11 @@ const LandingPage = () => {
   ];
 
   const navLinks = [
-
-    { 
-      href: "#home", 
-      label: "Home", 
-      icon: <Home className="w-5 h-5" />,
-      description: "Back to top"
-    },
-    { 
-      href: "#about", 
-      label: "About", 
-      icon: <Info className="w-5 h-5" />,
-      description: "Learn about SmartClassroom"
-    },
-    { 
-      href: "#help", 
-      label: "Help", 
-      icon: <HelpCircle className="w-5 h-5" />,
-      description: "Get support"
-    },
-    { 
-      href: "#contact", 
-      label: "Contact", 
-      icon: <Mail className="w-5 h-5" />,
-      description: "Reach out to us"
-    }
-
     { href: "#home", label: "Home", icon: <Home className="w-5 h-5" /> },
     { href: "#about", label: "About", icon: <Info className="w-5 h-5" /> },
-    { href: "#courses", label: "Courses", icon: <Courses className="w-5 h-5" /> },
-    { href: "#features", label: "Features", icon: <BookOpenCheck className="w-5 h-5" /> },
-    // { href: "#help", label: "Help", icon: <HelpCircle className="w-5 h-5" /> },
+    { href: "#courses", label: "Courses", icon: <BookOpenCheck className="w-5 h-5" /> }, // Fixed: Changed Courses to BookOpenCheck
+    { href: "#features", label: "Features", icon: <CheckCircle className="w-5 h-5" /> },
     { href: "#contact", label: "Contact", icon: <Mail className="w-5 h-5" /> }
-
   ];
 
   const handleModalOpen = (modalType, subject = '') => {
@@ -645,7 +617,7 @@ const LandingPage = () => {
         <div 
           className="absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none" 
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.15'%3E%3Cpath d='M0 0 L100 0 L100 100 L0 100 Z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
             backgroundSize: '60px 60px'
           }}
         />
