@@ -58,7 +58,7 @@ const AdminNavbar = ({ title = "Admin Dashboard" }) => {
               style={{ height: "60px", width: "auto" }} // Control the size of the logo image
             />
           </div>
-          <h1 className="text-white font-bold text-xl">{title}</h1>
+          <h1 className="text-white font-bold text-xl -ml-12">{title}</h1> {/* Added -ml-12 for leftward shift */}
           <div className="flex items-center space-x-6">
             <button className="relative p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all duration-300">
               <Bell className="w-6 h-6" />
