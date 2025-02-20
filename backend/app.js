@@ -50,6 +50,11 @@ app.get('/', (req, res) => {
     res.send('Hello World! Now from dev1');
 });
 
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+});
+
 app.use('/sub-admin', subAdminRoutes);
 app.use('/admin', adminRoutes);
 

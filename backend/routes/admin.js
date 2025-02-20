@@ -15,5 +15,6 @@ router.delete('/delete-institute/:id', authorizeAdmin, adminController.deleteIns
 router.post('/send-email/:id', authorizeAdmin, adminController.sendEmail);
 router.get('/notifications', authorizeAdmin, adminController.getNotifications);
 router.put('/update-institute/:id', authorizeAdmin, adminController.updateInstitute);
+router.get('/dashboard', adminController.getDashboardData);
 
 module.exports = router;

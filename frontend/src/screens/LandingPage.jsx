@@ -79,6 +79,7 @@ const LandingPage = () => {
   ];
 
   const navLinks = [
+
     { 
       href: "#home", 
       label: "Home", 
@@ -103,6 +104,14 @@ const LandingPage = () => {
       icon: <Mail className="w-5 h-5" />,
       description: "Reach out to us"
     }
+
+    { href: "#home", label: "Home", icon: <Home className="w-5 h-5" /> },
+    { href: "#about", label: "About", icon: <Info className="w-5 h-5" /> },
+    { href: "#courses", label: "Courses", icon: <Courses className="w-5 h-5" /> },
+    { href: "#features", label: "Features", icon: <BookOpenCheck className="w-5 h-5" /> },
+    // { href: "#help", label: "Help", icon: <HelpCircle className="w-5 h-5" /> },
+    { href: "#contact", label: "Contact", icon: <Mail className="w-5 h-5" /> }
+
   ];
 
   const handleModalOpen = (modalType, subject = '') => {

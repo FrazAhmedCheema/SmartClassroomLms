@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
-const ComposeEmailModal = ({ isOpen, onClose, onSend, recipientEmail }) => {
+const ComposeEmailModal = ({ isOpen, onClose, onSend, recipientEmail ,recipientName}) => {
     console.log(recipientEmail);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -52,7 +52,7 @@ const ComposeEmailModal = ({ isOpen, onClose, onSend, recipientEmail }) => {
               <label className="text-sm font-medium text-black">To:</label>
               <input
                 type="email"
-                value={recipientEmail}
+                value={recipientName}
                 disabled
                 className="w-full px-4 py-2 mt-1 bg-gray-100 text-black rounded-md border border-gray-300 outline-none"
               />

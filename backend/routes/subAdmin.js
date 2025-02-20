@@ -5,10 +5,12 @@ const { authorizeSubAdmin } = require('../middleware/auth');
 
 router.get('/dashboard', authorizeSubAdmin, (req, res) => {
     console.log('Dashboard route accessed'); 
-    res.status(200).send('Authorized');
+    res.status(200).json({ message: "Authorized", stats: { teachers: 10, students: 50, assignedCourses: 5, totalCourses: 20 } });
 });
 
+
 router.post('/registerInstitute', subAdminController.registerInstitute);
+router.get('/verify-email/:token', subAdminController.verifyEmail);
 router.post('/add-student', authorizeSubAdmin, subAdminController.addStudent);
 router.get('/students', authorizeSubAdmin, subAdminController.getStudents);
 router.put('/edit-student/:id', authorizeSubAdmin, subAdminController.editStudent);
@@ -26,5 +28,7 @@ router.post('/logout', authorizeSubAdmin, subAdminController.logout);
 
 // Import students route
 router.post('/import-students', authorizeSubAdmin, subAdminController.importStudents);
+
+router.get('/check-verification-status', subAdminController.checkVerificationStatus);
 
 module.exports = router;
