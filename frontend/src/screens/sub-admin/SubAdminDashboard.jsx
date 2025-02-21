@@ -54,17 +54,17 @@ const SubAdminDashboard = () => {
   const recentActivities = [
     {
       title: "New Student Enrolled",
-      message: "John Doe has been enrolled in Computer Science",
+      message: "Fraz Cheema has been enrolled in Computer Science",
       timestamp: "2 hours ago"
     },
     {
       title: "Course Assignment",
-      message: "Prof. Sarah assigned new course 'Web Development'",
+      message: "Ayesha Asghar assigned new course 'Web Development'",
       timestamp: "3 hours ago"
     },
     {
       title: "Teacher Registration",
-      message: "New teacher Dr. Mike Johnson registered",
+      message: "New teacher Zain registered",
       timestamp: "5 hours ago"
     }
   ];
@@ -101,11 +101,11 @@ const SubAdminDashboard = () => {
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Navbar
+        {/* <Navbar
           toggleSidebar={toggleSidebar}
           isSidebarOpen={isSidebarOpen}
           isMobile={isMobile}
-        />
+        /> */}
         
         <main className={`flex-1 overflow-x-hidden overflow-y-auto p-6 transition-all duration-300
           ${isSidebarOpen ? 'ml-0' : 'ml-0'}`}>
