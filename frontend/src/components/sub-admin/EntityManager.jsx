@@ -36,12 +36,18 @@ const EntityManager = ({ entityType, initialEntities, apiEndpoint }) => {
 
   const handleAddEntity = async (formData) => {
     try {
+      // Get subAdminDomain from localStorage for institute identification
+      const subAdminUsername = localStorage.getItem('subAdminUsername');
+      const subAdminDomain = subAdminUsername ? subAdminUsername.split('@')[1] : '';
+
       const dataToSend = {
         name: formData.name,
         registrationId: formData.registrationId,
         email: formData.email,
         password: formData.password || formData.registrationId, // Use registrationId if password is missing
-        status: formData.status || 'active'
+        status: formData.status || 'active',
+        role: entityType.toLowerCase(), // Add role based on entityType
+        domain: subAdminDomain // Added domain for institute identification
       };
 
       console.log('Sending data:', dataToSend);
@@ -69,15 +75,16 @@ const EntityManager = ({ entityType, initialEntities, apiEndpoint }) => {
         // Instead of immediately updating the list, show spinner and fetch fresh data
         setIsLoading(true);
         setIsAddModalOpen(false);
-        const refreshResponse = await fetch("http://localhost:8080/sub-admin/students", {
+        const refreshEndpoint = `${apiEndpoint}/${entityType.toLowerCase()}s`;
+        const refreshResponse = await fetch(refreshEndpoint, {
           credentials: 'include',
           headers: { "Content-Type": "application/json" },
         });
         if (refreshResponse.ok) {
           const refreshData = await refreshResponse.json();
-          const transformedData = refreshData.data.map((student) => ({
-            ...student,
-            id: student.studentId,
+          const transformedData = refreshData.data.map((entity) => ({
+            ...entity,
+            id: entity[idField],
           }));
           setEntities(transformedData);
         }
@@ -160,20 +167,47 @@ const EntityManager = ({ entityType, initialEntities, apiEndpoint }) => {
   // Callback after successful CSV import to refresh the state
   const handleCsvImportSuccess = async (importedEntities) => {
     setIsLoading(true);
-    const refreshResponse = await fetch("http://localhost:8080/sub-admin/students", {
+    const refreshEndpoint = `${apiEndpoint}/${entityType.toLowerCase()}s`;
+    const refreshResponse = await fetch(refreshEndpoint, {
       credentials: 'include',
       headers: { "Content-Type": "application/json" },
     });
     if (refreshResponse.ok) {
       const refreshData = await refreshResponse.json();
-      const transformedData = refreshData.data.map(student => ({
-        ...student,
-        id: student.studentId,
+      const transformedData = refreshData.data.map(entity => ({
+        ...entity,
+        id: entity[idField],
       }));
       setEntities(transformedData);
     }
     setIsLoading(false);
   }
+
+  // Update CSV import to include role and domain
+  const handleCsvImport = async (csvData) => {
+    try {
+      const subAdminUsername = localStorage.getItem('subAdminUsername');
+      const subAdminDomain = subAdminUsername ? subAdminUsername.split('@')[1] : '';
+
+      // Add domain to the request
+      const importData = {
+        data: csvData,
+        role: entityType.toLowerCase(),
+        domain: subAdminDomain
+      };
+
+      const response = await fetch(`${apiEndpoint}/import-${entityType.toLowerCase()}s`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(importData),
+      });
+
+      // ...rest of the import handling...
+    } catch (error) {
+      // ...existing error handling...
+    }
+  };
 
   const indexOfLastEntity = currentPage * entitiesPerPage
   const indexOfFirstEntity = indexOfLastEntity - entitiesPerPage

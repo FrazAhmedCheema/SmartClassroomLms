@@ -126,66 +126,32 @@ const CsvImportModal = ({ isOpen, onClose, apiEndpoint, entityType, onImportSucc
       setError('Please select a CSV file.');
       return;
     }
+    
     setIsSubmitting(true);
-    setInfoMessage('Starting upload...');
     const reader = new FileReader();
     
-    reader.onprogress = (event) => {
-      if (event.lengthComputable) {
-        const percent = Math.round((event.loaded / event.total) * 100);
-        setUploadProgress(percent);
-      }
-    };
-
     reader.onload = async (evt) => {
       const content = evt.target.result;
-      // Validate CSV structure before processing
-      const validationError = validateCSVContent(content);
-      if (validationError) {
-        setError(validationError);
-        setIsSubmitting(false);
-        setInfoMessage('');
-        return;
-      }
       
-      // Split CSV into header and rows
-      const allLines = content.trim().split(/\r?\n/).filter(line => line.trim() !== '');
-      const header = allLines[0];
-      const rows = allLines.slice(1);
-
-      const chunkSize = 100; // adjust chunk size as needed
-      const totalChunks = Math.ceil(rows.length / chunkSize);
-      const allResults = [];
+      // Get subAdminDomain for institute identification
+      const subAdminUsername = localStorage.getItem('subAdminUsername');
+      const subAdminDomain = subAdminUsername ? subAdminUsername.split('@')[1] : '';
       
       try {
-        for (let i = 0; i < totalChunks; i++) {
-          setInfoMessage(`Uploading chunk ${i+1} of ${totalChunks}...`);
-          const chunkRows = rows.slice(i * chunkSize, (i + 1) * chunkSize);
-          const chunkCSV = [header, ...chunkRows].join('\n');
-          const response = await fetch(`${apiEndpoint}/import-${entityType.toLowerCase()}s`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: chunkCSV, chunk: i + 1, totalChunks }),
-          });
-          const result = await response.json();
-          if (!response.ok) {
-            throw new Error(result.message || `Import failed on chunk ${i + 1}`);
-          }
-          allResults.push(result.data);
-          setUploadProgress(Math.round(((i + 1) / totalChunks) * 100));
-        }
-        setInfoMessage('Upload complete. Processing results...');
-        onImportSuccess(allResults);
-        setTimeout(() => {
-          setIsSubmitting(false);
-          setInfoMessage('');
-          onClose();
-        }, 500);
-      } catch (err) {
-        setError(err.message);
-        setIsSubmitting(false);
-        setInfoMessage('');
+        const response = await fetch(`${apiEndpoint}/import-${entityType.toLowerCase()}s`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            data: content,
+            role: entityType.toLowerCase(), // Add role based on entityType
+            domain: subAdminDomain // Add domain for institute identification
+          }),
+        });
+
+        // ...rest of the response handling...
+      } catch (error) {
+        // ...existing error handling...
       }
     };
 

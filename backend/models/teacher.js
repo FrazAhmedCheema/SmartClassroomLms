@@ -6,7 +6,9 @@ const TeacherSchema = new mongoose.Schema({
     registrationId: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    status: { type: String, default: 'active' }
+    status: { type: String, default: 'active' },
+    role: { type: String, required: true }, // Role field added
+    instituteId: { type: mongoose.Schema.Types.ObjectId, ref: 'Institute', required: true } // Institute reference added
 });
 
 TeacherSchema.plugin(AutoIncrement, { inc_field: 'teacherId' });

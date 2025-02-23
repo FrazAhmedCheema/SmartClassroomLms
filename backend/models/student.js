@@ -6,9 +6,11 @@ const AddStudentSchema = new mongoose.Schema({
     registrationId: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    status: { type: String, default: 'active' }
+    status: { type: String, default: 'active' },
+    role: { type: String, required: true }, // Role field added
+    instituteId: { type: mongoose.Schema.Types.ObjectId, ref: 'Institute', required: true } // Institute reference added
 });
 
 AddStudentSchema.plugin(AutoIncrement, { inc_field: 'studentId' });
 
-module.exports = mongoose.model('student', AddStudentSchema);
+module.exports = mongoose.model('Student', AddStudentSchema);

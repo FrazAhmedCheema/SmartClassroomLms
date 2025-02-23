@@ -10,7 +10,6 @@ const CreateClassModal = ({ isOpen, onClose, onCreate }) => {
     onCreate({ className, section });
     setClassName('');
     setSection('');
-    onClose();
   };
 
   if (!isOpen) return null;
@@ -20,7 +19,7 @@ const CreateClassModal = ({ isOpen, onClose, onCreate }) => {
       <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold" style={{color:"#1b68b3"}}>Create New Class</h2>
-          <button onClick={onClose} className="text-gray-200 hover:text-gray-700">
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X size={20} />
           </button>
         </div>
@@ -39,7 +38,7 @@ const CreateClassModal = ({ isOpen, onClose, onCreate }) => {
                 transition-colors duration-200 text-gray-900"
                 placeholder="Enter class name"
                 required
-                style={{ backgroundColor: "#f3f4f6" }} // Explicit light gray background
+                style={{ backgroundColor: "#f3f4f6" }}
               />
             </div>
             <div>
@@ -55,7 +54,7 @@ const CreateClassModal = ({ isOpen, onClose, onCreate }) => {
                 transition-colors duration-200 text-gray-900"
                 placeholder="Enter section"
                 required
-                style={{ backgroundColor: "#f3f4f6" }} // Explicit light gray background
+                style={{ backgroundColor: "#f3f4f6" }}
               />
             </div>
           </div>
