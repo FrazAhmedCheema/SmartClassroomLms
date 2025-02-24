@@ -1,19 +1,18 @@
 import React from 'react';
+import { useSelector } from 'react-redux';
 import SharedSidebar from '../shared/SharedSidebar';
+import { selectClasses } from '../../redux/slices/classesSlice';
 
-const TeacherSidebar = (props) => {
-  // Example classes - in real app, these would come from props or context
-  const assignedClasses = [
-    { id: 1, name: 'Mathematics 101' },
-    { id: 2, name: 'Mathematics 201' },
-    { id: 3, name: 'Advanced Calculus' }
-  ];
+const TeacherSidebar = ({ isOpen, toggle, isMobile }) => {
+  const classes = useSelector(selectClasses);
 
   return (
-    <SharedSidebar
-      {...props}
-      userRole="Teacher"
-      classes={assignedClasses}
+    <SharedSidebar 
+      isOpen={isOpen} 
+      toggle={toggle} 
+      isMobile={isMobile} 
+      userRole="Teacher" 
+      classes={classes} 
     />
   );
 };
