@@ -5,7 +5,7 @@ console.log('Auth middleware loaded'); // Add this line to verify the middleware
 
 // General authorization middleware
 function authorize(req, res, next) {
-    const token = req.cookies.adminToken || req.cookies.subAdminToken;
+    const token = req.cookies.adminToken || req.cookies.subAdminToken || req.cookies.teacherToken;
 
     if (!token) {
         console.info('No token provided. Access denied.');
@@ -45,8 +45,20 @@ function authorizeSubAdmin(req, res, next) {
     });
 }
 
+// Teacher authorization middleware
+function authorizeTeacher(req, res, next) {
+    authorize(req, res, () => {
+        if (req.user.role !== 'teacher') {
+            console.warn('Forbidden: Teacher access required.');
+            return res.status(401).json({ msg: 'Forbidden: Teacher access required.' });
+        }
+        next();
+    });
+}
+
 module.exports = {
     authorize,
     authorizeAdmin,
-    authorizeSubAdmin
+    authorizeSubAdmin,
+    authorizeTeacher
 };

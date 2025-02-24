@@ -171,10 +171,20 @@ exports.checkVerificationStatus = async (req, res) => {
     }
 };
 
+// Helper function to extract and validate domain
+const validateDomain = async (email) => {
+    const domain = email.split('@')[1];
+    const institute = await RegisteredInstitute.findOne({ domainName: domain });
+    if (!institute) {
+        throw new Error('Invalid domain. Institute not found.');
+    }
+    return institute._id;
+};
+
 exports.editStudent = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, registrationId, email, password, status } = req.body;
+        const { name, registrationId, email, password, status, role } = req.body;
         console.log('password:', password);
         console.log('id:', id);
         // Find student by ID
@@ -190,10 +200,17 @@ exports.editStudent = async (req, res) => {
         console.log('student:', student);
         
 
+        // If email is being changed, validate new domain
+        if (email && email !== student.email) {
+            const instituteId = await validateDomain(email);
+            student.instituteId = instituteId;
+        }
+
         // Update student details
         student.name = name || student.name;
         student.registrationId = registrationId || student.registrationId;
         student.email = email || student.email;
+        student.role = role || student.role; // Add role update
         if (password) {
             const salt = await bcrypt.genSalt(10);
             student.password = await bcrypt.hash(password, salt);
@@ -263,7 +280,7 @@ exports.getStudents = async (req, res) => {
 // Updated addStudent controller
 exports.addStudent = async (req, res) => {
     try {
-        const { name, registrationId, email } = req.body;
+        const { name, registrationId, email, password, status, role } = req.body;
         // Validate required fields
         if (!name || !registrationId || !email) {
             return res.status(400).json({
@@ -271,16 +288,22 @@ exports.addStudent = async (req, res) => {
                 message: 'Name, registrationId and email are required'
             });
         }
+
+        // Validate domain and get institute ID
+        const instituteId = await validateDomain(email);
+
         const salt = await bcrypt.genSalt(10);
         // Use registrationId as the password
-        const hashedPassword = await bcrypt.hash(registrationId, salt);
+        const hashedPassword = await bcrypt.hash(password || registrationId, salt);
 
         const studentData = {
             name,
             registrationId,
             email,
             password: hashedPassword,
-            status: 'active'
+            status: status || 'active',
+            role: role || 'student', // Add role with default
+            instituteId // Add institute reference
         };
 
         const newStudent = new Student(studentData);
@@ -332,7 +355,7 @@ exports.importStudents = async (req, res) => {
         const results = { success: [], errors: [] };
 
         for (const record of records) {
-            const { name, registrationid, email } = record;
+            const { name, registrationid, email, role } = record;
             if (!name || !registrationid || !email) {
                 results.errors.push({ email: email || null, msg: 'Missing required fields.' });
                 continue;
@@ -342,17 +365,27 @@ exports.importStudents = async (req, res) => {
                 results.errors.push({ email, msg: 'Duplicate entry.' });
                 continue;
             }
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(registrationid, salt);
-            const newStudent = new Student({
-                name,
-                registrationId: registrationid,
-                email,
-                password: hashedPassword,
-                status: 'active'
-            });
-            await newStudent.save();
-            results.success.push({ email, msg: 'Imported successfully.' });
+
+            try {
+                // Validate domain and get institute ID
+                const instituteId = await validateDomain(email);
+
+                const salt = await bcrypt.genSalt(10);
+                const hashedPassword = await bcrypt.hash(registrationid, salt);
+                const newStudent = new Student({
+                    name,
+                    registrationId: registrationid,
+                    email,
+                    password: hashedPassword,
+                    status: 'active',
+                    role: role || 'student', // Add role with default
+                    instituteId
+                });
+                await newStudent.save();
+                results.success.push({ email, msg: 'Imported successfully.' });
+            } catch (error) {
+                results.errors.push({ email, msg: error.message });
+            }
         }
         res.status(201).json({ 
             msg: `Import completed for chunk ${req.body.chunk || 1} of ${req.body.totalChunks || 1}.`, 
@@ -366,7 +399,7 @@ exports.importStudents = async (req, res) => {
 // Teacher controllers
 exports.addTeacher = async (req, res) => {
     try {
-        const { name, registrationId, email, password, status } = req.body;
+        const { name, registrationId, email, password, status, role } = req.body;
 
         // Ensure password is provided
         if (!password) {
@@ -375,6 +408,9 @@ exports.addTeacher = async (req, res) => {
                 message: 'Password is required'
             });
         }
+
+        // Validate domain and get institute ID
+        const instituteId = await validateDomain(email);
 
         // Hash password
         const salt = await bcrypt.genSalt(10);
@@ -386,7 +422,9 @@ exports.addTeacher = async (req, res) => {
             registrationId,
             email,
             password: hashedPassword,
-            status: status || 'active'
+            status: status || 'active',
+            role: role || 'teacher', // Add role with default
+            instituteId // Add institute reference
         };
 
         // Save to Teacher collection
@@ -426,7 +464,7 @@ exports.getTeachers = async (req, res) => {
 exports.editTeacher = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, registrationId, email, password, status } = req.body;
+        const { name, registrationId, email, password, status, role } = req.body;
 
         // Find teacher by ID
         const teacher = await Teacher.findOne({ teacherId: id });
@@ -437,10 +475,16 @@ exports.editTeacher = async (req, res) => {
             });
         }
 
-        // Update teacher details
+        // If email is being changed, validate new domain
+        if (email && email !== teacher.email) {
+            const instituteId = await validateDomain(email);
+            teacher.instituteId = instituteId;
+        }
+
         teacher.name = name || teacher.name;
         teacher.registrationId = registrationId || teacher.registrationId;
         teacher.email = email || teacher.email;
+        teacher.role = role || teacher.role; // Add role update
         if (password) {
             const salt = await bcrypt.genSalt(10);
             teacher.password = await bcrypt.hash(password, salt);

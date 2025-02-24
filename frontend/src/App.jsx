@@ -19,6 +19,7 @@ import TeacherLayout from './layouts/TeacherLayout';
 import StudentLayout from './layouts/StudentLayout';
 import TeacherDashboard from './screens/teacher/TeacherDashboard';
 import StudentDashboard from './screens/student/StudentDashboard';
+import TeacherLogin from './screens/teacher/TeacherLogin'; // Import TeacherLogin
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
         </Route>
 
         {/* Teacher Routes */}
+        <Route path="/teacher/login" element={<TeacherLogin />} /> {/* Add TeacherLogin route */}
         <Route path="/teacher" element={<TeacherLayout />}>
           <Route index element={<Navigate to="home" replace />} />
           <Route path="home" element={<TeacherDashboard />} />
