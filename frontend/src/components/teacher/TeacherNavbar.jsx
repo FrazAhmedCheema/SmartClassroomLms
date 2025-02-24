@@ -1,8 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { teacherLogout } from '../../state/teacher/teacherSlice';
 import SharedNavbar from '../shared/SharedNavbar';
 
 const TeacherNavbar = (props) => {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -12,6 +15,7 @@ const TeacherNavbar = (props) => {
         credentials: 'include'
       });
       if (response.ok) {
+        dispatch(teacherLogout());
         navigate('/teacher/login');
       }
     } catch (error) {

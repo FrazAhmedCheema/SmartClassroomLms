@@ -46,15 +46,20 @@ function authorizeSubAdmin(req, res, next) {
 }
 
 // Teacher authorization middleware
-function authorizeTeacher(req, res, next) {
-    authorize(req, res, () => {
-        if (req.user.role !== 'teacher') {
-            console.warn('Forbidden: Teacher access required.');
-            return res.status(401).json({ msg: 'Forbidden: Teacher access required.' });
-        }
+const authorizeTeacher = (req, res, next) => {
+    const token = req.cookies.teacherToken;
+    if (!token) {
+        return res.status(401).json({ message: 'No token, authorization denied' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
         next();
-    });
-}
+    } catch (err) {
+        res.status(401).json({ message: 'Token is not valid' });
+    }
+};
 
 module.exports = {
     authorize,

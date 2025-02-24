@@ -19,6 +19,10 @@ const classSchema = new mongoose.Schema({
         ref: 'Teacher',
         required: true
     },
+    students: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Student'
+    }],
     createdAt: {
         type: Date,
         default: Date.now

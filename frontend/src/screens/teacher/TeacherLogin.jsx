@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
+import { useDispatch } from 'react-redux';
+import { setTeacherLoading, setTeacherSuccess, setTeacherFailure } from '../../state/teacher/teacherSlice';
 
 const TeacherLogin = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -8,6 +10,7 @@ const TeacherLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showError, setShowError] = useState(false);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const validateOnSubmit = () => {
     let newErrors = {};
@@ -26,6 +29,7 @@ const TeacherLogin = () => {
 
   const handleLogin = async () => {
     if (validateOnSubmit()) {
+      dispatch(setTeacherLoading());
       try {
         const response = await fetch('http://localhost:8080/teacher/login', {
           method: 'POST',
@@ -36,13 +40,16 @@ const TeacherLogin = () => {
           body: JSON.stringify(formData),
         });
 
+        const data = await response.json();
         if (response.ok) {
+          dispatch(setTeacherSuccess(data.teacherId));
           navigate('/teacher/home');
         } else {
-          throw new Error('Invalid email or password');
+          dispatch(setTeacherFailure(data.message));
+          setShowError(true);
         }
       } catch (error) {
-        console.error('Login failed:', error);
+        dispatch(setTeacherFailure('Login failed'));
         setShowError(true);
       }
     } else {

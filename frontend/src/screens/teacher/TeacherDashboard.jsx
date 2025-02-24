@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 
 import SharedDashboard from '../../components/shared/SharedDashboard';
@@ -6,39 +7,30 @@ import ClassesGrid from '../../components/teacher/ClassesGrid';
 import CreateClassModal from '../../components/teacher/CreateClassModal';
 import { motion } from 'framer-motion';
 import Swal from 'sweetalert2';
+import { fetchClasses, selectClasses, selectClassesStatus, selectClassesError } from '../../redux/slices/classesSlice';
+
+const coverImages = [
+  'https://gstatic.com/classroom/themes/img_code.jpg',
+  'https://gstatic.com/classroom/themes/img_breakfast.jpg',
+  'https://gstatic.com/classroom/themes/img_reading.jpg',
+  'https://gstatic.com/classroom/themes/img_bookclub.jpg',
+  'https://gstatic.com/classroom/themes/img_reachout.jpg'
+];
 
 const TeacherDashboard = () => {
-  const [classes, setClasses] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { teacherId } = useSelector((state) => state.teacher);
+  const classes = useSelector(selectClasses);
+  const status = useSelector(selectClassesStatus);
+  const error = useSelector(selectClassesError);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const coverImages = [
-    'https://gstatic.com/classroom/themes/img_code.jpg',
-    'https://gstatic.com/classroom/themes/img_breakfast.jpg',
-    'https://gstatic.com/classroom/themes/img_reading.jpg',
-    'https://gstatic.com/classroom/themes/img_bookclub.jpg',
-    'https://gstatic.com/classroom/themes/img_reachout.jpg'
-  ];
-
-  // Fetch classes from backend
   useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        const response = await fetch('http://localhost:8080/teacher/classes', {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setClasses(data.classes);
-        }
-      } catch (error) {
-        useNavigate('/teacher/login');
-        console.error('Error fetching classes:', error);
-      }
-    };
-
-    fetchClasses();
-  }, []);
+    if (teacherId && status === 'idle') {
+      dispatch(fetchClasses());
+    }
+  }, [teacherId, status, dispatch]);
 
   const handleCreateClass = async (classData) => {
     try {
@@ -48,12 +40,19 @@ const TeacherDashboard = () => {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(classData),
+        body: JSON.stringify({
+          ...classData,
+          teacherId
+        }),
       });
 
+      const data = await response.json();
       if (response.ok) {
-        const newClass = await response.json();
-        setClasses(prevClasses => [...prevClasses, newClass]);
+        const newClass = {
+          ...data.data,
+          coverImage: coverImages[classes.length % coverImages.length]
+        };
+        dispatch(fetchClasses()); // Fetch classes again to update the state
         
         Swal.fire({
           title: 'Success!',
@@ -64,13 +63,14 @@ const TeacherDashboard = () => {
         
         setIsModalOpen(false);
       } else {
-        throw new Error('Failed to create class');
+        console.error('Failed to create class:', data);
+        throw new Error(data.message || 'Failed to create class');
       }
     } catch (error) {
       console.error('Error creating class:', error);
       Swal.fire({
         title: 'Error!',
-        text: 'Failed to create class',
+        text: error.message || 'Failed to create class',
         icon: 'error',
         confirmButtonColor: '#1b68b3',
       });
@@ -101,7 +101,13 @@ const TeacherDashboard = () => {
                 + Create Class
               </button>
             </div>
-            <ClassesGrid classes={classes} />
+            {status === 'loading' ? (
+              <p>Loading...</p>
+            ) : status === 'failed' ? (
+              <p>Error: {error}</p>
+            ) : (
+              <ClassesGrid classes={classes} />
+            )}
           </motion.div>
         </div>
       </div>
