@@ -8,6 +8,7 @@ require('dotenv').config();
 
 const subAdminRoutes = require('./routes/subAdmin');
 const adminRoutes = require('./routes/admin');
+const teacherRoutes = require('./routes/teacher');
 
 const app = express();
 const server = http.createServer(app);
@@ -57,6 +58,7 @@ app.use((req, res, next) => {
 
 app.use('/sub-admin', subAdminRoutes);
 app.use('/admin', adminRoutes);
+app.use('/teacher', teacherRoutes);
 
 connectDB();
 module.exports = { app, server, io, notifyAdmins };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Home, 
@@ -6,12 +6,15 @@ import {
   BookOpen, 
   CheckSquare, 
   Settings,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => {
   const location = useLocation();
   const baseRoute = userRole.toLowerCase();
+  const [isClassesOpen, setIsClassesOpen] = useState(true);
 
   // Only home route is implemented for now
   const implementedRoutes = [`/${baseRoute}/home`];
@@ -30,16 +33,31 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
     { icon: Home, title: 'Home', path: `/${baseRoute}/home` },
     { icon: Bell, title: 'Notifications', path: `/${baseRoute}/notifications` },
     { type: 'divider' },
-    { icon: BookOpen, title: 'Enrolled Classes', path: `/${baseRoute}/classes` },
     { icon: CheckSquare, title: 'To-do Work', path: `/${baseRoute}/todos` },
-    ...classes.map(cls => ({
-      icon: BookOpen,
-      title: cls.name,
-      path: `/${baseRoute}/classes/${cls.id}`
-    })),
+    { 
+      icon: BookOpen, 
+      title: 'Enrolled Classes', 
+      isDropdown: true,
+      children: classes.map(cls => ({
+        title: cls.name,
+        path: `/${baseRoute}/classes/${cls.id}`,
+        initial: cls.name.charAt(0).toUpperCase()
+      }))
+    },
     { type: 'divider' },
     { icon: Settings, title: 'Settings', path: `/${baseRoute}/settings` }
   ];
+
+  const CircleAvatar = ({ initial, isActive }) => (
+    <div 
+      className={`flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold
+        ${isActive ? 'bg-white/10 text-white border-2 border-white/20' : 'bg-white text-[#1b68b3]'}
+        shadow-md transition-all duration-300`}
+      style={{ minWidth: '2rem', aspectRatio: '1/1' }}
+    >
+      {initial}
+    </div>
+  );
 
   return (
     <div
@@ -56,6 +74,54 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
           {menuItems.map((item, index) => (
             item.type === 'divider' ? (
               <hr key={index} className="my-4 border-white/20" />
+            ) : item.isDropdown ? (
+              <div key={index}>
+                <div
+                  onClick={() => setIsClassesOpen(!isClassesOpen)}
+                  className={`flex items-center justify-between p-3 rounded-lg transition-all duration-300 cursor-pointer
+                    hover:bg-white/10`}
+                  style={{ color: 'white' }}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`${!isOpen && !isMobile ? 'mx-auto' : ''}`}>
+                      <item.icon size={20} />
+                    </div>
+                    <span className={`whitespace-nowrap ${!isOpen && !isMobile ? 'hidden' : 'block'}`}>
+                      {item.title}
+                    </span>
+                  </div>
+                  {isOpen && (
+                    <div className="transform transition-transform duration-200">
+                      {isClassesOpen ? (
+                        <ChevronDown size={20} />
+                      ) : (
+                        <ChevronRight size={20} />
+                      )}
+                    </div>
+                  )}
+                </div>
+                {/* Dropdown items */}
+                <div className={`space-y-1 mt-1 transition-all duration-200 overflow-hidden
+                  ${isClassesOpen ? 'max-h-96' : 'max-h-0'}`}>
+                  {isOpen && item.children?.map((child, childIndex) => (
+                    <Link
+                      key={childIndex}
+                      to={child.path}
+                      className={`flex items-center gap-3 p-3 pl-8 rounded-lg transition-all duration-300
+                        ${location.pathname === child.path
+                          ? 'bg-white text-[#1b68b3] shadow-lg transform scale-[0.98]'
+                          : 'text-white hover:bg-white/10'
+                        }`}
+                    >
+                      <CircleAvatar 
+                        initial={child.initial} 
+                        isActive={location.pathname !== child.path}
+                      />
+                      <span className="whitespace-nowrap flex-grow">{child.title}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
             ) : (
               <div
                 key={index}
