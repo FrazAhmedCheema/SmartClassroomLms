@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 
 import SharedDashboard from '../../components/shared/SharedDashboard';
-import ClassesGrid from '../../components/teacher/ClassesGrid';
+import ClassesGrid from '../../components/shared/ClassesGrid';  // Updated import path
 import CreateClassModal from '../../components/teacher/CreateClassModal';
 import { motion } from 'framer-motion';
 import Swal from 'sweetalert2';

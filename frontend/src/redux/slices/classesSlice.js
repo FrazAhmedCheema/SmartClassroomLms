@@ -3,7 +3,6 @@ import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit'
 const coverImages = [
   'https://gstatic.com/classroom/themes/img_code.jpg',
   'https://gstatic.com/classroom/themes/img_breakfast.jpg',
-  'https://gstatic.com/classroom/themes/img_reading.jpg',
   'https://gstatic.com/classroom/themes/img_bookclub.jpg',
   'https://gstatic.com/classroom/themes/img_reachout.jpg'
 ];
