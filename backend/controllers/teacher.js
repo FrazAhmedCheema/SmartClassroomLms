@@ -10,6 +10,7 @@ const generateClassCode = () => {
 };
 
 exports.createClass = async (req, res) => {
+    console.log('here in ct=reate class controller')
     try {
         const { className, section } = req.body;
         const teacherId = req.user.id; // Assuming user ID is stored in req.user
@@ -165,6 +166,22 @@ exports.logout = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error logging out',
+            error: error.message
+        });
+    }
+};
+
+exports.authStatus = async (req, res) => {
+    try {
+        const teacherId = req.user.id;
+        res.status(200).json({
+            success: true,
+            teacherId
+        });
+    } catch (error) {
+        res.status(401).json({
+            success: false,
+            message: 'Not authenticated',
             error: error.message
         });
     }

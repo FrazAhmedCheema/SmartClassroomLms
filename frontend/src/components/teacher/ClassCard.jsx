@@ -12,6 +12,8 @@ const ClassCard = ({ classData }) => {
     classCode 
   } = classData;
 
+  console.log('Rendering ClassCard with classData:', classData);
+
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
       {/* Header/Banner with cover image */}
