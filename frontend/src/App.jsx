@@ -1,23 +1,30 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { Provider } from 'react-redux';
-import { store } from './state/store';
-import { checkAuthStatus } from './state/teacher/teacherSlice';
+import { Provider, useDispatch } from 'react-redux';
+import { store } from './redux/store'; // Import as named export
+import { checkAuthStatus } from './redux/slices/teacherSlice'; // Correct import path
 import AppRoutes from './routes';
 import './index.css';
 
 function App() {
-  useEffect(() => {
-    store.dispatch(checkAuthStatus());
-  }, []);
+  const dispatch = useDispatch();
 
+  useEffect(() => {
+    console.log('Dispatching checkAuthStatus');
+    dispatch(checkAuthStatus());
+  }, [dispatch]);
+
+  return <AppRoutes />;
+}
+
+function RootApp() {
   return (
     <Provider store={store}>
       <BrowserRouter>
-        <AppRoutes />
+        <App />
       </BrowserRouter>
     </Provider>
   );
 }
 
-export default App;
+export default RootApp;

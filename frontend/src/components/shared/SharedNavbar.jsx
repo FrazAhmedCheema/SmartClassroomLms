@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
 import { HiMenuAlt3 } from 'react-icons/hi';
 import { Search, Bell, Plus, User, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import CreateClassModal from '../teacher/CreateClassModal';
 import logo from '../../assets/logo.png';
 import Swal from 'sweetalert2';
+import { logout } from '../../redux/slices/teacherSlice';
 
 const SharedNavbar = ({ toggleSidebar, isSidebarOpen, isMobile, userRole, onLogout, onCreateClass }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleCreateClass = (classData) => {
     // Pass the data to parent component
@@ -18,7 +23,7 @@ const SharedNavbar = ({ toggleSidebar, isSidebarOpen, isMobile, userRole, onLogo
     setIsModalOpen(false);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Swal.fire({
       title: 'Logout',
       text: 'Are you sure you want to logout?',
@@ -27,9 +32,26 @@ const SharedNavbar = ({ toggleSidebar, isSidebarOpen, isMobile, userRole, onLogo
       confirmButtonColor: '#3085d6',
       cancelButtonColor: '#d33',
       confirmButtonText: 'Yes, logout!'
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        onLogout();
+        try {
+          await dispatch(logout()).unwrap();
+          Swal.fire({
+            title: 'Logged out!',
+            text: 'You have been logged out successfully.',
+            icon: 'success',
+            confirmButtonColor: '#1b68b3',
+          });
+          navigate('/teacher/login');
+        } catch (error) {
+          console.error('Error logging out:', error);
+          Swal.fire({
+            title: 'Error!',
+            text: error.message || 'Failed to logout',
+            icon: 'error',
+            confirmButtonColor: '#1b68b3',
+          });
+        }
       }
     });
   };

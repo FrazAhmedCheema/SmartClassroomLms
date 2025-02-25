@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,30 +7,27 @@ import ClassesGrid from '../../components/teacher/ClassesGrid';
 import CreateClassModal from '../../components/teacher/CreateClassModal';
 import { motion } from 'framer-motion';
 import Swal from 'sweetalert2';
-import { fetchClasses, selectClasses, selectClassesStatus, selectClassesError } from '../../redux/slices/classesSlice';
-
-const coverImages = [
-  'https://gstatic.com/classroom/themes/img_code.jpg',
-  'https://gstatic.com/classroom/themes/img_breakfast.jpg',
-  'https://gstatic.com/classroom/themes/img_reading.jpg',
-  'https://gstatic.com/classroom/themes/img_bookclub.jpg',
-  'https://gstatic.com/classroom/themes/img_reachout.jpg'
-];
+import { fetchClasses, selectClasses } from '../../redux/slices/classesSlice';
 
 const TeacherDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { teacherId } = useSelector((state) => state.teacher);
   const classes = useSelector(selectClasses);
-  const status = useSelector(selectClassesStatus);
-  const error = useSelector(selectClassesError);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const coverImages = [
+    'https://gstatic.com/classroom/themes/img_code.jpg',
+    'https://gstatic.com/classroom/themes/img_breakfast.jpg',
+    'https://gstatic.com/classroom/themes/img_bookclub.jpg',
+    'https://gstatic.com/classroom/themes/img_reachout.jpg'
+  ];
+
   useEffect(() => {
-    if (teacherId && status === 'idle') {
+    if (teacherId) {
       dispatch(fetchClasses());
     }
-  }, [teacherId, status, dispatch]);
+  }, [teacherId, dispatch]);
 
   const handleCreateClass = async (classData) => {
     try {
@@ -63,7 +60,6 @@ const TeacherDashboard = () => {
         
         setIsModalOpen(false);
       } else {
-        console.error('Failed to create class:', data);
         throw new Error(data.message || 'Failed to create class');
       }
     } catch (error) {
@@ -101,13 +97,7 @@ const TeacherDashboard = () => {
                 + Create Class
               </button>
             </div>
-            {status === 'loading' ? (
-              <p>Loading...</p>
-            ) : status === 'failed' ? (
-              <p>Error: {error}</p>
-            ) : (
-              <ClassesGrid classes={classes} />
-            )}
+            <ClassesGrid classes={classes} />
           </motion.div>
         </div>
       </div>
