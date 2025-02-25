@@ -4,6 +4,9 @@ import { useNavigate } from "react-router-dom"
 import { io } from "socket.io-client"
 import AdminNavbar from './AdminNavbar'
 import { formatDistanceToNow } from 'date-fns'
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import Swal from 'sweetalert2';
 
 import {
   Building2,
@@ -110,12 +113,33 @@ const AdminDashboard = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post("http://localhost:8080/admin/logout", {}, { withCredentials: true })
-      navigate("/admin/login")
+      const response = await axios.post("http://localhost:8080/admin/logout", {}, { withCredentials: true });
+      
+      Swal.fire({
+        title: 'Success!',
+        text: 'You have been successfully logged out',
+        icon: 'success',
+        showConfirmButton: false,
+        timer: 2000,
+        timerProgressBar: true,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+        willClose: () => {
+          navigate("/admin/login");
+        }
+      });
+
     } catch (err) {
-      console.error("Logout error:", err)
+      console.error("Logout error:", err);
+      Swal.fire({
+        title: 'Error!',
+        text: 'Failed to logout. Please try again.',
+        icon: 'error',
+        confirmButtonColor: '#d33'
+      });
     }
-  }
+  };
 
   const handleViewAll = () => {
     navigate("/admin/notifications")
@@ -139,146 +163,149 @@ const AdminDashboard = () => {
   ]
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#e6f0ff" }}>
-      <AdminNavbar title="Admin Dashboard" />
-      <div className="container mx-auto px-4 py-8">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        ) : (
-          <>
-            {/* Stats Cards Grid */}
-            <div className="grid grid-cols-4 gap-6 mb-8">
-              <DashboardCard
-                icon={<Building2 className="w-6 h-6 text-blue-600" />}
-                title="Institutes"
-                value={dashboardData.institutes.count}
-                change={dashboardData.institutes.change}
-                color="bg-blue-600"
-              />
-              <DashboardCard
-                icon={<ClipboardList className="w-6 h-6 text-green-600" />}
-                title="Requests"
-                value={dashboardData.requests.count}
-                change={dashboardData.requests.change}
-                color="bg-green-600"
-              />
-              <DashboardCard
-                icon={<Users className="w-6 h-6 text-purple-600" />}
-                title="Users"
-                value={dashboardData.users.count}
-                change={dashboardData.users.change}
-                color="bg-purple-600"
-              />
-              <DashboardCard
-                icon={<Activity className="w-6 h-6 text-indigo-600" />}
-                title="Activities"
-                value={dashboardData.activities.count}
-                change={dashboardData.activities.change}
-                color="bg-indigo-600"
-              />
+    <>
+      <div className="min-h-screen" style={{ backgroundColor: "#e6f0ff" }}>
+        <AdminNavbar title="Admin Dashboard" />
+        <div className="container mx-auto px-4 py-8">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
             </div>
+          ) : (
+            <>
+              {/* Stats Cards Grid */}
+              <div className="grid grid-cols-4 gap-6 mb-8">
+                <DashboardCard
+                  icon={<Building2 className="w-6 h-6 text-blue-600" />}
+                  title="Institutes"
+                  value={dashboardData.institutes.count}
+                  change={dashboardData.institutes.change}
+                  color="bg-blue-600"
+                />
+                <DashboardCard
+                  icon={<ClipboardList className="w-6 h-6 text-green-600" />}
+                  title="Requests"
+                  value={dashboardData.requests.count}
+                  change={dashboardData.requests.change}
+                  color="bg-green-600"
+                />
+                <DashboardCard
+                  icon={<Users className="w-6 h-6 text-purple-600" />}
+                  title="Users"
+                  value={dashboardData.users.count}
+                  change={dashboardData.users.change}
+                  color="bg-purple-600"
+                />
+                <DashboardCard
+                  icon={<Activity className="w-6 h-6 text-indigo-600" />}
+                  title="Activities"
+                  value={dashboardData.activities.count}
+                  change={dashboardData.activities.change}
+                  color="bg-indigo-600"
+                />
+              </div>
 
-            {/* First Row: Quick Actions + Chart */}
-            <div className="grid grid-cols-3 gap-8 mb-8">
-              {/* Quick Actions - Now on the left */}
-              <div className="col-span-1 bg-white rounded-2xl shadow-lg p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold" style={{ color: "#1b68b3" }}>
-                    Quick Actions
-                  </h2>
-                  <TrendingUp className="w-6 h-6 text-gray-400" />
+              {/* First Row: Quick Actions + Chart */}
+              <div className="grid grid-cols-3 gap-8 mb-8">
+                {/* Quick Actions - Now on the left */}
+                <div className="col-span-1 bg-white rounded-2xl shadow-lg p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold" style={{ color: "#1b68b3" }}>
+                      Quick Actions
+                    </h2>
+                    <TrendingUp className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <div className="space-y-4">
+                    {menuItems.map((item, index) => (
+                      <button
+                        key={index}
+                        onClick={item.onClick}
+                        className="w-full flex items-center justify-between p-4 bg-white rounded-xl hover:bg-gray-50 transition-all"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className={`p-2 rounded-full ${item.color} bg-opacity-10`}>
+                            {item.icon}
+                          </div>
+                          <div className="text-left">
+                            <h3 className="font-bold text-gray-800">{item.title}</h3>
+                            <p className="text-sm text-gray-500">{item.description}</p>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-4">
-                  {menuItems.map((item, index) => (
-                    <button
-                      key={index}
-                      onClick={item.onClick}
-                      className="w-full flex items-center justify-between p-4 bg-white rounded-xl hover:bg-gray-50 transition-all"
+
+                {/* Line Chart - Now on the right */}
+                <motion.div 
+                  className="col-span-2 bg-white rounded-2xl shadow-lg p-6"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: false }}
+                  transition={{ duration: 0.6 }}
+                >
+                  <h2 className="text-2xl font-bold mb-6" style={{ color: '#1b68b3' }}>
+                    Activity Trends
+                  </h2>
+                  <LineChartComponent key={Math.random()} /> {/* Key forces remount */}
+                </motion.div>
+              </div>
+
+              {/* Second Row: Chart + Recent Activity */}
+              <div className="grid grid-cols-3 gap-8">
+                <motion.div 
+                  className="col-span-1 bg-white rounded-2xl shadow-lg p-6"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: false }}
+                  transition={{ duration: 0.6 }}
+                >
+                  <h2 className="text-2xl font-bold mb-6" style={{ color: '#1b68b3' }}>
+                    Distribution Overview
+                  </h2>
+                  <PieChartComponent key={Math.random()} /> {/* Key forces remount */}
+                </motion.div>
+
+                {/* Recent Activity */}
+                <div className="col-span-2 bg-white rounded-2xl shadow-lg p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold" style={{ color: "#1b68b3" }}>
+                      Recent Activity
+                    </h2>
+                    <button 
+                      onClick={handleViewAll} 
+                      className="text-sm text-white px-4 py-2 rounded-lg transition-all duration-300"
+                      style={{ backgroundColor: '#1b68b3' }}
                     >
-                      <div className="flex items-center space-x-4">
-                        <div className={`p-2 rounded-full ${item.color} bg-opacity-10`}>
-                          {item.icon}
-                        </div>
-                        <div className="text-left">
-                          <h3 className="font-bold text-gray-800">{item.title}</h3>
-                          <p className="text-sm text-gray-500">{item.description}</p>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
+                      View All
                     </button>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                  <div className="space-y-4">
+                    {recentActivity.slice(0, 3).map((activity, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all"
+                      >
+                        <div>
+                          <h3 className="font-bold text-gray-800">{activity.title}</h3>
+                          <p className="text-sm text-gray-500">{activity.message}</p>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                        {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
 
-              {/* Line Chart - Now on the right */}
-              <motion.div 
-                className="col-span-2 bg-white rounded-2xl shadow-lg p-6"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: false }}
-                transition={{ duration: 0.6 }}
-              >
-                <h2 className="text-2xl font-bold mb-6" style={{ color: '#1b68b3' }}>
-                  Activity Trends
-                </h2>
-                <LineChartComponent key={Math.random()} /> {/* Key forces remount */}
-              </motion.div>
-            </div>
-
-            {/* Second Row: Chart + Recent Activity */}
-            <div className="grid grid-cols-3 gap-8">
-              <motion.div 
-                className="col-span-1 bg-white rounded-2xl shadow-lg p-6"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: false }}
-                transition={{ duration: 0.6 }}
-              >
-                <h2 className="text-2xl font-bold mb-6" style={{ color: '#1b68b3' }}>
-                  Distribution Overview
-                </h2>
-                <PieChartComponent key={Math.random()} /> {/* Key forces remount */}
-              </motion.div>
-
-              {/* Recent Activity */}
-              <div className="col-span-2 bg-white rounded-2xl shadow-lg p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold" style={{ color: "#1b68b3" }}>
-                    Recent Activity
-                  </h2>
-                  <button 
-                    onClick={handleViewAll} 
-                    className="text-sm text-white px-4 py-2 rounded-lg transition-all duration-300"
-                    style={{ backgroundColor: '#1b68b3' }}
-                  >
-                    View All
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  {recentActivity.slice(0, 3).map((activity, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all"
-                    >
-                      <div>
-                        <h3 className="font-bold text-gray-800">{activity.title}</h3>
-                        <p className="text-sm text-gray-500">{activity.message}</p>
+                        </span>
                       </div>
-                      <span className="text-xs text-gray-500">
-                      {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
-
-                      </span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+      <ToastContainer />
+    </>
   )
 }
 

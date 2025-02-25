@@ -18,8 +18,6 @@ const LandingPage = () => {
   const [showRoleMenu, setShowRoleMenu] = useState(null); // 'signin' or 'signup'
 
   const roles = [
-    { label: 'Admin', path: '/admin' },
-    { label: 'SubAdmin', path: '/sub-admin' },
     { label: 'Teacher', path: '/teacher' },
     { label: 'Student', path: '/student' }
   ];
@@ -140,7 +138,7 @@ const LandingPage = () => {
             </div>
             
             {/* Enhanced Navigation Links with Tooltips */}
-            <div className="flex items-center space-x-12">
+            <div className="hidden md:flex items-center space-x-12">
               {navLinks.map((link, index) => (
                 <div key={index} className="group relative">
                   <motion.a
@@ -171,15 +169,16 @@ const LandingPage = () => {
               ))}
             </div>
 
-            {/* Auth Buttons */}
-            <div className="space-x-6 relative">
+            {/* Auth Buttons Desktop */}
+            <div className="hidden md:flex space-x-6 relative items-center">
               <motion.div className="relative inline-block">
                 <motion.button 
                   whileHover={{ scale: 1.05 }} 
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowRoleMenu(showRoleMenu === 'signin' ? null : 'signin')}
                   className="px-5 py-2 bg-white font-semibold rounded-lg transition-all duration-300 
-                           shadow-md hover:shadow-xl hover:bg-[#1b68b3] hover:text-white"
+                           shadow-md border-2 border-[#1b68b3] text-[#1b68b3] 
+hover:bg-[#1b68b3] hover:text-white hover:border-white"
                   style={{ color: "#1b68b3" }}
                 >
                   Sign In
@@ -205,10 +204,8 @@ const LandingPage = () => {
         >
           <span className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center
                        group-hover:bg-white/20 transition-colors">
-            {index === 0 && <Award className="w-4 h-4 text-white" />}
-            {index === 1 && <Users className="w-4 h-4 text-white" />}
-            {index === 2 && <GraduationCap className="w-4 h-4 text-white" />}
-            {index === 3 && <BookOpen className="w-4 h-4 text-white" />}
+            {index === 0 && <GraduationCap className="w-4 h-4 text-white" />}
+            {index === 1 && <BookOpen className="w-4 h-4 text-white" />}
           </span>
           <div>
             <p className="font-medium text-white">
@@ -231,11 +228,148 @@ const LandingPage = () => {
                 onClick={() => navigate('/sub-admin/register')}
                 style={{ backgroundColor: "#1b68b3" }}
                 className="px-5 py-2 text-white font-semibold rounded-lg transition-all duration-300 
-                         shadow-md hover:shadow-xl border-2 border-white/20"
+                         shadow-md hover:shadow-xl border-2 border-white/20 bg-[#1b68b3]
+                         hover:bg-blue-700"
               >
                 Sign Up
               </motion.button>
             </div>
+
+            {/* Mobile Menu Button */}
+            <div className="md:hidden flex items-center">
+              <button 
+                onClick={() => setShowRoleMenu(showRoleMenu === 'menu' ? null : 'menu')}
+                className="text-white focus:outline-none hover:bg-blue-700 p-2 rounded-lg transition-colors"
+              >
+                <svg 
+                  className="w-6 h-6" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24" 
+                >
+                  {showRoleMenu === 'menu' ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
+            </div>
+
+            {/* Overlay */}
+            {showRoleMenu === 'menu' && (
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+                onClick={() => setShowRoleMenu(null)}
+              />
+            )}
+
+            {/* Mobile Sidebar Menu */}
+            <motion.div 
+              initial={{ x: '-100%' }}
+              animate={{ x: showRoleMenu === 'menu' ? 0 : '-100%' }}
+              transition={{ type: "tween", duration: 0.3 }}
+              style={{ backgroundColor: "#1b68b3" }}
+              className={`fixed top-0 left-0 h-full w-72  shadow-xl z-50 md:hidden
+                        transform transition-transform duration-300 ease-in-out ${
+                          showRoleMenu === 'menu' ? 'translate-x-0' : '-translate-x-full'
+                        }`}
+            >
+              {/* Mobile Menu Header */}
+              <div className="flex items-center justify-between p-4 border-b border-blue-400">
+                <h2 className="text-xl font-bold text-white">Menu</h2>
+                <button 
+                  onClick={() => setShowRoleMenu(null)}
+                  className="text-white hover:bg-blue-700/50 p-2 rounded-lg transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Mobile Menu Links */}
+              <div className="py-4">
+                <div className="px-4 py-2 space-y-1">
+                  {navLinks.map((link, index) => (
+                    <motion.a
+                      key={index}
+                      href={link.href}
+                      className="flex items-center space-x-3 px-4 py-3 text-white hover:bg-blue-700 rounded-lg
+                              transition-colors duration-200 group"
+                      whileHover={{ x: 4 }}
+                      onClick={() => setShowRoleMenu(null)}
+                    >
+                      <span className="text-white group-hover:text-blue-100">
+                        {link.icon}
+                      </span>
+                      <span className="group-hover:text-blue-100 font-medium">{link.label}</span>
+                    </motion.a>
+                  ))}
+                </div>
+              </div>
+
+                {/* Mobile Auth Buttons */}
+                <div className="px-6 py-4 space-y-3 border-t border-blue-400 mt-4">
+  <button
+    onClick={() => {
+      setShowRoleMenu('signin');
+    }}
+    
+    style={{
+      color: "#1b68b3",
+      backgroundColor: "white",
+      border: "2px solid #1b68b3",
+      fontWeight: "600",
+      padding: "12px 16px",
+      width: "100%",
+      borderRadius: "8px",
+      transition: "all 0.2s",
+      boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
+    }}
+    onMouseEnter={(e) => {
+      e.target.style.backgroundColor = "#1b68b3";
+      e.target.style.color = "white";
+    }}
+    onMouseLeave={(e) => {
+      e.target.style.backgroundColor = "white";
+      e.target.style.color = "#1b68b3";
+    }}
+  >
+    Sign In
+  </button>
+  <button
+    onClick={() => {
+      setShowRoleMenu(null);
+      navigate('/sub-admin/register');
+    }}
+    style={{
+      color: "#1b68b3",
+      backgroundColor: "white",
+      border: "2px solid #1b68b3",
+      fontWeight: "600",
+      padding: "12px 16px",
+      width: "100%",
+      borderRadius: "8px",
+      transition: "all 0.2s",
+      boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
+    }}
+    onMouseEnter={(e) => {
+      e.target.style.backgroundColor = "#1b68b3";
+      e.target.style.color = "white";
+    }}
+    onMouseLeave={(e) => {
+      e.target.style.backgroundColor = "white";
+      e.target.style.color = "#1b68b3";
+    }}
+  >
+    Sign Up
+  </button>
+</div>
+
+
+            </motion.div>
+
           </div>
         </motion.nav>
 
@@ -255,7 +389,7 @@ const LandingPage = () => {
                   Transform Your <span style={{ color: "#1b68b3" }}>Educational</span> Experience Today
                 </h1>
                 <p className="text-xl text-gray-700 mb-12">
-                  Join the next generation of smart learning with modern tools and real-time collaboration.
+                  Join the next generation of smart learning with modern tools. Click "Get Started" to register your institute and begin your journey with us.
                 </p>
                 <div className="flex justify-center md:justify-start space-x-6">
                   <motion.button 
