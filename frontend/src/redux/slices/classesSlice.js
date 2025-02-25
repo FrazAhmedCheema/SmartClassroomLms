@@ -18,7 +18,7 @@ export const fetchClasses = createAsyncThunk(
       });
       if (response.ok) {
         const data = await response.json();
-        console.log('Fetched classes:', data);
+        console.log('Fetched classes:', data.classes);
         
         const classesWithImages = data.classes.map((cls, index) => ({
           ...cls,
@@ -47,14 +47,17 @@ const classesSlice = createSlice({
     builder
       .addCase(fetchClasses.pending, (state) => {
         state.status = 'loading';
+        console.log('Fetching classes...');
       })
       .addCase(fetchClasses.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.classes = action.payload;
+        console.log('Classes fetched successfully:', action.payload);
       })
       .addCase(fetchClasses.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
+        console.error('Failed to fetch classes:', action.payload);
       });
   },
 });

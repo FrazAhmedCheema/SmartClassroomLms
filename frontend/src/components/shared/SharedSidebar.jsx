@@ -16,6 +16,8 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
   const baseRoute = userRole.toLowerCase();
   const [isClassesOpen, setIsClassesOpen] = useState(true);
 
+  console.log('Classes in SharedSidebar:', classes);
+
   // Only home route is implemented for now
   const implementedRoutes = [`/${baseRoute}/home`];
 
@@ -39,9 +41,9 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
       title: 'Enrolled Classes', 
       isDropdown: true,
       children: classes.map(cls => ({
-        title: cls.name,
-        path: `/${baseRoute}/classes/${cls.id}`,
-        initial: cls.name.charAt(0).toUpperCase()
+        title: cls.className,
+        path: `/${baseRoute}/classes/${cls._id}`,
+        initial: cls.className ? cls.className.charAt(0).toUpperCase() : '?'
       }))
     },
     { type: 'divider' },

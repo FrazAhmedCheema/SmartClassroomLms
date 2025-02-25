@@ -6,6 +6,8 @@ import { selectClasses } from '../../redux/slices/classesSlice';
 const TeacherSidebar = ({ isOpen, toggle, isMobile }) => {
   const classes = useSelector(selectClasses);
 
+  console.log('Classes in TeacherSidebar:', classes);
+
   return (
     <SharedSidebar 
       isOpen={isOpen} 
