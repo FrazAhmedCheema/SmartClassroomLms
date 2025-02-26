@@ -96,4 +96,7 @@ const enrolledClassesSlice = createSlice({
   },
 });
 
+// Add this selector before the export default
+export const selectEnrolledClasses = (state) => state.enrolledClasses.classes;
+
 export default enrolledClassesSlice.reducer;

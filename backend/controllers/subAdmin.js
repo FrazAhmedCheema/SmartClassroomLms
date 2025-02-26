@@ -1,5 +1,6 @@
 const Student = require('../models/student');
 const Teacher = require('../models/teacher');
+const Class = require('../models/Class');
 const Institute = require('../models/InstituteRequest');
 const Notification = require('../models/Notification');
 const bcrypt = require('bcrypt');
@@ -594,4 +595,103 @@ exports.login = async (req, res) => {
 exports.logout = (req, res) => {
     res.clearCookie('subAdminToken'); // Clear the HTTP-only cookie
     res.status(401).json({ msg: 'Logged out successfully' });
+};
+
+// Get all classes controller
+exports.getAllClasses = async (req, res) => {
+    try {
+        const classes = await Class.find()
+            .populate({
+                path: 'teacherId',
+                model: 'Teacher',
+                select: 'name email'
+            });
+
+        const classesWithTeacher = classes.map(cls => ({
+            _id: cls._id,
+            classId: cls.classId,
+            className: cls.className,
+            section: cls.section,
+            classCode: cls.classCode,
+            teacher: cls.teacherId ? {
+                name: cls.teacherId.name,
+                email: cls.teacherId.email
+            } : null,
+            students: cls.students,
+            createdAt: cls.createdAt
+        }));
+
+        res.status(200).json({
+            success: true,
+            classes: classesWithTeacher
+        });
+    } catch (error) {
+        console.error('Error fetching classes:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching classes',
+            error: error.message
+        });
+    }
+};
+
+// Get class details controller
+exports.getClassDetails = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const classDetails = await Class.find({ classId: id })
+            .populate({
+                path: 'teacherId',
+                model: 'Teacher',
+                select: 'name email'
+            })
+            .populate({
+                path: 'students',
+                model: 'Student',
+                select: 'name email registrationId'
+            });
+
+        if (!classDetails || classDetails.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Class not found'
+            });
+        }
+
+        // Since find() returns an array, we take the first element
+        const classData = classDetails[0];
+        console.log('classData:', classData);
+
+        const formattedClass = {
+            _id: classData._id,
+            classId: classData.classId,
+            className: classData.className,
+            section: classData.section,
+            classCode: classData.classCode,
+            teacher: classData.teacherId ? {
+                name: classData.teacherId.name,
+                email: classData.teacherId.email
+            } : null,
+            students: Array.isArray(classData.students) ? classData.students.map(student => ({
+                _id: student._id,
+                rollNo: student.registrationId,
+                name: student.name,
+                email: student.email
+            })) : [],
+            createdAt: classData.createdAt
+        };
+
+        res.status(200).json({
+            success: true,
+            class: formattedClass
+        });
+    } catch (error) {
+        console.error('Error fetching class details:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching class details',
+            error: error.message
+        });
+    }
 };

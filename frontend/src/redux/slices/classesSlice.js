@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
+import { useNavigate } from 'react-router-dom';
 
 const coverImages = [
   'https://gstatic.com/classroom/themes/img_code.jpg',
@@ -8,8 +9,10 @@ const coverImages = [
 ];
 
 export const fetchClasses = createAsyncThunk(
+
   'classes/fetchClasses',
   async (_, { getState, rejectWithValue }) => {
+    const navigate = useNavigate();
     const { teacherId } = getState().teacher;
     try {
       const response = await fetch('http://localhost:8080/teacher/classes', {
@@ -25,10 +28,12 @@ export const fetchClasses = createAsyncThunk(
         }));
         return classesWithImages;
       } else {
+        navigate('/teacher/login');
         const errorData = await response.json();
         return rejectWithValue(errorData);
       }
     } catch (error) {
+
       return rejectWithValue(error.message);
     }
   }
