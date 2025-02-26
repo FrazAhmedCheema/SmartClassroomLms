@@ -20,7 +20,7 @@ export const checkStudentAuthStatus = createAsyncThunk(
   }
 );
 
-export const studentLogoutThunk = createAsyncThunk(
+export const studentLogout = createAsyncThunk(
   'student/logout',
   async (_, { rejectWithValue }) => {
     try {
@@ -28,12 +28,8 @@ export const studentLogoutThunk = createAsyncThunk(
         method: 'POST',
         credentials: 'include',
       });
-      if (response.ok) {
-        return true;
-      } else {
-        const errorData = await response.json();
-        return rejectWithValue(errorData);
-      }
+      if (!response.ok) throw new Error('Logout failed');
+      return null;
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -63,32 +59,39 @@ const studentSlice = createSlice({
       state.studentId = null;
       state.loading = false;
       state.error = action.payload;
-    },
-    studentLogout: (state) => {
-      state.isAuthenticated = false;
-      state.studentId = null;
-      state.loading = false;
-      state.error = null;
     }
   },
   extraReducers: (builder) => {
     builder
       .addCase(checkStudentAuthStatus.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(checkStudentAuthStatus.fulfilled, (state, action) => {
         state.loading = false;
         state.isAuthenticated = true;
         state.studentId = action.payload.studentId;
+        state.error = null;
       })
       .addCase(checkStudentAuthStatus.rejected, (state, action) => {
         state.loading = false;
         state.isAuthenticated = false;
+        state.studentId = null;
         state.error = action.payload;
       })
-      .addCase(studentLogoutThunk.fulfilled, (state) => {
+      .addCase(studentLogout.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(studentLogout.fulfilled, (state) => {
         state.isAuthenticated = false;
+        state.loading = false;
         state.studentId = null;
+        state.error = null;
+      })
+      .addCase(studentLogout.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });
@@ -96,8 +99,7 @@ const studentSlice = createSlice({
 export const {
   setStudentLoading,
   setStudentSuccess,
-  setStudentFailure,
-  studentLogout
+  setStudentFailure
 } = studentSlice.actions;
 
 export default studentSlice.reducer;

@@ -42,14 +42,15 @@ const TeacherLogin = () => {
         const data = await response.json();
         if (response.ok) {
           await dispatch(checkAuthStatus()).unwrap();
-          navigate('/teacher/home');
         } else {
           setShowError(true);
         }
       } catch (error) {
+
         setShowError(true);
       }
     } else {
+
       setShowError(true);
     }
   };

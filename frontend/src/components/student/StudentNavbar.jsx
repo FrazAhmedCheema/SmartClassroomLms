@@ -1,19 +1,17 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { studentLogout } from '../../redux/slices/studentSlice';
 import SharedNavbar from '../shared/SharedNavbar';
 
 const StudentNavbar = (props) => {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('http://localhost:8080/student/logout', {
-        method: 'POST',
-        credentials: 'include'
-      });
-      if (response.ok) {
-        navigate('/student/login');
-      }
+      await dispatch(studentLogout()).unwrap();
+      navigate('/student/login');
     } catch (error) {
       console.error('Logout failed:', error);
     }

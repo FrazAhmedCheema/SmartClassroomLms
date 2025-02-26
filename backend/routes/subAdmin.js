@@ -22,6 +22,12 @@ router.get('/teachers', authorizeSubAdmin, subAdminController.getTeachers);
 router.put('/edit-teacher/:id', authorizeSubAdmin, subAdminController.editTeacher);
 router.delete('/delete-teacher/:id', authorizeSubAdmin, subAdminController.deleteTeacher);
 
+// Classes route
+router.get('/classes', authorizeSubAdmin, subAdminController.getAllClasses);
+
+// Class details route
+router.get('/classes/:id', authorizeSubAdmin, subAdminController.getClassDetails);
+
 // Login route
 router.post('/login', subAdminController.login);
 router.post('/logout', authorizeSubAdmin, subAdminController.logout);
