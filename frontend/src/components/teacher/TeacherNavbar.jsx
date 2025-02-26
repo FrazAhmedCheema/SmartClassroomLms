@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { teacherLogout } from '../../state/teacher/teacherSlice';
+import { teacherLogout } from '../../redux/slices/teacherSlice';
 import SharedNavbar from '../shared/SharedNavbar';
 
 const TeacherNavbar = (props) => {
