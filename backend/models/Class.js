@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
+const AutoIncrement = require('mongoose-sequence')(mongoose);
 
 const classSchema = new mongoose.Schema({
+    classId: Number,  // This will be auto-incremented
     className: {
         type: String,
         required: true
@@ -28,5 +30,7 @@ const classSchema = new mongoose.Schema({
         default: Date.now
     }
 });
+
+classSchema.plugin(AutoIncrement, { inc_field: 'classId' });
 
 module.exports = mongoose.model('Class', classSchema);

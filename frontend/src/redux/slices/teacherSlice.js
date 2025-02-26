@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 export const checkAuthStatus = createAsyncThunk(
+
   'teacher/checkAuthStatus',
   async (_, { rejectWithValue }) => {
     try {
@@ -15,6 +16,7 @@ export const checkAuthStatus = createAsyncThunk(
         return rejectWithValue(errorData);
       }
     } catch (error) {
+
       return rejectWithValue(error.message);
     }
   }

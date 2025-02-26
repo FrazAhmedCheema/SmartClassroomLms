@@ -31,7 +31,7 @@ const studentController = {
             res.cookie('studentToken', token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
-                maxAge: 24 * 60 * 60 * 1000 // 1 day
+                maxAge: 60 * 60 * 1000 // 1 hr
             });
 
             res.json({
@@ -69,8 +69,7 @@ const studentController = {
     // Get enrolled classes
     getEnrolledClasses: async (req, res) => {
         try {
-            const student = await Student.findById(req.user.id)
-                .populate('enrolledClasses');
+            const student = await Student.findById(req.user.id);
 
             if (!student) {
                 return res.status(404).json({
@@ -80,22 +79,26 @@ const studentController = {
             }
 
             const enrolledClasses = await Class.find({ _id: { $in: student.enrolledClasses } })
-                .populate('teacherId', 'name email'); // Populate teacher information
+                .populate({
+                    path: 'teacherId',
+                    model: 'Teacher',
+                    select: 'name email'
+                });
 
             const classesWithTeacher = enrolledClasses.map(cls => ({
                 _id: cls._id,
+                classId: cls.classId,
                 className: cls.className,
                 section: cls.section,
                 classCode: cls.classCode,
-                teacher: {
+                teacher: cls.teacherId ? {
                     name: cls.teacherId.name,
                     email: cls.teacherId.email
-                },
+                } : null,
                 students: cls.students,
                 createdAt: cls.createdAt
             }));
 
-            console.log('Enrolled classes:', classesWithTeacher);
             res.json({ 
                 success: true,
                 enrolledClasses: classesWithTeacher 
@@ -110,7 +113,12 @@ const studentController = {
     joinClass: async (req, res) => {
         try {
             const { classCode } = req.body;
-            const classToJoin = await Class.findOne({ classCode });
+            const classToJoin = await Class.findOne({ classCode })
+                .populate({
+                    path: 'teacherId',
+                    model: 'Teacher',
+                    select: 'name email'
+                });
 
             if (!classToJoin) {
                 return res.status(404).json({ message: 'Class not found' });
@@ -130,7 +138,24 @@ const studentController = {
                 classToJoin.save()
             ]);
 
-            res.json({ message: 'Successfully joined the class', class: classToJoin });
+            const classWithTeacher = {
+                _id: classToJoin._id,
+                classId: classToJoin.classId,
+                className: classToJoin.className,
+                section: classToJoin.section,
+                classCode: classToJoin.classCode,
+                teacher: classToJoin.teacherId ? {
+                    name: classToJoin.teacherId.name,
+                    email: classToJoin.teacherId.email
+                } : null,
+                students: classToJoin.students,
+                createdAt: classToJoin.createdAt
+            };
+
+            res.json({ 
+                message: 'Successfully joined the class', 
+                class: classWithTeacher 
+            });
         } catch (error) {
             res.status(500).json({ message: 'Server error' });
         }

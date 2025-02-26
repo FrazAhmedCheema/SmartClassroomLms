@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, Users, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -7,41 +7,48 @@ import Swal from 'sweetalert2';
 const ClassDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-
-  // Define dummy data directly in component for testing
-  const classData = {
-    id: parseInt(id),
-    name: 'Math 101',
-    description: 'Introduction to Mathematics',
-    startDate: '2024-01-15',
-    room: 'Room 101',
-    teacher: {
-      name: 'John Doe',
-      email: 'john.doe@example.com',
-      expertise: 'Mathematics',
-      qualification: 'PhD in Mathematics',
-      experience: '10 years'
-    },
-    schedule: 'Monday 10:00 AM - 12:00 PM',
-    totalStudents: 30,
-    students: [
-      { id: 1, rollNo: '001', name: 'Alice Smith', email: 'alice@example.com', status: 'active' },
-      { id: 2, rollNo: '002', name: 'Bob Johnson', email: 'bob@example.com', status: 'inactive' }
-    ]
-  };
+  const [classData, setClassData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!classData) {
-      Swal.fire({
-        title: 'Error!',
-        text: 'Class not found',
-        icon: 'error',
-        confirmButtonText: 'Go Back'
-      }).then(() => {
-        navigate('/sub-admin/classes');
-      });
-    }
-  }, [classData, navigate]);
+    const fetchClassDetails = async () => {
+      try {
+        const response = await fetch(`http://localhost:8080/sub-admin/classes/${id}`, {
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch class details');
+        }
+
+        const data = await response.json();
+        console.log('Fetched class details:', data);
+        setClassData(data.class);
+      } catch (error) {
+        console.error('Error fetching class details:', error);
+        Swal.fire({
+          title: 'Error!',
+          text: 'Failed to load class details',
+          icon: 'error',
+          confirmButtonText: 'Go Back'
+        }).then(() => {
+          navigate('/sub-admin/classes');
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClassDetails();
+  }, [id, navigate]);
+
+  if (loading) {
+    return (
+      <div className="p-6 flex justify-center items-center h-screen">
+        <div className="text-[#1b68b3] text-xl">Loading class details...</div>
+      </div>
+    );
+  }
 
   if (!classData) return null;
 
@@ -65,62 +72,52 @@ const ClassDetails = () => {
         {/* Class Details Card */}
         <div className="bg-white rounded-xl shadow-md p-6">
           <h1 className="text-2xl md:text-3xl font-bold mb-6" style={{ color: '#1b68b3' }}>
-            {classData.name}
+            Class Information
           </h1>
           
           {/* Enhanced Class Header */}
           <div className="bg-white rounded-xl shadow-md p-8 mb-8 border border-blue-100
                           transform hover:scale-[1.01] transition-transform duration-300">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-800 to-blue-600 
-                          bg-clip-text text-transparent mb-3">{classData.name}</h1>
-            <p className="text-gray-600 mb-6 text-lg">{classData.description}</p>
-            <div className="grid grid-cols-4 gap-6">
+            <h1 className="text-4xl font-bold bg-gradient-to-r 
+                          bg-clip-text text-transparent mb-3" style={{ color: '#1b68b3' }}>{classData.className}</h1>
+            <div className="grid grid-cols-3 gap-6">
               {/* Class Info Cards */}
               <div className="bg-blue-50 rounded-xl p-4 hover:bg-blue-100 transition-colors">
                 <div className="flex items-center text-blue-800">
                   <Calendar className="w-5 h-5 mr-3" />
-                  <span className="font-medium">Start Date</span>
+                  <span className="font-medium" >Section</span>
                 </div>
-                <p className="mt-2 text-gray-700">{classData.startDate}</p>
+                <p className="mt-2 text-gray-700">{classData.section}</p>
               </div>
               <div className="bg-blue-50 rounded-xl p-4 hover:bg-blue-100 transition-colors">
                 <div className="flex items-center text-blue-800">
                   <Clock className="w-5 h-5 mr-3" />
-                  <span className="font-medium">Schedule</span>
+                  <span className="font-medium">Class Code</span>
                 </div>
-                <p className="mt-2 text-gray-700">{classData.schedule}</p>
+                <p className="mt-2 text-gray-700">{classData.classCode}</p>
               </div>
               <div className="bg-blue-50 rounded-xl p-4 hover:bg-blue-100 transition-colors">
                 <div className="flex items-center text-blue-800">
                   <Users className="w-5 h-5 mr-3" />
                   <span className="font-medium">Total Students</span>
                 </div>
-                <p className="mt-2 text-gray-700">{classData.totalStudents} Students</p>
-              </div>
-              <div className="bg-blue-50 rounded-xl p-4 hover:bg-blue-100 transition-colors">
-                <div className="flex items-center text-blue-800">
-                  <BookOpen className="w-5 h-5 mr-3" />
-                  <span className="font-medium">Room</span>
-                </div>
-                <p className="mt-2 text-gray-700">{classData.room}</p>
+                <p className="mt-2 text-gray-700">{classData.students?.length || 0} Students</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Teacher Information Card */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="bg-white rounded-xl shadow-md p-6"
-        >
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-800 to-blue-600 
-                        bg-clip-text text-transparent mb-4">Teacher Information</h2>
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6">
-            <div className="grid grid-cols-2 gap-4">
-              {/* ... rest of the teacher information section ... */}
+        {classData.teacher && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white rounded-xl shadow-md p-6"
+          >
+            <h2 className="text-3xl font-bold bg-gradient-to-r
+                          bg-clip-text text-transparent mb-4" style={{ color: '#1b68b3' }}>Teacher Information</h2>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6">
               <div className="space-y-4">
-                {/* Teacher Info Items */}
                 <div className="transform hover:scale-102 transition-transform">
                   <p className="text-xs font-semibold text-blue-900 mb-1 uppercase tracking-wider">Name</p>
                   <p className="text-sm font-medium text-gray-800 bg-white/50 p-2 rounded-md shadow-sm">
@@ -133,30 +130,10 @@ const ClassDetails = () => {
                     {classData.teacher.email}
                   </p>
                 </div>
-                <div className="transform hover:scale-102 transition-transform">
-                  <p className="text-xs font-semibold text-blue-900 mb-1 uppercase tracking-wider">Expertise</p>
-                  <p className="text-sm font-medium text-gray-800 bg-white/50 p-2 rounded-md shadow-sm">
-                    {classData.teacher.expertise}
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div className="transform hover:scale-102 transition-transform">
-                  <p className="text-xs font-semibold text-blue-900 mb-1 uppercase tracking-wider">Qualification</p>
-                  <p className="text-sm font-medium text-gray-800 bg-white/50 p-2 rounded-md shadow-sm">
-                    {classData.teacher.qualification}
-                  </p>
-                </div>
-                <div className="transform hover:scale-102 transition-transform">
-                  <p className="text-xs font-semibold text-blue-900 mb-1 uppercase tracking-wider">Experience</p>
-                  <p className="text-sm font-medium text-gray-800 bg-white/50 p-2 rounded-md shadow-sm">
-                    {classData.teacher.experience}
-                  </p>
-                </div>
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
 
         {/* Students List Card */}
         <motion.div
@@ -164,8 +141,8 @@ const ClassDetails = () => {
           animate={{ opacity: 1 }}
           className="bg-white rounded-xl shadow-md p-6"
         >
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-800 to-blue-600 
-                        bg-clip-text text-transparent mb-6">Enrolled Students</h2>
+          <h2 className="text-3xl font-bold bg-gradient-to-r
+                        bg-clip-text text-transparent mb-6" style={{ color: '#1b68b3' }}>Enrolled Students</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
@@ -179,14 +156,11 @@ const ClassDetails = () => {
                   <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">
                     Email
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">
-                    Status
-                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {classData.students.map((student) => (
-                  <tr key={student.id} 
+                {classData.students && classData.students.map((student) => (
+                  <tr key={student._id} 
                       className="hover:bg-blue-50/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{student.rollNo}</div>
@@ -197,19 +171,16 @@ const ClassDetails = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-700">{student.email}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        student.status === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {student.status}
-                      </span>
-                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            
+            {(!classData.students || classData.students.length === 0) && (
+              <div className="text-center text-gray-500 py-8">
+                No students enrolled in this class.
+              </div>
+            )}
           </div>
         </motion.div>
       </motion.div>

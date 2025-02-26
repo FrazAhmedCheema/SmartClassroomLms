@@ -36,10 +36,29 @@ exports.createClass = async (req, res) => {
         // Add the new class to the teacher's classes array
         await Teacher.findByIdAndUpdate(teacherId, { $push: { classes: newClass._id } });
 
+        // Fetch the saved class to get the auto-generated classId
+        const savedClass = await Class.findById(newClass._id)
+            .populate({
+                path: 'teacherId',
+                select: 'name email'
+            });
+
         res.status(201).json({
             success: true,
             message: 'Class created successfully',
-            data: newClass
+            data: {
+                _id: savedClass._id,
+                classId: savedClass.classId,
+                className: savedClass.className,
+                section: savedClass.section,
+                classCode: savedClass.classCode,
+                teacher: savedClass.teacherId ? {
+                    name: savedClass.teacherId.name,
+                    email: savedClass.teacherId.email
+                } : null,
+                students: savedClass.students,
+                createdAt: savedClass.createdAt
+            }
         });
     } catch (error) {
         res.status(500).json({
@@ -65,12 +84,29 @@ exports.getClasses = async (req, res) => {
             });
         }
 
-        const classes = await Class.find({ _id: { $in: teacher.classes } });
-        console.log('Classes:', classes);
+        const classes = await Class.find({ _id: { $in: teacher.classes } })
+            .populate({
+                path: 'teacherId',
+                select: 'name email'
+            });
+
+        const formattedClasses = classes.map(cls => ({
+            _id: cls._id,
+            classId: cls.classId,
+            className: cls.className,
+            section: cls.section,
+            classCode: cls.classCode,
+            teacher: cls.teacherId ? {
+                name: cls.teacherId.name,
+                email: cls.teacherId.email
+            } : null,
+            students: cls.students,
+            createdAt: cls.createdAt
+        }));
 
         res.status(200).json({
             success: true,
-            classes
+            classes: formattedClasses
         });
     } catch (error) {
         console.error('Error fetching classes:', error);

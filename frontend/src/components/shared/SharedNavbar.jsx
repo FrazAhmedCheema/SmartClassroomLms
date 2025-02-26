@@ -35,14 +35,13 @@ const SharedNavbar = ({ toggleSidebar, isSidebarOpen, isMobile, userRole, onLogo
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          await dispatch(logout()).unwrap();
+          await onLogout();
           Swal.fire({
             title: 'Logged out!',
             text: 'You have been logged out successfully.',
             icon: 'success',
             confirmButtonColor: '#1b68b3',
           });
-          navigate('/teacher/login');
         } catch (error) {
           console.error('Error logging out:', error);
           Swal.fire({

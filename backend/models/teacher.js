@@ -10,8 +10,10 @@ const TeacherSchema = new mongoose.Schema({
     role: { type: String, required: true }, // Role field added
     instituteId: { type: mongoose.Schema.Types.ObjectId, ref: 'Institute', required: true }, // Institute reference added
     classes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Class' }] // Classes array added
+}, {
+    timestamps: true
 });
 
 TeacherSchema.plugin(AutoIncrement, { inc_field: 'teacherId' });
 
-module.exports = mongoose.model('teacher', TeacherSchema);
+module.exports = mongoose.model('Teacher', TeacherSchema);

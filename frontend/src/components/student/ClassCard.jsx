@@ -1,5 +1,5 @@
 import React from 'react';
-import { MoreVertical, Users } from 'lucide-react';
+import { MoreVertical, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const ClassCard = ({ cls }) => {
@@ -8,9 +8,11 @@ const ClassCard = ({ cls }) => {
     className, 
     section,
     subject,
-    teacherName,
+
     coverImage
   } = cls;
+  const teacherName = cls.teacher.name;
+  console.log('cls', cls.teacher.name);
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -43,8 +45,8 @@ const ClassCard = ({ cls }) => {
       {/* Footer */}
       <div className="px-6 py-4 border-t flex items-center justify-between bg-gray-50">
         <div className="flex items-center text-gray-600">
-          <Users size={18} className="mr-2" />
-          <span className="text-sm font-medium">Teacher: {teacherName}</span>
+          <User size={18} className="mr-2" />
+          <span className="text-sm font-medium">{teacherName}</span>
         </div>
         <Link 
           to={`/student/class/${_id}`}
