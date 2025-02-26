@@ -1,30 +1,30 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
-export const checkAuthStatus = createAsyncThunk(
-  'teacher/checkAuthStatus',
+export const checkStudentAuthStatus = createAsyncThunk(
+  'student/checkAuthStatus',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetch('http://localhost:8080/teacher/auth-status', {
+      const response = await fetch('http://localhost:8080/student/auth-status', {
         credentials: 'include',
       });
-      if (response.ok) {
-        const data = await response.json();
-        return data;
-      } else {
-        const errorData = await response.json();
-        return rejectWithValue(errorData);
+      
+      if (!response.ok) {
+        throw new Error('Authentication failed');
       }
+      
+      const data = await response.json();
+      return data;
     } catch (error) {
       return rejectWithValue(error.message);
     }
   }
 );
 
-export const logout = createAsyncThunk(
-  'teacher/logout',
+export const studentLogoutThunk = createAsyncThunk(
+  'student/logout',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetch('http://localhost:8080/teacher/logout', {
+      const response = await fetch('http://localhost:8080/student/logout', {
         method: 'POST',
         credentials: 'include',
       });
@@ -40,64 +40,64 @@ export const logout = createAsyncThunk(
   }
 );
 
-const teacherSlice = createSlice({
-  name: 'teacher',
+const studentSlice = createSlice({
+  name: 'student',
   initialState: {
     isAuthenticated: false,
     loading: true,
-    teacherId: null,
+    studentId: null,
     error: null,
   },
   reducers: {
-    setTeacherLoading: (state) => {
+    setStudentLoading: (state) => {
       state.loading = true;
     },
-    setTeacherSuccess: (state, action) => {
+    setStudentSuccess: (state, action) => {
       state.isAuthenticated = true;
-      state.teacherId = action.payload;
+      state.studentId = action.payload;
       state.loading = false;
       state.error = null;
     },
-    setTeacherFailure: (state, action) => {
+    setStudentFailure: (state, action) => {
       state.isAuthenticated = false;
-      state.teacherId = null;
+      state.studentId = null;
       state.loading = false;
       state.error = action.payload;
     },
-    teacherLogout: (state) => {
+    studentLogout: (state) => {
       state.isAuthenticated = false;
-      state.teacherId = null;
+      state.studentId = null;
       state.loading = false;
       state.error = null;
     }
   },
   extraReducers: (builder) => {
     builder
-      .addCase(checkAuthStatus.pending, (state) => {
+      .addCase(checkStudentAuthStatus.pending, (state) => {
         state.loading = true;
       })
-      .addCase(checkAuthStatus.fulfilled, (state, action) => {
+      .addCase(checkStudentAuthStatus.fulfilled, (state, action) => {
         state.loading = false;
         state.isAuthenticated = true;
-        state.teacherId = action.payload.teacherId;
+        state.studentId = action.payload.studentId;
       })
-      .addCase(checkAuthStatus.rejected, (state, action) => {
+      .addCase(checkStudentAuthStatus.rejected, (state, action) => {
         state.loading = false;
         state.isAuthenticated = false;
         state.error = action.payload;
       })
-      .addCase(logout.fulfilled, (state) => {
+      .addCase(studentLogoutThunk.fulfilled, (state) => {
         state.isAuthenticated = false;
-        state.teacherId = null;
+        state.studentId = null;
       });
   },
 });
 
 export const {
-  setTeacherLoading,
-  setTeacherSuccess,
-  setTeacherFailure,
-  teacherLogout
-} = teacherSlice.actions;
+  setStudentLoading,
+  setStudentSuccess,
+  setStudentFailure,
+  studentLogout
+} = studentSlice.actions;
 
-export default teacherSlice.reducer;
+export default studentSlice.reducer;

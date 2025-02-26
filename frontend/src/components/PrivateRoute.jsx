@@ -1,8 +1,14 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { useMemo } from 'react';
 
-const PrivateRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useSelector((state) => state.teacher);
+const PrivateRoute = ({ children, isAuthenticated, redirectPath }) => {
+  const location = useLocation();
+  const isTeacherRoute = location.pathname.includes('/teacher');
+
+  const loading = useSelector((state) => 
+    isTeacherRoute ? state.teacher.loading : state.student.loading
+  );
 
   if (loading) {
     return (
@@ -13,7 +19,7 @@ const PrivateRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/teacher/login" />;
+    return <Navigate to={redirectPath} replace />;
   }
 
   return children;

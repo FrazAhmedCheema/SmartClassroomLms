@@ -21,9 +21,11 @@ import TeacherDashboard from './screens/teacher/TeacherDashboard';
 import StudentDashboard from './screens/student/StudentDashboard';
 import TeacherLogin from './screens/teacher/TeacherLogin';
 import PrivateRoute from './components/PrivateRoute';
+import StudentLogin from './screens/student/StudentLogin';
 
 const AppRoutes = () => {
-  const { isAuthenticated } = useSelector((state) => state.teacher);
+  const { isAuthenticated: isTeacherAuthenticated } = useSelector((state) => state.teacher);
+  const { isAuthenticated: isStudentAuthenticated } = useSelector((state) => state.student);
 
   return (
     <Routes>
@@ -52,26 +54,47 @@ const AppRoutes = () => {
       </Route>
 
       {/* Teacher Routes */}
-      <Route path="/teacher/login" element={
-        isAuthenticated ? <Navigate to="/teacher/home" /> : <TeacherLogin />
-      } />
-      <Route path="/teacher" element={
-        <PrivateRoute>
-          <TeacherLayout />
-        </PrivateRoute>
-      }>
-        <Route index element={<Navigate to="home" replace />} />
-        <Route path="home" element={<TeacherDashboard />} />
+      <Route path="/teacher">
+        <Route path="login" element={
+          isTeacherAuthenticated 
+            ? <Navigate to="/teacher/home" replace /> 
+            : <TeacherLogin />
+        } />
+        <Route element={
+          <PrivateRoute 
+            isAuthenticated={isTeacherAuthenticated} 
+            redirectPath="/teacher/login"
+          >
+            <TeacherLayout />
+          </PrivateRoute>
+        }>
+          <Route index element={<Navigate to="home" replace />} />
+          <Route path="home" element={<TeacherDashboard />} />
+        </Route>
       </Route>
 
-      {/* Student Routes - Fixed Nesting */}
-      <Route path="/student" element={<StudentLayout />}>
-        <Route index element={<Navigate to="home" replace />} />
-        <Route path="home" element={<StudentDashboard />} />
+      {/* Student Routes */}
+      <Route path="/student">
+        <Route path="login" element={
+          isStudentAuthenticated 
+            ? <Navigate to="/student/home" replace /> 
+            : <StudentLogin />
+        } />
+        <Route element={
+          <PrivateRoute 
+            isAuthenticated={isStudentAuthenticated} 
+            redirectPath="/student/login"
+          >
+            <StudentLayout />
+          </PrivateRoute>
+        }>
+          <Route index element={<Navigate to="home" replace />} />
+          <Route path="home" element={<StudentDashboard />} />
+        </Route>
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };

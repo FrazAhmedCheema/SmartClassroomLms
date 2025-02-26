@@ -38,7 +38,7 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
     { icon: CheckSquare, title: 'To-do Work', path: `/${baseRoute}/todos` },
     { 
       icon: BookOpen, 
-      title: 'Enrolled Classes', 
+      title: userRole === 'Teacher' ? 'Teaching' : 'Enrolled Classes', 
       isDropdown: true,
       children: classes.map(cls => ({
         title: cls.className,
