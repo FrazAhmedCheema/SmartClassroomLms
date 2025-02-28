@@ -84,6 +84,56 @@ button:focus-visible {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 8px #2563eb, 0 0 15px rgba(37, 99, 235, 0.2);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 12px #2563eb, 0 0 20px rgba(37, 99, 235, 0.4);
+    transform: scale(1.05);
+  }
+  100% {
+    box-shadow: 0 0 8px #2563eb, 0 0 15px rgba(37, 99, 235, 0.2);
+    transform: scale(1);
+  }
+}
+
+.step-glow {
+  animation: glow 2s ease-in-out infinite;
+  background: linear-gradient(45deg, #2563eb, #3b82f6);
+  transition: all 0.7s ease-in-out;
+}
+
+@keyframes shine {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+    opacity: 0.2;
+  }
+  100% {
+    transform: translate(50%, 50%) rotate(45deg);
+    opacity: 0.1;
+  }
+}
+
+.step-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.step-shine::after {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  animation: shine 3s linear infinite;
+  transition: all 0.7s ease-in-out;
+}
 
 @media (prefers-color-scheme: light) {
   :root {

@@ -377,7 +377,7 @@ hover:bg-[#1b68b3] hover:text-white hover:border-white"
         <main>
           {/* Home Section */}
           <section id="home" className="min-h-screen flex items-center">
-            <div className="max-w-7xl mx-auto px-8 py-24 flex flex-col md:flex-row items-center gap-12">
+            <div className="max-w-7xl mx-auto px-8 py-16 flex flex-col md:flex-row items-center gap-12">
               {/* Hero Section */}
               <motion.div 
                 initial={{ x: -50, opacity: 0 }} 
@@ -469,12 +469,12 @@ hover:bg-[#1b68b3] hover:text-white hover:border-white"
           </section>
 
           {/* About Section */}
-          <section id="about" className="min-h-screen py-24">
+          <section id="about" className="min-h-screen py-16">
             <motion.section 
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
-              className="py-24 bg-gradient-to-br from-blue-50 to-white overflow-hidden relative"
+              className="py-16 bg-gradient-to-br from-blue-50 to-white overflow-hidden relative"
             >
               <div className="absolute inset-0 opacity-10">
                 <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -576,8 +576,176 @@ hover:bg-[#1b68b3] hover:text-white hover:border-white"
             </motion.section>
           </section>
 
+          {/* How It Works Section */}
+<section id="how-it-works" className="py-16 bg-gradient-to-br from-white to-blue-50 overflow-hidden relative">
+  <div className="absolute inset-0 opacity-10">
+    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="pattern2" width="100" height="100" patternUnits="userSpaceOnUse">
+          <path d="M0 0 L100 0 L100 100 L0 100 Z" fill="none" stroke="blue" strokeWidth="0.5" />
+          <circle cx="50" cy="50" r="10" fill="rgba(59, 130, 246, 0.1)" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#pattern2)" />
+    </svg>
+  </div>
+
+  <div className="max-w-7xl mx-auto px-8 relative z-10">
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8 }}
+      className="text-center mb-16"
+    >
+      <h2 className="text-4xl font-bold text-gray-900 mb-4">
+        How <span style={{ color: "#1b68b3" }}>It Works</span>
+      </h2>
+      <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+        SmartClassroom makes education management simple and effective with our intuitive platform
+      </p>
+    </motion.div>
+
+    {/* Steps */}
+    <div className="relative">
+      {/* Connection line */}
+      <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-1 bg-blue-200 transform -translate-x-1/2 z-0" 
+           style={{ backgroundColor: "#cce0f5" }}></div>
+
+      {/* Step 1 */}
+      <motion.div
+        initial={{ opacity: 0, x: -50 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, delay: 0.1 }}
+        className="flex flex-col md:flex-row items-center mb-16 relative z-10"
+      >
+        <div className="md:w-1/2 md:pr-12 mb-8 md:mb-0 md:text-right">
+          <h3 className="text-2xl font-bold text-gray-800 mb-3">Register Your Institution</h3>
+          <p className="text-gray-600">
+            Sign up as an administrator and create your institution's profile on our platform. Set up your branding, policies, and administrative preferences.
+          </p>
+        </div>
+        <div className="md:w-24 flex justify-center">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center z-20 shadow-xl"
+               style={{ backgroundColor: "#1b68b3" }}>
+            <span className="text-2xl font-bold text-white">1</span>
+          </div>
+        </div>
+        <div className="md:w-1/2 md:pl-12 flex justify-center md:justify-start">
+          <motion.div 
+            whileHover={{ scale: 1.05, rotate: 2 }}
+            className="bg-white p-4 rounded-xl shadow-lg w-64 h-64 flex items-center justify-center overflow-hidden">
+            <Users className="w-24 h-24" style={{ color: "#1b68b3" }} />
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Step 2 */}
+      <motion.div
+        initial={{ opacity: 0, x: 50 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+        className="flex flex-col md:flex-row-reverse items-center mb-16 relative z-10"
+      >
+        <div className="md:w-1/2 md:pl-12 mb-8 md:mb-0 md:text-left">
+          <h3 className="text-2xl font-bold text-gray-800 mb-3"> Add Teachers & Students</h3>
+          <p className="text-gray-600">
+          Easily add faculty members and students directly or via CSV upload. Manage teachers and students efficiently, and create virtual classrooms seamlessly.
+         </p>
+        </div>
+        <div className="md:w-24 flex justify-center">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center z-20 shadow-xl"
+               style={{ backgroundColor: "#1b68b3" }}>
+            <span className="text-2xl font-bold text-white">2</span>
+          </div>
+        </div>
+        <div className="md:w-1/2 md:pr-12 flex justify-center md:justify-end">
+          <motion.div 
+            whileHover={{ scale: 1.05, rotate: -2 }}
+            className="bg-white p-4 rounded-xl shadow-lg w-64 h-64 flex items-center justify-center overflow-hidden">
+            <Mail className="w-24 h-24" style={{ color: "#1b68b3" }} />
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Step 3 */}
+      <motion.div
+        initial={{ opacity: 0, x: -50 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+        className="flex flex-col md:flex-row items-center mb-16 relative z-10"
+      >
+        <div className="md:w-1/2 md:pr-12 mb-8 md:mb-0 md:text-right">
+          <h3 className="text-2xl font-bold text-gray-800 mb-3">Create & Share Content</h3>
+          <p className="text-gray-600">
+            Teachers can easily create lessons, assignments, quizzes, and resources. Our platform supports various content formats including video, documents, and interactive media.
+          </p>
+        </div>
+        <div className="md:w-24 flex justify-center">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center z-20 shadow-xl"
+               style={{ backgroundColor: "#1b68b3" }}>
+            <span className="text-2xl font-bold text-white">3</span>
+          </div>
+        </div>
+        <div className="md:w-1/2 md:pl-12 flex justify-center md:justify-start">
+          <motion.div 
+            whileHover={{ scale: 1.05, rotate: 2 }}
+            className="bg-white p-4 rounded-xl shadow-lg w-64 h-64 flex items-center justify-center overflow-hidden">
+            <BookOpen className="w-24 h-24" style={{ color: "#1b68b3" }} />
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Step 4 */}
+      <motion.div
+        initial={{ opacity: 0, x: 50 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
+        className="flex flex-col md:flex-row-reverse items-center relative z-10"
+      >
+        <div className="md:w-1/2 md:pl-12 mb-8 md:mb-0 md:text-left">
+          <h3 className="text-2xl font-bold text-gray-800 mb-3">Run & Execute Code</h3>
+          <p className="text-gray-600">
+          Students submit coding assignments directly on the platform where their code can be compiled and run instantly. The output is displayed within the system, allowing teachers to see results and  to review code execution without leaving the platform.          </p>
+        </div>
+        <div className="md:w-24 flex justify-center">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center z-20 shadow-xl"
+               style={{ backgroundColor: "#1b68b3" }}>
+            <span className="text-2xl font-bold text-white">4</span>
+          </div>
+        </div>
+        <div className="md:w-1/2 md:pr-12 flex justify-center md:justify-end">
+          <motion.div 
+            whileHover={{ scale: 1.05, rotate: -2 }}
+            className="bg-white p-4 rounded-xl shadow-lg w-64 h-64 flex items-center justify-center overflow-hidden">
+            <CheckCircle className="w-24 h-24" style={{ color: "#1b68b3" }} />
+          </motion.div>
+        </div>
+      </motion.div>
+    </div>
+
+    {/* CTA Button */}
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8, delay: 0.5 }}
+      className="text-center mt-16"
+    >
+      <motion.button 
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => navigate('/sub-admin/register')}
+        className="px-10 py-4 text-xl font-semibold text-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300"
+        style={{ backgroundColor: "#1b68b3" }}
+      >
+        Start Your Journey Today
+      </motion.button>
+      <p className="text-gray-600 mt-4">No credit card required. Get started in minutes.</p>
+    </motion.div>
+  </div>
+</section>
+
           {/* Help Section */}
-          <section id="help" className="py-12 bg-white"> {/* Changed min-h-screen to py-12 and removed extra padding */}
+          <section id="help" className="py-8 bg-white"> {/* Changed min-h-screen to py-12 and removed extra padding */}
             <div className="max-w-7xl mx-auto px-8">
               <motion.h2 
                 initial={{ opacity: 0 }}
@@ -625,12 +793,12 @@ hover:bg-[#1b68b3] hover:text-white hover:border-white"
           </section>
 
           {/* Contact Section */}
-          <section id="contact" className="min-h-screen py-24">
+          <section id="contact" className="min-h-screen py-16">
             <motion.section 
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
-              className="py-24 bg-gradient-to-br from-white to-blue-50 relative overflow-hidden"
+              className="py-16 bg-gradient-to-br from-white to-blue-50 relative overflow-hidden"
             >
               <div className="max-w-7xl mx-auto px-8 relative z-10">
                 <motion.h2 
