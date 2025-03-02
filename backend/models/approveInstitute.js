@@ -11,7 +11,10 @@ const approveInstituteSchema = new mongoose.Schema({
   domainName: { type: String, required: true },
   username: { type: String, required: true },
   password: { type: String, required: true },
-  status: { type: String, default: 'active' }
+  status: { type: String, default: 'active' },
+  students: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Student' }],
+  teachers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Teacher' }],
+  classes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Class' }]
 }, { timestamps: true });
 
 approveInstituteSchema.plugin(AutoIncrement, { inc_field: 'instituteId' });
