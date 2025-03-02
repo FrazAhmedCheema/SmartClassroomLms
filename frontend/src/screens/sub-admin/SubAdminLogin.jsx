@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -13,7 +13,42 @@ const SubAdminLogin = () => {
   const [errors, setErrors] = useState({});
   const [showError, setShowError] = useState(false);
   const [showPassword, setShowPassword] = useState(false); // State to toggle password visibility
-  const [isLoading, setIsLoading] = useState(false); // new loading state
+  const [isLoading, setIsLoading] = useState(true); // Set to true for initial auth check
+
+  // Check if sub-admin is already logged in when component mounts
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/sub-admin/check-auth', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        
+        // If response is OK, user is authenticated
+        if (response.ok) {
+          // Check if they have the username in localStorage as fallback
+          const subAdminUsername = localStorage.getItem('subAdminUsername');
+          if (subAdminUsername) {
+            navigate('/sub-admin/dashboard');
+            return;
+          }
+          
+          // If API confirms they're authenticated
+          const data = await response.json();
+          if (data.authenticated) {
+            navigate('/sub-admin/dashboard');
+          }
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        // If there's an error, we'll just continue showing the login page
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkAuthStatus();
+  }, [navigate]);
 
   const validate = (name, value) => {
     let error = '';
@@ -64,6 +99,19 @@ const SubAdminLogin = () => {
       alert(error.message || "Login failed. Please try again.");
     }
   };
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex justify-center items-center bg-gray-50">
+        <motion.div 
+          className="w-12 h-12 border-t-2 border-b-2 border-[#1b68b3] rounded-full"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">

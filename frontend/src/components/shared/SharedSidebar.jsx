@@ -42,7 +42,7 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
       isDropdown: true,
       children: classes.map(cls => ({
         title: cls.className,
-        path: `/${baseRoute}/classes/${cls._id}`,
+        path: `/${baseRoute}/class/${cls._id}`,
         initial: cls.className ? cls.className.charAt(0).toUpperCase() : '?'
       }))
     },
@@ -53,9 +53,14 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
   const CircleAvatar = ({ initial, isActive }) => (
     <div 
       className={`flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold
-        ${isActive ? 'bg-white/10 text-white border-2 border-white/20' : 'bg-white text-[#1b68b3]'}
-        shadow-md transition-all duration-300`}
-      style={{ minWidth: '2rem', aspectRatio: '1/1' }}
+        ${isActive ? 'text-white' : 'bg-white'} shadow-md transition-all duration-300`}
+      style={{ 
+        minWidth: '2rem', 
+        aspectRatio: '1/1',
+        backgroundColor: isActive ? 'rgba(255, 255, 255, 0.1)' : 'white',
+        color: isActive ? 'white' : '#1b68b3',
+        border: isActive ? '2px solid rgba(255, 255, 255, 0.2)' : 'none'
+      }}
     >
       {initial}
     </div>
@@ -105,23 +110,32 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
                 {/* Dropdown items */}
                 <div className={`space-y-1 mt-1 transition-all duration-200 overflow-hidden
                   ${isClassesOpen ? 'max-h-96' : 'max-h-0'}`}>
-                  {isOpen && item.children?.map((child, childIndex) => (
-                    <Link
-                      key={childIndex}
-                      to={child.path}
-                      className={`flex items-center gap-3 p-3 pl-8 rounded-lg transition-all duration-300
-                        ${location.pathname === child.path
-                          ? 'bg-white text-[#1b68b3] shadow-lg transform scale-[0.98]'
-                          : 'text-white hover:bg-white/10'
-                        }`}
-                    >
-                      <CircleAvatar 
-                        initial={child.initial} 
-                        isActive={location.pathname !== child.path}
-                      />
-                      <span className="whitespace-nowrap flex-grow">{child.title}</span>
-                    </Link>
-                  ))}
+                  {isOpen && item.children?.map((child, childIndex) => {
+                    const isSelected = location.pathname === child.path;
+                    
+                    return (
+                      <Link
+                        key={childIndex}
+                        to={child.path}
+                        className={`flex items-center gap-3 p-3 pl-8 rounded-lg transition-all duration-300
+                          ${isSelected
+                            ? 'bg-white shadow-lg transform scale-[0.98]'
+                            : 'text-white hover:bg-white/10'
+                          }`}
+                        style={{ 
+                          color: isSelected ? '#1b68b3' : 'white'
+                        }}
+                      >
+                        <CircleAvatar 
+                          initial={child.initial} 
+                          isActive={!isSelected}
+                        />
+                        <span className="truncate max-w-[140px]" title={child.title}>
+                          {child.title}
+                        </span>
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             ) : (

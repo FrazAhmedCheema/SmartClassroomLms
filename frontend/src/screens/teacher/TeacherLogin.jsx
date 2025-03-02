@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { checkAuthStatus } from '../../redux/slices/teacherSlice';
 import { motion } from 'framer-motion';
 import logo from '../../assets/logo.png';
@@ -13,6 +13,13 @@ const TeacherLogin = () => {
   const [showError, setShowError] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { isAuthenticated } = useSelector(state => state.teacher);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/teacher/home');
+    }
+  }, [isAuthenticated, navigate]);
 
   const validateOnSubmit = () => {
     let newErrors = {};
@@ -40,20 +47,30 @@ const TeacherLogin = () => {
           credentials: 'include',
           body: JSON.stringify(formData),
         });
-
+        
         const data = await response.json();
         if (response.ok) {
-          await dispatch(checkAuthStatus()).unwrap();
+          console.log('Login successful, attempting to verify authentication');
+          
+          // Small delay to ensure cookies are properly set
+          setTimeout(async () => {
+            try {
+              const authResult = await dispatch(checkAuthStatus()).unwrap();
+              console.log('Auth verification successful:', authResult);
+              navigate('/teacher/home');
+            } catch (error) {
+              console.error('Authentication verification failed:', error);
+              setShowError(true);
+            }
+          }, 1000);
         } else {
+          console.error('Login failed:', data.message);
           setShowError(true);
         }
       } catch (error) {
-
+        console.error('Login error:', error);
         setShowError(true);
       }
-    } else {
-
-      setShowError(true);
     }
   };
 

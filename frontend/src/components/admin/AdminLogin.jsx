@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -13,6 +13,31 @@ const AdminLogin = () => {
   });
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  // Check if admin is already logged in when component mounts
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/admin/check-auth', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          // User is already authenticated, redirect to dashboard
+          navigate('/admin/dashboard');
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        // If there's an error, we'll just continue showing the login page
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    checkAuthStatus();
+  }, [navigate]);
 
   const validate = () => {
     const errors = {};
@@ -75,6 +100,15 @@ const AdminLogin = () => {
     });
     setServerError("");
   };
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen flex justify-center items-center bg-gray-50">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
