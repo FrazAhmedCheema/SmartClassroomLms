@@ -1,6 +1,6 @@
 import React from 'react';
 import { MoreVertical, User } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const ClassCard = ({ cls }) => {
   const { 
@@ -8,14 +8,26 @@ const ClassCard = ({ cls }) => {
     className, 
     section,
     subject,
-
     coverImage
   } = cls;
+  
   const teacherName = cls.teacher.name;
-  console.log('cls', cls.teacher.name);
+  const navigate = useNavigate();
+
+  const handleCardClick = () => {
+    navigate(`/student/class/${_id}`);
+  };
+
+  const handleMoreClick = (e) => {
+    e.stopPropagation(); // Prevent card navigation when clicking the menu
+    // Handle more menu action
+  };
 
   return (
-    <div className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+    <div 
+      className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+      onClick={handleCardClick}
+    >
       {/* Header/Banner with cover image */}
       <div 
         className="h-32 relative bg-cover bg-center md:h-40"
@@ -36,7 +48,9 @@ const ClassCard = ({ cls }) => {
                   Section: {section}
                 </p>
               </div>
-              <MoreVertical className="text-white cursor-pointer hover:text-white/80" size={20} />
+              <div onClick={handleMoreClick}>
+                <MoreVertical className="text-white cursor-pointer hover:text-white/80" size={20} />
+              </div>
             </div>
           </div>
         </div>
@@ -48,12 +62,11 @@ const ClassCard = ({ cls }) => {
           <User size={18} className="mr-2" />
           <span className="text-sm font-medium">{teacherName}</span>
         </div>
-        <Link 
-          to={`/student/class/${_id}`}
+        <button 
           className="px-4 py-2 bg-[#1b68b3] text-white rounded-lg hover:bg-[#145091] transition-colors text-sm font-medium"
         >
           Open Class
-        </Link>
+        </button>
       </div>
     </div>
   );

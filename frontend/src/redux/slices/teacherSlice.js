@@ -1,23 +1,33 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 export const checkAuthStatus = createAsyncThunk(
-
   'teacher/checkAuthStatus',
   async (_, { rejectWithValue }) => {
     try {
+      console.log('Checking auth status...');
       const response = await fetch('http://localhost:8080/teacher/auth-status', {
+        method: 'GET',
         credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        }
       });
+      
+      console.log('Auth status response:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Auth status success:', data);
         return data;
       } else {
         const errorData = await response.json();
+        console.error('Auth status error:', errorData);
         return rejectWithValue(errorData);
       }
     } catch (error) {
-
-      return rejectWithValue(error.message);
+      console.error('Auth status exception:', error);
+      return rejectWithValue(error.message || 'Authentication check failed');
     }
   }
 );
@@ -77,20 +87,24 @@ const teacherSlice = createSlice({
     builder
       .addCase(checkAuthStatus.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(checkAuthStatus.fulfilled, (state, action) => {
         state.loading = false;
         state.isAuthenticated = true;
         state.teacherId = action.payload.teacherId;
+        state.error = null;
       })
       .addCase(checkAuthStatus.rejected, (state, action) => {
         state.loading = false;
         state.isAuthenticated = false;
-        state.error = action.payload;
+        state.teacherId = null;
+        state.error = action.payload || 'Authentication failed';
       })
       .addCase(logout.fulfilled, (state) => {
         state.isAuthenticated = false;
         state.teacherId = null;
+        state.error = null;
       });
   },
 });

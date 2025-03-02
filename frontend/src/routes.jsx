@@ -22,6 +22,9 @@ import StudentDashboard from './screens/student/StudentDashboard';
 import TeacherLogin from './screens/teacher/TeacherLogin';
 import PrivateRoute from './components/PrivateRoute';
 import StudentLogin from './screens/student/StudentLogin';
+// Import the class page components
+import TeacherClassPage from './screens/teacher/TeacherClassPage';
+import StudentClassPage from './screens/student/StudentClassPage';
 
 const AppRoutes = () => {
   const { isAuthenticated: isTeacherAuthenticated } = useSelector((state) => state.teacher);
@@ -70,6 +73,10 @@ const AppRoutes = () => {
         }>
           <Route index element={<Navigate to="home" replace />} />
           <Route path="home" element={<TeacherDashboard />} />
+          <Route path="dashboard" element={<Navigate to="/teacher/home" replace />} />
+          {/* Add TeacherClassPage route */}
+          <Route path="class/:id" element={<TeacherClassPage />} />
+          {/* Additional teacher routes go here */}
         </Route>
       </Route>
 
@@ -90,6 +97,8 @@ const AppRoutes = () => {
         }>
           <Route index element={<Navigate to="home" replace />} />
           <Route path="home" element={<StudentDashboard />} />
+          {/* Add StudentClassPage route */}
+          <Route path="class/:id" element={<StudentClassPage />} />
         </Route>
       </Route>
 

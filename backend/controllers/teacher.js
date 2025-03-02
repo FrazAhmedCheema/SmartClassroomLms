@@ -3,6 +3,9 @@ const Teacher = require('../models/teacher');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const mongoose = require('mongoose'); // Add this import
+const RegisteredInstitute = require('../models/approveInstitute'); // Add this import
+const { validateDomain } = require('../utils/domainValidator'); // Add the validator import
 
 // Generate a unique 6-digit class code
 const generateClassCode = () => {
@@ -10,15 +13,23 @@ const generateClassCode = () => {
 };
 
 exports.createClass = async (req, res) => {
-    console.log('here in ct=reate class controller')
+    console.log('here in create class controller')
     try {
         const { className, section } = req.body;
-        const teacherId = req.user.id; // Assuming user ID is stored in req.user
+        const teacherId = req.user.id;
+
+        // Get teacher to find their institute
+        const teacher = await Teacher.findById(teacherId);
+        if (!teacher || !teacher.instituteId) {
+            return res.status(404).json({
+                success: false,
+                message: 'Teacher or Institute not found'
+            });
+        }
 
         // Generate a unique class code
         const classCode = generateClassCode();
         
-         
         // Create a new class document
         const newClass = new Class({
             className,
@@ -35,6 +46,11 @@ exports.createClass = async (req, res) => {
 
         // Add the new class to the teacher's classes array
         await Teacher.findByIdAndUpdate(teacherId, { $push: { classes: newClass._id } });
+        
+        // Add the new class to the institute's classes array
+        await RegisteredInstitute.findByIdAndUpdate(teacher.instituteId, { 
+            $push: { classes: newClass._id } 
+        });
 
         // Fetch the saved class to get the auto-generated classId
         const savedClass = await Class.findById(newClass._id)
@@ -121,24 +137,54 @@ exports.getClasses = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
+        console.log('Login attempt for:', email); // Add logging
 
-        // Find teacher by email
-        const teacher = await Teacher.findOne({ email });
+        // Extract domain from email
+        const domain = email.split('@')[1];
+        if (!domain) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid email format'
+            });
+        }
+        console.log('Domain extracted:', domain);
+
+        // Find institute by domain
+        const institute = await RegisteredInstitute.findOne({ domainName: domain });
+        if (!institute) {
+            console.log('No institute found for domain:', domain);
+            return res.status(404).json({
+                success: false,
+                message: 'No institute found for this email domain'
+            });
+        }
+        console.log('Institute found:', institute.instituteName);
+
+        // Find teacher within the institute
+        const teacher = await Teacher.findOne({ 
+            email: email,
+            instituteId: institute._id
+        });
+
         if (!teacher) {
+            console.log('Teacher not found for email:', email);
             return res.status(404).json({
                 success: false,
                 message: 'Teacher not found'
             });
         }
+        console.log('Teacher found:', teacher.name);
 
         // Check password
         const isMatch = await bcrypt.compare(password, teacher.password);
         if (!isMatch) {
+            console.log('Invalid password for teacher:', email);
             return res.status(400).json({
                 success: false,
                 message: 'Invalid credentials'
             });
         }
+        console.log('Password matched for teacher:', email);
 
         const payload = {
             id: teacher._id,
@@ -148,14 +194,20 @@ exports.login = async (req, res) => {
         // Generate JWT
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-        // Set cookie
+        // Clear any existing auth tokens to prevent conflicts
+        res.clearCookie('adminToken');
+        res.clearCookie('subAdminToken');
+        res.clearCookie('studentToken');
+
+        // Set teacher token cookie
         res.cookie('teacherToken', token, {
             httpOnly: true, // Prevents JavaScript from accessing it
             secure: process.env.NODE_ENV === 'production', // Sends cookie over HTTPS in production
             sameSite: 'strict', // Prevents CSRF attacks
-            maxAge: 60 * 60 * 1000, // Token expiration (1 hour)
+            maxAge: 60 * 60 * 1000, // Token expiration (1 hour),
         });
 
+        console.log('Login successful for teacher:', email);
         res.status(200).json({
             success: true,
             message: 'Login successful',
@@ -163,6 +215,7 @@ exports.login = async (req, res) => {
             teacherId: teacher._id
         });
     } catch (error) {
+        console.error('Login error:', error);
         res.status(500).json({
             success: false,
             message: 'Error logging in',
@@ -209,15 +262,125 @@ exports.logout = async (req, res) => {
 
 exports.authStatus = async (req, res) => {
     try {
+        // req.user should be populated by the authorizeTeacher middleware
+        if (!req.user || !req.user.id) {
+            console.log('Auth status failed: No user in request');
+            return res.status(401).json({
+                success: false,
+                message: 'Not authenticated'
+            });
+        }
+
         const teacherId = req.user.id;
+        console.log('Auth status success for teacher:', teacherId);
+        
+        // Fetch teacher data (optional - for additional validation)
+        const teacher = await Teacher.findById(teacherId);
+        if (!teacher) {
+            console.log('Teacher not found with ID:', teacherId);
+            return res.status(404).json({
+                success: false,
+                message: 'Teacher not found'
+            });
+        }
+
         res.status(200).json({
             success: true,
-            teacherId
+            teacherId,
+            name: teacher.name,
+            email: teacher.email
         });
     } catch (error) {
-        res.status(401).json({
+        console.error('Auth status error:', error);
+        res.status(500).json({
             success: false,
-            message: 'Not authenticated',
+            message: 'Error checking authentication status',
+            error: error.message
+        });
+    }
+};
+
+// Get class by ID with populated data
+exports.getClassById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const teacherId = req.user.id;
+
+        // Find the class by ID and populate students and teacher
+        const classData = await Class.findById(id)
+            .populate({
+                path: 'students',
+                select: 'name email registrationId'
+            })
+            .populate({
+                path: 'teacherId',
+                select: 'name email'
+            });
+
+        if (!classData) {
+            return res.status(404).json({
+                success: false,
+                message: 'Class not found'
+            });
+        }
+
+        // Verify that the requesting teacher is the one who owns this class
+        if (classData.teacherId._id.toString() !== teacherId) {
+            return res.status(403).json({
+                success: false,
+                message: 'You do not have permission to access this class'
+            });
+        }
+
+        // Format students array
+        const formattedStudents = classData.students.map(student => ({
+            id: student._id,
+            name: student.name,
+            email: student.email,
+            registrationId: student.registrationId
+        }));
+
+        // Add dummy data
+        const formattedResponse = {
+            _id: classData._id,
+            className: classData.className,
+            section: classData.section,
+            classCode: classData.classCode,
+            teacherId: classData.teacherId._id,
+            students: formattedStudents,
+            // Adding dummy teacher array as requested
+            teachers: [
+                {
+                    id: classData.teacherId._id,
+                    name: classData.teacherId.name,
+                    email: classData.teacherId.email
+                }
+            ],
+            // Dummy cover image
+            coverImage: 'https://gstatic.com/classroom/themes/img_code.jpg',
+            // Dummy announcements
+            announcements: [
+                {
+                    id: 1,
+                    author: classData.teacherId.name,
+                    authorRole: 'Teacher',
+                    content: 'Welcome to our class! Please review the syllabus and let me know if you have any questions.',
+                    createdAt: new Date().toISOString(),
+                    attachments: [],
+                }
+            ],
+            createdAt: classData.createdAt
+        };
+
+        res.status(200).json({
+            success: true,
+            class: formattedResponse
+        });
+    } catch (error) {
+        console.error('Error fetching class details:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching class details',
             error: error.message
         });
     }

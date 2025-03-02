@@ -1,3 +1,4 @@
+import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useMemo } from 'react';
@@ -10,6 +11,8 @@ const PrivateRoute = ({ children, isAuthenticated, redirectPath }) => {
     isTeacherRoute ? state.teacher.loading : state.student.loading
   );
 
+  console.log('PrivateRoute check - isAuthenticated:', isAuthenticated, 'Path:', location.pathname);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -19,7 +22,8 @@ const PrivateRoute = ({ children, isAuthenticated, redirectPath }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to={redirectPath} replace />;
+    // Redirect to login page with the return url
+    return <Navigate to={redirectPath} state={{ from: location.pathname }} replace />;
   }
 
   return children;

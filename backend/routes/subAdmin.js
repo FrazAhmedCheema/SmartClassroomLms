@@ -37,4 +37,9 @@ router.post('/import-students', authorizeSubAdmin, subAdminController.importStud
 
 router.get('/check-verification-status', subAdminController.checkVerificationStatus);
 
+// Authentication check route
+router.get('/check-auth', authorizeSubAdmin, (req, res) => {
+  res.status(200).json({ authenticated: true });
+});
+
 module.exports = router;

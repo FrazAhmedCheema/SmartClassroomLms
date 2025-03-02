@@ -1,5 +1,4 @@
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
-import { useNavigate } from 'react-router-dom';
 
 const coverImages = [
   'https://gstatic.com/classroom/themes/img_code.jpg',
@@ -9,18 +8,23 @@ const coverImages = [
 ];
 
 export const fetchClasses = createAsyncThunk(
-
   'classes/fetchClasses',
   async (_, { getState, rejectWithValue }) => {
-    const navigate = useNavigate();
-    const { teacherId } = getState().teacher;
     try {
+      // Remove useNavigate as it can't be used here
       const response = await fetch('http://localhost:8080/teacher/classes', {
         credentials: 'include',
       });
+      
       if (response.ok) {
         const data = await response.json();
         console.log('Fetched classes:', data.classes);
+        
+        // If data.classes is undefined or not an array, handle it gracefully
+        if (!data.classes || !Array.isArray(data.classes)) {
+          console.error('Invalid classes data received:', data);
+          return [];
+        }
         
         const classesWithImages = data.classes.map((cls, index) => ({
           ...cls,
@@ -28,12 +32,14 @@ export const fetchClasses = createAsyncThunk(
         }));
         return classesWithImages;
       } else {
-        navigate('/teacher/login');
+        // Instead of navigating, we'll just return the error
+        // The component can handle navigation if needed
         const errorData = await response.json();
+        console.error('API error response:', errorData);
         return rejectWithValue(errorData);
       }
     } catch (error) {
-
+      console.error('Failed to fetch classes:', error);
       return rejectWithValue(error.message);
     }
   }

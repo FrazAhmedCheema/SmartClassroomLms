@@ -1,15 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const teacherController = require('../controllers/teacher');
-const { authorize, authorizeTeacher } = require('../middleware/auth');
+const { authorizeTeacher } = require('../middleware/auth');
 
 // Route to check authentication status
-router.get('/auth-status', authorize, teacherController.authStatus);
+router.get('/auth-status', authorizeTeacher, teacherController.authStatus);
 
 router.post('/create-class', authorizeTeacher, teacherController.createClass);
 router.get('/classes', authorizeTeacher, teacherController.getClasses);
 router.post('/login', teacherController.login);
 router.get('/check-auth', authorizeTeacher, teacherController.checkAuth);
 router.post('/logout', authorizeTeacher, teacherController.logout);
+
+// New route to get class details by ID
+router.get('/class/:id', authorizeTeacher, teacherController.getClassById);
 
 module.exports = router;

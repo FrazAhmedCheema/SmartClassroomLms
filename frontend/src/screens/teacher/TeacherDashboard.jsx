@@ -7,13 +7,15 @@ import ClassesGrid from '../../components/shared/ClassesGrid';  // Updated impor
 import CreateClassModal from '../../components/teacher/CreateClassModal';
 import { motion } from 'framer-motion';
 import Swal from 'sweetalert2';
-import { fetchClasses, selectClasses } from '../../redux/slices/classesSlice';
+import { fetchClasses, selectClasses, selectClassesStatus, selectClassesError } from '../../redux/slices/classesSlice';
 
 const TeacherDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { teacherId } = useSelector((state) => state.teacher);
   const classes = useSelector(selectClasses);
+  const classesStatus = useSelector(selectClassesStatus);
+  const classesError = useSelector(selectClassesError);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const coverImages = [
@@ -25,9 +27,31 @@ const TeacherDashboard = () => {
 
   useEffect(() => {
     if (teacherId) {
-      dispatch(fetchClasses());
+      console.log('Dispatching fetchClasses with teacherId:', teacherId);
+      dispatch(fetchClasses())
+        .unwrap()
+        .then((classes) => {
+          console.log('Classes fetched successfully in component:', classes);
+        })
+        .catch((error) => {
+          console.error('Error fetching classes in component:', error);
+          // If there's an authentication error, redirect to login
+          if (error.status === 401) {
+            navigate('/teacher/login');
+          }
+        });
+    } else {
+      console.warn('No teacherId available, cannot fetch classes');
     }
-  }, [teacherId, dispatch]);
+  }, [teacherId, dispatch, navigate]);
+
+  useEffect(() => {
+    console.log('Classes state updated:', classes);
+    console.log('Classes status:', classesStatus);
+    if (classesError) {
+      console.error('Classes error:', classesError);
+    }
+  }, [classes, classesStatus, classesError]);
 
   const handleCreateClass = async (classData) => {
     try {
@@ -97,7 +121,28 @@ const TeacherDashboard = () => {
                 + Create Class
               </button>
             </div>
-            <ClassesGrid classes={classes} />
+            
+            {classesStatus === 'loading' && (
+              <div className="text-center py-10">
+                <p className="text-gray-600">Loading classes...</p>
+              </div>
+            )}
+            
+            {classesStatus === 'failed' && (
+              <div className="text-center py-10">
+                <p className="text-red-600">Failed to load classes: {classesError}</p>
+              </div>
+            )}
+            
+            {classesStatus === 'succeeded' && classes.length === 0 && (
+              <div className="text-center py-10">
+                <p className="text-gray-600">No classes found. Create your first class!</p>
+              </div>
+            )}
+            
+            {classesStatus === 'succeeded' && classes.length > 0 && (
+              <ClassesGrid classes={classes} />
+            )}
           </motion.div>
         </div>
       </div>
