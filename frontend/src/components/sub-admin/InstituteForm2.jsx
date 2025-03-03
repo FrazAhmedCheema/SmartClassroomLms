@@ -27,11 +27,6 @@ const InstituteForm2 = ({ onNext, onPrevious, formData, setFormData }) => {
       newErrors.instituteAdminName = "Name must not contain numbers.";
     }
 
-    // Validate Email
-    if (!formData.instituteAdminEmail || !/\S+@\S+\.\S+/.test(formData.instituteAdminEmail)) {
-      newErrors.instituteAdminEmail = "Email format is invalid.";
-    }
-
     // Validate Phone Number
     const fullPhoneNumber = formData.institutePhoneNumber || "";
     if (!/^\+\d+$/.test(fullPhoneNumber)) {
@@ -113,22 +108,6 @@ const InstituteForm2 = ({ onNext, onPrevious, formData, setFormData }) => {
           />
           {errors.instituteAdminName && (
             <p className="text-red-500 text-sm mt-1">{errors.instituteAdminName}</p>
-          )}
-        </div>
-
-        {/* Admin Email Field */}
-        <div>
-          <h2 className="text-lg font-semibold text-gray-500">Admin Email <span className="text-red-500">*</span></h2>
-          <input
-            type="email"
-            name="instituteAdminEmail"
-            placeholder="Enter your email"
-            value={formData.instituteAdminEmail}
-            onChange={handleChange}
-            className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black"
-          />
-          {errors.instituteAdminEmail && (
-            <p className="text-red-500 text-sm mt-1">{errors.instituteAdminEmail}</p>
           )}
         </div>
 
