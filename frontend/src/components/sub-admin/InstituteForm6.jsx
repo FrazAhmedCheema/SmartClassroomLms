@@ -1,15 +1,58 @@
 import React, { useState } from 'react';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react'; // Add AlertCircle icon
 
 const InstituteForm6 = ({ onNext, onPrevious, formData, setFormData }) => {
   const [errors, setErrors] = useState({});
   const [showError, setShowError] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [usernameTaken, setUsernameTaken] = useState(false);
+
+  // Password strength criteria
+  const passwordCriteria = {
+    minLength: { test: (pass) => pass.length >= 8, message: 'At least 8 characters long' },
+    hasUppercase: { test: (pass) => /[A-Z]/.test(pass), message: 'Contains uppercase letter' },
+    hasLowercase: { test: (pass) => /[a-z]/.test(pass), message: 'Contains lowercase letter' },
+    hasNumber: { test: (pass) => /\d/.test(pass), message: 'Contains number' },
+    hasSpecial: { test: (pass) => /[!@#$%^&*(),.?":{}|<>]/.test(pass), message: 'Contains special character' },
+  };
+
+  const checkPasswordStrength = (password) => {
+    const results = {};
+    Object.keys(passwordCriteria).forEach(criterion => {
+      results[criterion] = passwordCriteria[criterion].test(password);
+    });
+    return results;
+  };
 
   const handleUsernameChange = (e) => {
     const usernameWithoutDomain = e.target.value.split('@')[0];
     setFormData((prev) => ({
       ...prev,
-      username: `${usernameWithoutDomain}@${formData.domainName}`, // Append domain to username
+      username: `${usernameWithoutDomain}@${formData.domainName}`,
     }));
+    
+    // Check if username exists (example API call)
+    if (usernameWithoutDomain.length > 0) {
+      fetch(`http://localhost:8080/check-username/${usernameWithoutDomain}@${formData.domainName}`)
+        .then(res => res.json())
+        .then(data => {
+          setUsernameTaken(data.exists);
+          if (data.exists) {
+            setErrors(prev => ({
+              ...prev,
+              username: "Username already taken"
+            }));
+          } else {
+            setErrors(prev => ({
+              ...prev,
+              username: undefined
+            }));
+          }
+        })
+        .catch(err => console.error(err));
+    }
   };
 
   const validateOnSubmit = () => {
@@ -21,6 +64,16 @@ const InstituteForm6 = ({ onNext, onPrevious, formData, setFormData }) => {
 
     if (!formData.password) {
       newErrors.password = "Password is required.";
+    } else {
+      const strengthResults = checkPasswordStrength(formData.password);
+      const isStrongPassword = Object.values(strengthResults).every(result => result);
+      if (!isStrongPassword) {
+        newErrors.password = "Password does not meet all requirements.";
+      }
+    }
+
+    if (formData.password !== confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match.";
     }
 
     setErrors(newErrors);
@@ -52,27 +105,85 @@ const InstituteForm6 = ({ onNext, onPrevious, formData, setFormData }) => {
             value={formData.username.split('@')[0]} // Only show the username part for editing
             onChange={handleUsernameChange}
             placeholder="admin"
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black"
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+              usernameTaken 
+                ? 'border-red-300 focus:ring-red-400' 
+                : 'focus:ring-blue-400'
+            } bg-white text-black`}
           />
           <span className="absolute inset-y-0 right-3 flex items-center text-gray-500 pointer-events-none">
             @{formData.domainName}
           </span>
+          {usernameTaken && (
+            <div className="mt-2 flex items-center space-x-2 bg-red-50 p-2 rounded-md border border-red-200">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+              <span className="text-red-600 text-sm">
+                This username is already taken. Please try another one.
+              </span>
+            </div>
+          )}
           {errors.username && <p className="text-red-500 text-sm mt-1">{errors.username}</p>}
         </div>
       </div>
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-gray-500">Password <span className="text-red-500">*</span></h2>
-        <input
-          type="password"
-          name="password"
-          value={formData.password}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, password: e.target.value }))
-          }
-          placeholder="password"
-          className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black"
-        />
-        {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+        <div className="mt-2">
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              value={formData.password}
+              onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+              placeholder="Enter password"
+              className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black pr-12"
+            />
+            <span 
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-[#1b68b3] transition-colors"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </span>
+          </div>
+          {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+          
+          {/* Password strength indicators */}
+          <div className="mt-3 space-y-2">
+            <p className="text-sm font-medium text-gray-700">Password requirements:</p>
+            {Object.entries(passwordCriteria).map(([key, { message, test }]) => (
+              <div key={key} className="flex items-center text-sm">
+                <span className={`mr-2 ${test(formData.password) ? 'text-green-500' : 'text-gray-400'}`}>
+                  {test(formData.password) ? '✓' : '○'}
+                </span>
+                <span className={test(formData.password) ? 'text-green-600' : 'text-gray-500'}>
+                  {message}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-gray-500">Confirm Password <span className="text-red-500">*</span></h2>
+        <div className="relative">
+          <input
+            type={showConfirmPassword ? "text" : "password"}
+            name="confirmPassword"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Confirm password"
+            className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-black pr-12"
+          />
+          <span 
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-[#1b68b3] transition-colors"
+          >
+            {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </span>
+          {errors.confirmPassword && (
+            <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
+          )}
+        </div>
       </div>
       {showError && (
         <p className="text-red-500 text-sm mt-1">

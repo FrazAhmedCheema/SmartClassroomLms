@@ -75,7 +75,7 @@ const TeacherLogin = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
       {/* Background Pattern */}
       <div className="absolute inset-0 z-0 opacity-10">
         <div className="absolute top-0 left-0 w-full h-full bg-blue-500 opacity-20" 
@@ -106,7 +106,7 @@ const TeacherLogin = () => {
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 container mx-auto px-4 flex justify-center">
+      <div className="relative z-10 container mx-auto px-4 flex justify-center mb-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

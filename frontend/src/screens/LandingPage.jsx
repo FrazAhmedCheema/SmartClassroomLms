@@ -567,8 +567,8 @@ hover:bg-[#1b68b3] hover:text-white hover:border-white"
                       className="absolute -bottom-6 -right-6 bg-blue-600 text-white p-4 rounded-lg shadow-xl"
                       style={{ backgroundColor: "#1b68b3" }}
                     >
-                      <h4 className="text-xl font-bold">2000+ Happy Learners</h4>
-                      <p className="text-sm">And growing every day!</p>
+                      <h4 className="text-xl font-bold"> Enhancing Learning</h4>
+                      <p className="text-sm">with a smarter classroom experience... </p>
                     </motion.div>
                   </motion.div>
                 </div>

@@ -18,6 +18,86 @@ const ManageRequests = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedInstitute, setSelectedInstitute] = useState(null);
+  const [actionInProgress, setActionInProgress] = useState({
+    id: null,
+    type: null // 'approve' or 'reject'
+  });
+
+  const showActionSuccessMessage = async (type, data) => {
+    const configs = {
+      approve: {
+        icon: `<svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>`,
+        title: 'Successfully Approved!',
+        bgColor: 'bg-green-100',
+        textColor: 'text-green-600',
+        buttonColor: '#10B981'
+      },
+      reject: {
+        icon: `<svg class="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>`,
+        title: 'Request Rejected',
+        bgColor: 'bg-red-100',
+        textColor: 'text-red-600',
+        buttonColor: '#DC2626'
+      },
+      email: {
+        icon: `<svg class="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+        </svg>`,
+        title: 'Email Sent Successfully!',
+        bgColor: 'bg-blue-100',
+        textColor: 'text-blue-600',
+        buttonColor: '#1b68b3'
+      }
+    };
+
+    const config = configs[type];
+
+    await Swal.fire({
+      html: `
+        <div class="p-4">
+          <div class="flex flex-col items-center">
+            <div class="w-20 h-20 ${config.bgColor} rounded-full flex items-center justify-center mb-4 animate__animated animate__bounceIn">
+              ${config.icon}
+            </div>
+            <h2 class="text-2xl font-bold ${config.textColor} mb-4 animate__animated animate__fadeIn">
+              ${config.title}
+            </h2>
+            <div class="bg-gray-50 rounded-xl p-6 w-full max-w-md border border-gray-200 shadow-sm animate__animated animate__fadeInUp">
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-gray-600">Institute:</span>
+                  <span class="text-gray-800">${data.instituteName}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-gray-600">Admin:</span>
+                  <span class="text-gray-800">${data.instituteAdminName}</span>
+                </div>
+                <div class="h-px bg-gray-200 my-2"></div>
+                <div class="flex justify-center">
+                  <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${config.bgColor} ${config.textColor}">
+                    ${type === 'approve' ? 'Approved & Activated' : type === 'reject' ? 'Request Rejected' : 'Email Delivered'} ✓
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+      showConfirmButton: true,
+      confirmButtonText: 'Done',
+      confirmButtonColor: config.buttonColor,
+      timer: 4000,
+      timerProgressBar: true,
+      customClass: {
+        popup: 'rounded-xl shadow-2xl animate__animated animate__fadeIn',
+        confirmButton: 'px-6 py-3 rounded-lg text-sm font-medium',
+      }
+    });
+  };
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -92,6 +172,7 @@ const ManageRequests = () => {
       }
     }).then(async (result) => {
       if (result.isConfirmed) {
+        setActionInProgress({ id, type: 'approve' });
         const approvedData = {
           instituteName: requestToApprove.instituteName,
           numberOfStudents: requestToApprove.numberOfStudents.toString(),
@@ -120,14 +201,14 @@ const ManageRequests = () => {
             const updatedRequests = requests.filter(request => request._id !== id);
             setRequests(updatedRequests);
             setFilteredRequests(updatedRequests); // Update filtered requests
-            toast.success(`Request approved for institute: ${requestToApprove.instituteName}`, {
-              position: 'top-right',
-            });
+            await showActionSuccessMessage('approve', requestToApprove);
           } else {
             console.error('Failed to approve request:', response.statusText);
           }
         } catch (error) {
           console.error('Error occurred while approving request:', error.message);
+        } finally {
+          setActionInProgress({ id: null, type: null });
         }
       }
     });
@@ -137,7 +218,7 @@ const ManageRequests = () => {
     const requestToReject = requests.find(request => request._id === id);
     if (!requestToReject) return;
 
-    Swal.fire({
+    const result = await Swal.fire({
       title: 'Are you sure?',
       text: `Do you want to reject the request for ${requestToReject.instituteName}?`,
       icon: 'warning',
@@ -154,39 +235,50 @@ const ManageRequests = () => {
         confirmButton: 'px-4 py-2 text-white rounded-lg text-sm font-medium',
         cancelButton: 'px-4 py-2 text-white rounded-lg text-sm font-medium'
       }
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        const rejectedData = {
-          requestId: requestToReject.requestId,
-          status: 'rejected'
-        };
-        const updatedRequests = requests.filter(request => request._id !== id);
-        setRequests(updatedRequests);
-        setFilteredRequests(updatedRequests); 
-
-        try {
-          const response = await fetch('http://localhost:8080/admin/reject-institute', {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(rejectedData)
-          });
-
-          if (response.ok) {
-// Update filtered requests
-            toast.error(`Request rejected for institute: ${requestToReject.instituteName}`, {
-              position: toast.POSITION.TOP_RIGHT
-            });
-          } else {
-            console.error('Failed to reject request:', response.statusText);
-          }
-        } catch (error) {
-          console.error('Error occurred while rejecting request:', error.message);
-        }
-      }
     });
+
+    if (result.isConfirmed) {
+      setActionInProgress({ id, type: 'reject' });
+      try {
+        const response = await fetch('http://localhost:8080/admin/reject-institute', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            requestId: requestToReject.requestId,
+            status: 'rejected'
+          })
+        });
+
+        if (response.ok) {
+          // Update the UI first
+          const updatedRequests = requests.filter(request => request._id !== id);
+          setRequests(updatedRequests);
+          setFilteredRequests(updatedRequests);
+
+          // Show success message
+          await showActionSuccessMessage('reject', {
+            instituteName: requestToReject.instituteName,
+            instituteAdminName: requestToReject.instituteAdminName,
+          });
+        } else {
+          throw new Error('Failed to reject request');
+        }
+      } catch (error) {
+        console.error('Error occurred while rejecting request:', error.message);
+        Swal.fire({
+          title: 'Error!',
+          text: 'Failed to reject the request. Please try again.',
+          icon: 'error',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } finally {
+        setActionInProgress({ id: null, type: null });
+      }
+    }
   };
 
   const handleOpenMailModal = (institute) => {
@@ -205,11 +297,19 @@ const ManageRequests = () => {
         body: JSON.stringify({ subject, body, mailType: 'request' }),
       });
 
-      if (!response.ok) throw new Error('Failed to send email');
-
-      alert(`Email sent successfully to ${selectedInstitute.instituteName}`);
+      if (response.ok) {
+        setIsModalOpen(false);
+        await showActionSuccessMessage('email', selectedInstitute);
+      }
     } catch (error) {
       console.error('Error sending email:', error.message);
+      Swal.fire({
+        title: 'Error',
+        text: 'Failed to send email. Please try again.',
+        icon: 'error',
+        timer: 2000,
+        showConfirmButton: false
+      });
     }
   };
 
@@ -217,9 +317,80 @@ const ManageRequests = () => {
     navigate('/admin/dashboard');
   };
 
+  const LoadingOverlay = ({ type, instituteName }) => (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center"
+    >
+      <div className="flex flex-col items-center space-y-6 bg-white p-8 rounded-xl shadow-xl">
+        <motion.div
+          animate={{ 
+            scale: [1, 1.2, 1],
+            rotate: [0, 360]
+          }}
+          transition={{ 
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        >
+          {type === 'approve' ? (
+            <CheckCircle className="w-12 h-12 text-green-500" />
+          ) : (
+            <XCircle className="w-12 h-12 text-red-500" />
+          )}
+        </motion.div>
+        
+        <div className="flex items-center space-x-2">
+          <motion.div 
+            className={`w-3 h-3 rounded-full ${type === 'approve' ? 'bg-green-500' : 'bg-red-500'}`}
+            animate={{ y: [0, -12, 0] }}
+            transition={{ 
+              duration: 0.6, 
+              repeat: Infinity, 
+              repeatType: "reverse",
+              delay: 0 
+            }}
+          />
+          <motion.div 
+            className={`w-3 h-3 rounded-full ${type === 'approve' ? 'bg-green-500' : 'bg-red-500'}`}
+            animate={{ y: [0, -12, 0] }}
+            transition={{ 
+              duration: 0.6, 
+              repeat: Infinity, 
+              repeatType: "reverse",
+              delay: 0.2 
+            }}
+          />
+          <motion.div 
+            className={`w-3 h-3 rounded-full ${type === 'approve' ? 'bg-green-500' : 'bg-red-500'}`}
+            animate={{ y: [0, -12, 0] }}
+            transition={{ 
+              duration: 0.6, 
+              repeat: Infinity, 
+              repeatType: "reverse",
+              delay: 0.4 
+            }}
+          />
+        </div>
+        <span className={`text-lg font-medium ${type === 'approve' ? 'text-green-600' : 'text-red-600'}`}>
+          {type === 'approve' ? 'Approving' : 'Rejecting'} {instituteName}...
+        </span>
+      </div>
+    </motion.div>
+  );
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#e6f0ff" }}>
       <AdminNavbar title="Manage Requests" />
+      {actionInProgress.id && (
+        <LoadingOverlay 
+          type={actionInProgress.type} 
+          instituteName={requests.find(r => r._id === actionInProgress.id)?.instituteName}
+        />
+      )}
       <main className="p-4 md:p-6 pt-8">
         {/* Back to Dashboard Button */}
         <div className="mb-4">
@@ -318,11 +489,26 @@ const ManageRequests = () => {
                       <div className="flex justify-between items-center pt-4 border-t border-gray-100">
                         <button
                           onClick={() => handleApprove(request._id)}
-                          className="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors"
+                          disabled={actionInProgress.id === request._id}
+                          className={`flex items-center px-4 py-2 rounded-lg text-sm transition-colors ${
+                            actionInProgress.id === request._id && actionInProgress.type === 'approve'
+                              ? 'bg-green-400 cursor-wait'
+                              : 'bg-green-600 hover:bg-green-700'
+                          } text-white`}
                         >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Approve
+                          {actionInProgress.id === request._id && actionInProgress.type === 'approve' ? (
+                            <>
+                              <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              Approving...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Approve
+                            </>
+                          )}
                         </button>
+
                         <button
                           onClick={() => handleOpenMailModal(request)}
                           className="flex items-center bg-[#1b68b3] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#154d85] transition-colors"
@@ -332,10 +518,24 @@ const ManageRequests = () => {
                         </button>
                         <button
                           onClick={() => handleReject(request._id)}
-                          className="flex items-center bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
+                          disabled={actionInProgress.id === request._id}
+                          className={`flex items-center px-4 py-2 rounded-lg text-sm transition-colors ${
+                            actionInProgress.id === request._id && actionInProgress.type === 'reject'
+                              ? 'bg-red-400 cursor-wait'
+                              : 'bg-red-600 hover:bg-red-700'
+                          } text-white`}
                         >
-                          <XCircle className="w-4 h-4 mr-2" />
-                          Reject
+                          {actionInProgress.id === request._id && actionInProgress.type === 'reject' ? (
+                            <>
+                              <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              Rejecting...
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Reject
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>
