@@ -317,7 +317,49 @@ const studentController = {
                 error: error.message
             });
         }
+    },
+
+    // Get student stats
+    getStudentStats: async (req, res) => {
+        try {
+            const studentId = req.user.id;
+            console.log('Fetching stats for student:', studentId);
+
+            // Find student and populate enrolled classes
+            const student = await Student.findById(studentId)
+                .populate('enrolledClasses');
+
+            if (!student) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Student not found'
+                });
+            }
+
+            // Get enrolled classes count
+            const enrolledClasses = student.enrolledClasses ? student.enrolledClasses.length : 0;
+
+            // Return stats with dummy data for other metrics
+            res.status(200).json({
+                success: true,
+                data: {
+                    enrolledClasses,
+                    todos: 0,         // Dummy value for pending tasks
+                    discussions: 0,    // Dummy value for active threads
+                    participation: 0  // Dummy value for weekly engagement (percentage)
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching student stats:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error fetching stats',
+                error: error.message
+            });
+        }
     }
 };
 
 module.exports = studentController;
+
+

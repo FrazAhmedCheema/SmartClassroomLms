@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, useLocation } from 'react-router-dom';
-import { Provider, useDispatch, useSelector } from 'react-redux';
+import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
+import { Provider, useDispatch } from 'react-redux';
 import { store } from './redux/store';
 import { checkAuthStatus } from './redux/slices/teacherSlice';
 import { checkStudentAuthStatus } from './redux/slices/studentSlice';
+import { checkSubAdminAuthStatus } from './redux/slices/subAdminAuthSlice';
 import AppRoutes from './routes';
 import './index.css';
 
@@ -11,37 +12,37 @@ function App() {
   const dispatch = useDispatch();
   const location = useLocation();
   const [authChecked, setAuthChecked] = useState(false);
-  const { isAuthenticated: isTeacherAuthenticated } = useSelector(state => state.teacher);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      console.log('Checking auth for path:', location.pathname);
+    const checkRelevantAuth = async () => {
       try {
-        if (location.pathname.includes('/teacher')) {
+        // Check auth based on current path
+        if (location.pathname.startsWith('/admin')) {
+          // Admin auth check is handled by the AdminDashboard component
+          setAuthChecked(true);
+        } else if (location.pathname.startsWith('/teacher')) {
           await dispatch(checkAuthStatus());
-        } else if (location.pathname.includes('/student')) {
+        } else if (location.pathname.startsWith('/student')) {
           await dispatch(checkStudentAuthStatus());
+        } else if (location.pathname.startsWith('/sub-admin')) {
+          await dispatch(checkSubAdminAuthStatus());
         }
       } catch (error) {
-        console.error('Auth check error:', error);
+        console.error('Auth check failed:', error);
       } finally {
         setAuthChecked(true);
       }
     };
 
-    checkAuth();
+    checkRelevantAuth();
   }, [dispatch, location.pathname]);
 
-  // For debugging
-  useEffect(() => {
-    if (authChecked) {
-      console.log('Teacher auth status:', isTeacherAuthenticated);
-    }
-  }, [authChecked, isTeacherAuthenticated]);
-
-  if (!authChecked && (location.pathname.includes('/teacher') || location.pathname.includes('/student'))) {
-    // Show loading state while checking auth
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex justify-center items-center bg-gray-50">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   return <AppRoutes />;

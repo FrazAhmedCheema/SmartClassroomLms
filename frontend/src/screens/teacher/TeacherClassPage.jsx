@@ -10,7 +10,7 @@ import { ArrowLeft, Bell, Settings, MoreVertical, AlertCircle, Menu, X } from 'l
 import { Link } from 'react-router-dom';
 
 const TeacherClassPage = () => {
-  const { id } = useParams();
+  const { id: classId } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('stream');
   const [classData, setClassData] = useState(null);
@@ -25,7 +25,7 @@ const TeacherClassPage = () => {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(`http://localhost:8080/teacher/class/${id}`, {
+        const response = await fetch(`http://localhost:8080/teacher/class/${classId}`, {
           credentials: 'include'
         });
         
@@ -57,7 +57,7 @@ const TeacherClassPage = () => {
     };
     
     fetchClassData();
-  }, [id, navigate]);
+  }, [classId, navigate]);
 
   // Animation variants
   const pageTransition = {
@@ -143,7 +143,7 @@ const TeacherClassPage = () => {
           )}
           
           {activeTab === 'discussion' && (
-            <DiscussionTab classData={classData} userRole="Teacher" />
+            <DiscussionTab classId={classData?._id} />
           )}
         </div>
       </div>

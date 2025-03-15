@@ -1,28 +1,31 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Users, CheckSquare, Clock, GraduationCap } from 'lucide-react';
+import { BookOpen, Users, CheckSquare, Clock, GraduationCap, MessageCircle } from 'lucide-react';
 
 const statsConfig = {
   teacher: [
-    { icon: BookOpen, title: 'Active Classes', value: '5', description: 'Currently ongoing' },
-    { icon: Users, title: 'Total Students', value: '150', description: 'Enrolled students' },
-    { icon: CheckSquare, title: 'Assignments', value: '12', description: 'Pending reviews' },
-    { icon: Clock, title: 'Upcoming', value: '3', description: 'Next 24 hours' },
+    { icon: BookOpen, title: 'Active Classes', key: 'activeClasses', description: 'Currently ongoing' },
+    { icon: Users, title: 'Total Students', key: 'totalStudents', description: 'Enrolled students' },
+    { icon: CheckSquare, title: 'Assignments', key: 'assignments', description: 'Pending reviews' },
+    { icon: Clock, title: 'Upcoming', key: 'upcoming', description: 'Next 24 hours' },
   ],
   student: [
-    { icon: BookOpen, title: 'Enrolled Classes', value: '6', description: 'Active courses' },
-    { icon: GraduationCap, title: 'Current GPA', value: '3.5', description: 'Semester average' },
-    { icon: CheckSquare, title: 'Pending Tasks', value: '8', description: 'Due this week' },
-    { icon: Clock, title: 'Study Hours', value: '24h', description: 'This week' },
+    { icon: BookOpen, title: 'Enrolled Classes', key: 'enrolledClasses', description: 'Active courses' },
+    { icon: CheckSquare, title: 'To-do', key: 'todos', description: 'Pending tasks' },
+    { icon: MessageCircle, title: 'Ongoing Discussions', key: 'discussions', description: 'Active threads' },
+    { icon: Users, title: 'Class Participation', key: 'participation', description: 'Weekly engagement' },
   ]
 };
 
-const DashboardStats = ({ userRole }) => {
-  const stats = statsConfig[userRole.toLowerCase()];
+const DashboardStats = ({ userRole, stats }) => {
+  const config = statsConfig[userRole.toLowerCase()];
+  
+  // Add debug log to verify stats
+  console.log('Stats in DashboardStats:', stats);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      {stats.map((stat, index) => (
+      {config.map((stat, index) => (
         <motion.div
           key={index}
           initial={{ opacity: 0, y: 20 }}
@@ -37,7 +40,10 @@ const DashboardStats = ({ userRole }) => {
             </div>
           </div>
           <h3 className="text-lg font-semibold text-gray-700 mb-1">{stat.title}</h3>
-          <p className="text-3xl font-bold mb-2" style={{ color: '#1b68b3' }}>{stat.value}</p>
+          <p className="text-3xl font-bold mb-2" style={{ color: '#1b68b3' }}>
+            {/* Access the stats value directly without optional chaining */}
+            {stats ? stats[stat.key] : '0'}
+          </p>
           <p className="text-sm text-gray-500">{stat.description}</p>
         </motion.div>
       ))}

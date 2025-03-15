@@ -5,8 +5,10 @@ import { motion } from 'framer-motion';
 import AdminNavbar from './AdminNavbar';
 import InstitutesTable from './InstitutesTable';
 import Swal from 'sweetalert2';
+import { useSelector } from 'react-redux'; // Add this import
 
 const ManageInstitutes = () => {
+  const { isAuthenticated } = useSelector(state => state.adminAuth); // Add this
   const navigate = useNavigate();
   const [institutes, setInstitutes] = useState([]);
   const [filteredInstitutes, setFilteredInstitutes] = useState([]);
@@ -50,8 +52,14 @@ const ManageInstitutes = () => {
   };
 
   useEffect(() => {
+    // Add authentication check
+    if (!isAuthenticated) {
+      navigate('/admin/login');
+      return;
+    }
+
     fetchInstitutes(currentPage);
-  }, [currentPage]);
+  }, [currentPage, isAuthenticated]); // Add isAuthenticated to dependencies
 
   const handleAddInstitute = () => {
     Swal.fire({

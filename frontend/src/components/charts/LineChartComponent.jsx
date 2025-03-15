@@ -2,16 +2,17 @@ import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 
-const data = [
-  { name: 'Jan', Institutes: 40, Requests: 24, Users: 20 },
-  { name: 'Feb', Institutes: 30, Requests: 13, Users: 22 },
-  { name: 'Mar', Institutes: 20, Requests: 18, Users: 25 },
-  { name: 'Apr', Institutes: 27, Requests: 39, Users: 30 },
-  { name: 'May', Institutes: 18, Requests: 48, Users: 35 },
-  { name: 'Jun', Institutes: 23, Requests: 38, Users: 40 },
-];
+const LineChartComponent = ({ institutes, requests, users }) => {
+  // Create sample data with current values as the latest point
+  const data = [
+    { name: 'Jan', Institutes: Math.round(institutes * 0.4), Requests: Math.round(requests * 0.4), Users: Math.round(users * 0.4) },
+    { name: 'Feb', Institutes: Math.round(institutes * 0.5), Requests: Math.round(requests * 0.5), Users: Math.round(users * 0.5) },
+    { name: 'Mar', Institutes: Math.round(institutes * 0.6), Requests: Math.round(requests * 0.6), Users: Math.round(users * 0.6) },
+    { name: 'Apr', Institutes: Math.round(institutes * 0.7), Requests: Math.round(requests * 0.7), Users: Math.round(users * 0.7) },
+    { name: 'May', Institutes: Math.round(institutes * 0.8), Requests: Math.round(requests * 0.8), Users: Math.round(users * 0.8) },
+    { name: 'Current', Institutes: institutes, Requests: requests, Users: users },
+  ];
 
-const LineChartComponent = () => {
   return (
     <motion.div
       initial={{ opacity: 0 }}

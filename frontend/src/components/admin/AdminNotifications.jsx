@@ -1,15 +1,22 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { useSelector } from 'react-redux';
 import axios from "axios"
 import { ChevronLeft } from "lucide-react"
 import { formatDistanceToNow } from 'date-fns'
 
 const AdminNotifications = () => {
   const navigate = useNavigate()
+  const { isAuthenticated } = useSelector(state => state.adminAuth);
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/admin/login');
+      return;
+    }
+
     const fetchNotifications = async () => {
       try {
         const response = await axios.get("http://localhost:8080/admin/notifications", {
@@ -30,7 +37,7 @@ const AdminNotifications = () => {
     }
 
     fetchNotifications()
-  }, [navigate])
+  }, [navigate, isAuthenticated])
 
   return (
     <div className="min-h-screen bg-gray-100" style={{ backgroundColor: "#f4f7fa" }}>

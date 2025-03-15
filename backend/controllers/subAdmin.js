@@ -64,7 +64,7 @@ const sendEmailToInstituteAdmin = async (username, instituteName, instituteAdmin
 
 // ✅ Registration Route (Sends Verification Link)
 exports.registerInstitute = async (req, res) => {
-    const { instituteName, numberOfStudents, region, instituteAdminName, instituteAdminEmail, institutePhoneNumber, domainName, username, password } = req.body;
+    const { instituteName, numberOfStudents, region, instituteAdminName, institutePhoneNumber, domainName, username, password } = req.body;
 
     if (!instituteName || typeof instituteName !== 'string') return res.status(400).json({ error: 'Invalid instituteName' });
     if (!numberOfStudents || typeof numberOfStudents !== 'string') return res.status(400).json({ error: 'Invalid numberOfStudents' });
@@ -81,6 +81,9 @@ exports.registerInstitute = async (req, res) => {
 
         const existingUser = await RegisteredInstitute.findOne({ username });
         if (existingUser) return res.status(400).json({ error: 'This username is already taken.' });
+
+        const existingDomain = await RegisteredInstitute.findOne({ domainName });
+        if (existingDomain) return res.status(400).json({ error: 'This institute is already registered.' });
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const token = jwt.sign({ username, hashedPassword, instituteName, numberOfStudents, region, instituteAdminName, institutePhoneNumber, domainName }, process.env.JWT_SECRET, { expiresIn: '1d' });
@@ -109,7 +112,6 @@ exports.verifyEmail = async (req, res) => {
             numberOfStudents,
             region,
             instituteAdminName,
-            instituteAdminEmail: username, // ✅ Store username as email
             institutePhoneNumber,
             domainName,
             username,
@@ -537,8 +539,11 @@ exports.deleteTeacher = async (req, res) => {
 // Login controller
 exports.login = async (req, res) => {
     try {
+        
         const { username, password } = req.body;
-
+        console.log('username:', username);
+        console.log('Password', password);
+        console.log("Reached in login controller");
         // Find user by username
         const user = await RegisteredInstitute.findOne({ username });
         if (!user) {
@@ -581,6 +586,7 @@ exports.login = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Login successful',
+            username,
             token
         });
     } catch (error) {
@@ -691,6 +697,49 @@ exports.getClassDetails = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error fetching class details',
+            error: error.message
+        });
+    }
+};
+
+exports.getDashboardData = async (req, res) => {
+    try {
+        const instituteId = req.user.id; // Get institute ID from authenticated user
+
+        // Get counts from each collection for this institute
+        const teacherCount = await Teacher.countDocuments({ instituteId });
+        const studentCount = await Student.countDocuments({ instituteId });
+        const classCount = await Class.countDocuments({ instituteId });
+
+        // Get recent activity by looking at the latest modified classes
+        const recentClasses = await Class.find({ instituteId })
+            .sort({ updatedAt: -1 })
+            .limit(5);
+        
+        const activityCount = recentClasses.length;
+
+        res.status(200).json({
+            success: true,
+            data: {
+                teachers: {
+                    count: teacherCount,
+                },
+                students: {
+                    count: studentCount,
+                },
+                totalCourses: {
+                    count: classCount,
+                },
+                recentActivity: {
+                    count: activityCount,
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching dashboard data',
             error: error.message
         });
     }

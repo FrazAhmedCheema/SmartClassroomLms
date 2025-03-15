@@ -37,13 +37,36 @@ function authorizeAdmin(req, res, next) {
 
 // Sub-admin authorization middleware
 function authorizeSubAdmin(req, res, next) {
-    authorize(req, res, () => {
-        if (req.user.role !== 'subAdmin') {
-            console.warn('Forbidden: SubAdmin access required.');
-            return res.status(401).json({ msg: 'Forbidden: SubAdmin access required.' });
-        }
-        next();
+  const token = req.cookies.subAdminToken;
+
+  if (!token) {
+    console.warn('No subAdmin token found in cookies');
+    return res.status(401).json({ 
+      success: false,
+      message: 'No token, authorization denied' 
     });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (decoded.role !== 'subAdmin') {
+      console.warn('Invalid role in token:', decoded.role);
+      return res.status(403).json({ 
+        success: false,
+        message: 'Not authorized as subAdmin' 
+      });
+    }
+
+    req.user = decoded;
+    next();
+  } catch (err) {
+    console.error('Token verification failed:', err.message);
+    res.status(401).json({ 
+      success: false,
+      message: 'Token is not valid' 
+    });
+  }
 }
 
 // Teacher authorization middleware with improved debugging
@@ -96,10 +119,39 @@ const authorizeStudent = (req, res, next) => {
     }
 };
 
+const authorizeTeacherOrStudent = (req, res, next) => {
+  const token = req.cookies.teacherToken || req.cookies.studentToken;
+  
+  if (!token) {
+    return res.status(401).json({ message: 'No token, authorization denied' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (!['teacher', 'student'].includes(decoded.role)) {
+      return res.status(403).json({ message: 'Invalid user role' });
+    }
+
+    // Set proper user data
+    req.user = {
+      ...decoded,
+      role: decoded.role,
+      id: decoded.id,
+    };
+
+    next();
+  } catch (err) {
+    console.error('Token verification failed:', err);
+    res.status(401).json({ message: 'Token is not valid' });
+  }
+};
+
 module.exports = {
     authorize,
     authorizeAdmin,
     authorizeSubAdmin,
     authorizeTeacher,
-    authorizeStudent
+    authorizeStudent,
+    authorizeTeacherOrStudent
 };

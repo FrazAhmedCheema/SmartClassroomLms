@@ -19,7 +19,6 @@ const RegisterInstitute = () => {
     numberOfStudents: '',
     region: '',
     instituteAdminName: '',
-    instituteAdminEmail: '',
     institutePhoneNumber: '',
     domainName: '',
     username: '',

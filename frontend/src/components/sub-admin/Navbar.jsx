@@ -121,7 +121,7 @@ const Navbar = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
   );
 };
 
-export default Navbar;
+export default React.memo(Navbar);
 
 
 

@@ -10,6 +10,7 @@ const subAdminRoutes = require('./routes/subAdmin');
 const adminRoutes = require('./routes/admin');
 const teacherRoutes = require('./routes/teacher');
 const studentRoutes = require('./routes/student');
+const discussionRoutes = require('./routes/discussion');
 
 const app = express();
 const server = http.createServer(app);
@@ -61,6 +62,7 @@ app.use('/sub-admin', subAdminRoutes);
 app.use('/admin', adminRoutes);
 app.use('/teacher', teacherRoutes);
 app.use('/student', studentRoutes);
+app.use('/discussions', discussionRoutes);
 
 connectDB();
 module.exports = { app, server, io, notifyAdmins };

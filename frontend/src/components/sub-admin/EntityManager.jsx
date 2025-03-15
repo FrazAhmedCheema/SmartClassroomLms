@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { useSelector } from 'react-redux';
 import EntityTable from "./EntityTable"
 import Pagination from "./Pagination"
 import AddEntityModal from "./AddEntityModal"
@@ -8,7 +9,8 @@ import EntityHeader from "./EntityHeader"
 import CsvImportModal from "./CsvImportModal"  // new import
 
 const EntityManager = ({ entityType, initialEntities, apiEndpoint }) => {
-    const navigate = useNavigate();
+  const { isAuthenticated } = useSelector(state => state.subAdminAuth);
+  const navigate = useNavigate();
   // Define idField based on the entityType
   const idField = entityType.toLowerCase() === 'student' ? 'studentId' : 'teacherId';
 
@@ -22,13 +24,22 @@ const EntityManager = ({ entityType, initialEntities, apiEndpoint }) => {
   const entitiesPerPage = 5
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/sub-admin/login');
+      return;
+    }
+  }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
     const filtered = (entities || []).filter(entity => entity && (
       (entity.name && entity.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (entity.registrationId && entity.registrationId.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (entity.email && entity.email.toLowerCase().includes(searchTerm.toLowerCase()))
     ));
     setFilteredEntities(filtered);
-  }, [searchTerm, entities])
+  }, [searchTerm, entities, isAuthenticated])
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value)
@@ -165,23 +176,35 @@ const EntityManager = ({ entityType, initialEntities, apiEndpoint }) => {
   }
 
   // Callback after successful CSV import to refresh the state
-  const handleCsvImportSuccess = async (importedEntities) => {
-    setIsLoading(true);
-    const refreshEndpoint = `${apiEndpoint}/${entityType.toLowerCase()}s`;
-    const refreshResponse = await fetch(refreshEndpoint, {
-      credentials: 'include',
-      headers: { "Content-Type": "application/json" },
-    });
-    if (refreshResponse.ok) {
+  const handleCsvImportSuccess = async (importedData) => {
+    try {
+      setIsLoading(true);
+      const refreshEndpoint = `${apiEndpoint}/${entityType.toLowerCase()}s`;
+      const refreshResponse = await fetch(refreshEndpoint, {
+        credentials: 'include',
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!refreshResponse.ok) {
+        throw new Error('Failed to refresh data');
+      }
+
       const refreshData = await refreshResponse.json();
       const transformedData = refreshData.data.map(entity => ({
         ...entity,
         id: entity[idField],
       }));
+
       setEntities(transformedData);
+      setFilteredEntities(transformedData);
+      setCurrentPage(1); // Reset to first page
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setIsLoading(false);
+      setIsCsvModalOpen(false); // Close the modal
     }
-    setIsLoading(false);
-  }
+  };
 
   // Update CSV import to include role and domain
   const handleCsvImport = async (csvData) => {

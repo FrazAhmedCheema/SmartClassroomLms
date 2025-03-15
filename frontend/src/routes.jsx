@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import LandingPage from './screens/LandingPage';
 import AdminLogin from './components/admin/AdminLogin';
@@ -25,10 +25,22 @@ import StudentLogin from './screens/student/StudentLogin';
 // Import the class page components
 import TeacherClassPage from './screens/teacher/TeacherClassPage';
 import StudentClassPage from './screens/student/StudentClassPage';
+import AdminNavbar from './components/admin/AdminNavbar';
+
+// Create AdminLayout component
+const AdminLayout = () => {
+  return (
+    <>
+      <Outlet />
+    </>
+  );
+};
 
 const AppRoutes = () => {
-  const { isAuthenticated: isTeacherAuthenticated } = useSelector((state) => state.teacher);
-  const { isAuthenticated: isStudentAuthenticated } = useSelector((state) => state.student);
+  const { isAuthenticated: isTeacherAuthenticated } = useSelector((state) => state.teacher || {});
+  const { isAuthenticated: isStudentAuthenticated } = useSelector((state) => state.student || {});
+  const { isAuthenticated: isAdminAuthenticated } = useSelector((state) => state.adminAuth || {});
+  const { isAuthenticated: isSubAdminAuthenticated } = useSelector((state) => state.subAdminAuth || {});
 
   return (
     <Routes>
@@ -36,14 +48,31 @@ const AppRoutes = () => {
       <Route path="/" element={<LandingPage />} />
       
       {/* Admin Routes */}
-      <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/admin/dashboard" element={<AdminDashboard />} />
-      <Route path="/admin/manage-institutes" element={<ManageInstitutes />} />
-      <Route path="/admin/manage-requests" element={<ManageRequests />} />
-      <Route path="/admin/notifications" element={<AdminNotifications />} />
+      <Route path="/admin/login" element={
+        isAdminAuthenticated 
+          ? <Navigate to="/admin/dashboard" replace /> 
+          : <AdminLogin />
+      } />
+      <Route path="/admin" element={
+        <PrivateRoute 
+          isAuthenticated={isAdminAuthenticated} 
+          redirectPath="/admin/login"
+        >
+          <AdminLayout />
+        </PrivateRoute>
+      }>
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="manage-institutes" element={<ManageInstitutes />} />
+        <Route path="manage-requests" element={<ManageRequests />} />
+        <Route path="notifications" element={<AdminNotifications />} />
+      </Route>
 
       {/* Sub-Admin Routes */}
-      <Route path="/sub-admin/login" element={<SubAdminLogin />} />
+      <Route path="/sub-admin/login" element={
+        isSubAdminAuthenticated 
+          ? <Navigate to="/sub-admin/dashboard" replace /> 
+          : <SubAdminLogin />
+      } />
       <Route path="/sub-admin/register" element={<RegisterInstitute />} />
       <Route path="/sub-admin/verify-email" element={<VerifyEmail />} />
       
