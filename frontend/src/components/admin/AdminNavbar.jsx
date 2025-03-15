@@ -4,10 +4,17 @@ import { LogOut, ChevronDown, Bell, Settings, User } from "lucide-react"
 import Swal from "sweetalert2"
 import logo from "../../assets/logo2.png"
 import profilePic from "../../assets/admin-profile-picture.jpg"
+import { useDispatch } from 'react-redux';
+import { logout } from '../../redux/slices/adminAuthSlice';
 
 const AdminNavbar = ({ title = "Admin Dashboard" }) => {
   const navigate = useNavigate()
+  const dispatch = useDispatch();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
+
+  const handleNotificationClick = () => {
+    navigate("/admin/notifications")
+  }
 
   const handleLogout = async () => {
     Swal.fire({
@@ -37,6 +44,7 @@ const AdminNavbar = ({ title = "Admin Dashboard" }) => {
             credentials: "include",
           })
           if (response.ok) {
+            dispatch(logout());
             navigate("/admin/login")
           }
         } catch (err) {
@@ -60,7 +68,10 @@ const AdminNavbar = ({ title = "Admin Dashboard" }) => {
           </div>
           <h1 className="text-white font-bold text-xl -ml-12">{title}</h1> {/* Added -ml-12 for leftward shift */}
           <div className="flex items-center space-x-6">
-            <button className="relative p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all duration-300">
+            <button 
+              onClick={handleNotificationClick}
+              className="relative p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all duration-300"
+            >
               <Bell className="w-6 h-6" />
               <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
             </button>

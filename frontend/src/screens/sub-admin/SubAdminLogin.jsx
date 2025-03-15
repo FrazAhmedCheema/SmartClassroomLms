@@ -3,9 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import logo from '../../assets/logo.png';
+import { useDispatch, useSelector } from 'react-redux';
+import { loginSuccess, loginFail, setLoading } from '../../redux/slices/subAdminAuthSlice';
+import localStorage from 'redux-persist/lib/storage';
 
 const SubAdminLogin = () => {
+  const { isAuthenticated, loading } = useSelector(state => state.subAdminAuth);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [formData, setFormData] = useState({
     username: '', // changed from email to username
     password: '' 
@@ -15,45 +20,51 @@ const SubAdminLogin = () => {
   const [showPassword, setShowPassword] = useState(false); // State to toggle password visibility
   const [isLoading, setIsLoading] = useState(true); // Set to true for initial auth check
 
-  // Check if sub-admin is already logged in when component mounts
+  // Reset loading state after component mounts
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        const response = await fetch('http://localhost:8080/sub-admin/check-auth', {
-          method: 'GET',
-          credentials: 'include',
-        });
-        
-        // If response is OK, user is authenticated
-        if (response.ok) {
-          // Check if they have the username in localStorage as fallback
-          const subAdminUsername = localStorage.getItem('subAdminUsername');
-          if (subAdminUsername) {
-            navigate('/sub-admin/dashboard');
-            return;
-          }
-          
-          // If API confirms they're authenticated
-          const data = await response.json();
-          if (data.authenticated) {
-            navigate('/sub-admin/dashboard');
-          }
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        // If there's an error, we'll just continue showing the login page
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    checkAuthStatus();
-  }, [navigate]);
+    setIsLoading(false);
+  }, []);
+
+  // Only show loading if loading from redux state
+  const showLoadingSpinner = loading || isLoading;
+
+  // Simplified auth check
+  useEffect(() => {
+    // On mount, check if already authenticated
+    if (isAuthenticated) {
+      console.log('Already authenticated, redirecting to dashboard');
+      navigate('/sub-admin/dashboard', { replace: true });
+    }
+    setIsLoading(false);
+  }, []); // Run only on mount
+
+  // Separate effect for auth state changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('Auth state changed, redirecting to dashboard');
+      navigate('/sub-admin/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    const hasAuth = localStorage.getItem('isSubAdminAuthenticated') === 'true';
+    if (isAuthenticated || hasAuth) {
+      navigate('/sub-admin/dashboard', { replace: true });
+    }
+  }, [isAuthenticated]);
 
   const validate = (name, value) => {
     let error = '';
-    if (name === 'username' && !value.trim()) {
-      error = 'Username is required';
+    if (name === 'username') {
+      if (!value.trim()) {
+        error = 'Username is required';
+      }
+    } else if (name === 'password') {
+      if (!value) {
+        error = 'Password is required';
+      } else if (value.length < 6) {
+        error = 'Password must be at least 6 characters';
+      }
     }
     setErrors({ ...errors, [name]: error });
   };
@@ -70,38 +81,61 @@ const SubAdminLogin = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    // Validate form fields before sending request
     if (!formData.username || !formData.password || Object.values(errors).some(err => err)) {
       setShowError(true);
       return;
     }
-    setShowError(false); // Clear errors
+    setShowError(false);
 
     try {
+      dispatch(setLoading(true));
+      console.log('Login attempt with:', { username: formData.username });
+      
       const response = await fetch("http://localhost:8080/sub-admin/login", {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify(formData),
+         body: JSON.stringify({
+           username: formData.username,
+           password: formData.password
+         }),
          credentials: "include",
       });
+      
       const data = await response.json();
+      console.log('Login response:', data);
+
       if (!response.ok) {
+        throw new Error(data.message || data.error || "Invalid credentials");
+      }
+
+      if (data) {
+        localStorage.setItem('subAdminUsername', data.username);
+        dispatch(loginSuccess({
+          username: data.username,
+          id: data.id
+        }));
+        navigate('/sub-admin/dashboard');
+      } else {
         throw new Error(data.message || "Login failed");
       }
-      localStorage.setItem('subAdminUsername', formData.username);
-      // Show spinner then delay navigation
-      setIsLoading(true);
-      setTimeout(() => {
-        navigate('/sub-admin/dashboard');
-      }, 1500); // 1.5 seconds delay
     } catch (error) {
+      console.error('Login error:', error);
+      dispatch(loginFail(error.message));
       setShowError(true);
-      alert(error.message || "Login failed. Please try again.");
+      setServerError(error.message || "Login failed. Please try again.");
+    } finally {
+      dispatch(setLoading(false));
     }
   };
 
-  // Show loading state while checking auth
-  if (isLoading) {
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('Authenticated, navigating to dashboard');
+      navigate('/sub-admin/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (loading) {
     return (
       <div className="min-h-screen flex justify-center items-center bg-gray-50">
         <motion.div 

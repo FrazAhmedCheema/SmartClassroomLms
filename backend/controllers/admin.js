@@ -6,6 +6,8 @@ const Admin = require('../models/Admin'); // Assuming you have an Admin model
 const InstituteRequest = require('../models/InstituteRequest'); // Assuming you have a Request model
 const ApproveInstitute = require('../models/approveInstitute');
 const Notification = require('../models/Notification');
+const Student = require('../models/student'); // Add Student model import
+const Teacher = require('../models/teacher'); // Add Teacher model import
 
 exports.login = async (req, res) => {
     const errors = validationResult(req);
@@ -18,7 +20,7 @@ exports.login = async (req, res) => {
     try {
         let admin = await Admin.findOne({ username });
         if (!admin) {
-            return res.status(400).json({ msg: 'Invalid Credentials' });
+            return res.status(400).json({ msg: 'Invalid Credentials!' });
         }
 
         const isMatch = await bcrypt.compare(password, admin.password);
@@ -47,7 +49,15 @@ exports.login = async (req, res) => {
 
         console.log('Admin cookie set:', token); // Add this line to log the token
 
-        res.json({ msg: 'Logged in successfully' });
+        // Send admin data without sensitive information
+        res.json({ 
+            msg: 'Logged in successfully',
+            admin: {
+                id: admin._id,
+                username: admin.username,
+                role: 'admin'
+            }
+        });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server error');
@@ -79,7 +89,6 @@ exports.approveInstitute = async (req, res) => {
       numberOfStudents: requestToApprove.numberOfStudents, // Ensure this is handled as a string
       region: requestToApprove.region,
       instituteAdminName: requestToApprove.instituteAdminName, // Correct property name
-      instituteAdminEmail: requestToApprove.instituteAdminEmail, // Correct property name
       institutePhoneNumber: requestToApprove.institutePhoneNumber,
       domainName: requestToApprove.domainName,
       username: requestToApprove.username,
@@ -110,7 +119,7 @@ exports.approveInstitute = async (req, res) => {
     const mailOptions = {
       
         from: process.env.EMAIL_SENDER,
-        to: requestToApprove.instituteAdminEmail,
+        to: requestToApprove.username,
         subject: 'Your Institute Has Been Approved for SmartClassroomLms 🎉',
         html: `<p>Dear <strong>${requestToApprove.instituteAdminName}</strong>,</p>
                <p>We are thrilled to inform you that your request to join <strong>SmartClassroomLms</strong> has been approved! Your institute, <strong>${requestToApprove.instituteName}</strong>, is now officially onboarded and ready to leverage the powerful features of SmartClassroomLms.</p>
@@ -173,7 +182,7 @@ exports.rejectInstitute = async (req, res) => {
 
         const mailOptions = {
           from: process.env.EMAIL_SENDER,
-          to: requestToReject.instituteAdminEmail,
+          to: requestToReject.username,
             subject: 'Update on Your Request for SmartClassroomLms',
             html: `<p>Dear <strong>${requestToReject.instituteAdminName}</strong>,</p>
                    <p>We regret to inform you that your request for onboarding <strong>SmartClassroomLms</strong> has not been approved at this time.</p>
@@ -208,7 +217,7 @@ exports.manageInstitutes = async (req, res) => {
 
       const totalInstitutes = await ApproveInstitute.countDocuments();
       const institutes = await ApproveInstitute.find()
-          .select('instituteId instituteName instituteAdminName instituteAdminEmail status') // Fetch only required fields
+          .select('instituteId instituteName instituteAdminName status') // Fetch only required fields
           .skip((page - 1) * limit)
           .limit(limit);
 
@@ -282,14 +291,15 @@ exports.sendEmail = async (req, res) => {
 
     let institute ;
     if(mailType === 'request'){
-       institute = await InstituteRequest.findById(id).select('instituteAdminEmail instituteAdminName');
+       institute = await InstituteRequest.findById(id).select('username instituteAdminName');
 
       if (!institute) return res.status(404).json({ msg: 'Institute not found' });
     }else{
-       institute = await ApproveInstitute.findById(id).select('instituteAdminEmail instituteAdminName');
+       institute = await ApproveInstitute.findById(id).select('username instituteAdminName');
       if (!institute) return res.status(404).json({ msg: 'Institute not found' });
     
     }
+    console.log('Mail of institute'+ institute.username);
 
     const transporter = nodemailer.createTransport({
       host: 'smtp.hostinger.com',
@@ -303,11 +313,13 @@ exports.sendEmail = async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_SENDER,
-      to: institute.instituteAdminEmail,
+      to: institute.username,
       subject,
       text: body,
     };
-
+  console.log('Mail options:', mailOptions);
+  console.log("reached here ?");
+  
     await transporter.sendMail(mailOptions);
     res.status(200).json({ msg: 'Email sent successfully' });
   } catch (error) {
@@ -380,16 +392,51 @@ exports.updateInstitute = async (req, res) => {
 exports.getDashboardData = async (req, res) => {
   try {
     const institutes = await ApproveInstitute.find().select('instituteId instituteName instituteAdminName status');
+    
     const requests = await InstituteRequest.find().select('requestId instituteName instituteAdminName status');
-    // const
+    
+    const studentCount = await Student.countDocuments();
+    const teacherCount = await Teacher.countDocuments();
+    const totalUsers = studentCount + teacherCount;
+    const activities = await Notification.countDocuments();
+    
     res.status(200).json({
-      institutes :{ count: institutes.length || 0, change: 5 }, // Dummy values
-      requests :{ count: requests.length || 0, change: -5 }, // Dummy values
-      users: { count: 100, change: 10 }, // Dummy values
-      activities: { count: 50, change: 5 } // Dummy values
+      institutes: { count: institutes.length || 0, change: 5 },
+      requests: { count: requests.length || 0, change: -5 },
+      users: { 
+        count: totalUsers, 
+        change: 10,
+        students: studentCount,
+        teachers: teacherCount
+      },
+      activities: { count: activities || 23, change: 5 } // Keeping as dummy value for now
     });
   } catch (err) {
     console.error('Error fetching dashboard data:', err.message);
     res.status(500).json({ msg: 'Internal server error. Please try again later.' });
+  }
+};
+
+// Add this new controller method
+exports.checkAuth = async (req, res) => {
+  try {
+    // Since we're using the authorizeAdmin middleware, 
+    // if we reach here, the user is authenticated
+    const admin = await Admin.findById(req.user.id);
+    if (!admin) {
+      return res.status(401).json({ msg: 'Admin not found' });
+    }
+
+    res.json({
+      authenticated: true,
+      admin: {
+        id: admin._id,
+        username: admin.username,
+        role: 'admin'
+      }
+    });
+  } catch (err) {
+    console.error('Check auth error:', err.message);
+    res.status(500).json({ msg: 'Server Error' });
   }
 };

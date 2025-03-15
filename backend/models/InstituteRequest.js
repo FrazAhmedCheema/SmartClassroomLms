@@ -18,10 +18,7 @@ const InstituteRequestSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    instituteAdminEmail: {
-        type: String,
-        required: true
-    },
+
     institutePhoneNumber: {
         type: String,
         required: true

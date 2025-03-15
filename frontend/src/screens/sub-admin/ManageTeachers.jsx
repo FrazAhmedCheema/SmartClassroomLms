@@ -1,15 +1,22 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useSelector } from 'react-redux';
 import EntityManager from "../../components/sub-admin/EntityManager";
 
 const ManageTeachers = () => {
+  const { isAuthenticated } = useSelector(state => state.subAdminAuth);
   const [teachersData, setTeachersData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/sub-admin/login');
+      return;
+    }
+
     const fetchTeachers = async () => {
       try {
         const response = await fetch("http://localhost:8080/sub-admin/teachers", {
@@ -28,7 +35,9 @@ const ManageTeachers = () => {
         }));
         setTeachersData(transformedData);
       } catch (error) {
-        navigate('/sub-admin/login');
+        if (error.response?.status === 401) {
+          navigate('/sub-admin/login');
+        }
         setError(error.message);
       } finally {
         setLoading(false);
@@ -36,7 +45,7 @@ const ManageTeachers = () => {
     };
 
     fetchTeachers();
-  }, []);
+  }, [navigate, isAuthenticated]);
 
   if (loading) {
     return (

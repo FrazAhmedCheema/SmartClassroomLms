@@ -6,11 +6,13 @@ import { formatDistanceToNow } from 'date-fns';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Swal from 'sweetalert2';
+import { useSelector } from 'react-redux'; // Add this import
 
 import ComposeEmailModal from './ComposeEmailModal';
 import AdminNavbar from './AdminNavbar';
 
 const ManageRequests = () => {
+  const { isAuthenticated } = useSelector(state => state.adminAuth); // Add this
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -100,6 +102,12 @@ const ManageRequests = () => {
   };
 
   useEffect(() => {
+    // Add authentication check
+    if (!isAuthenticated) {
+      navigate('/admin/login');
+      return;
+    }
+
     const fetchRequests = async () => {
       try {
         const response = await fetch('http://localhost:8080/admin/manage-requests', {
@@ -138,7 +146,7 @@ const ManageRequests = () => {
     };
 
     fetchRequests();
-  }, [navigate]);
+  }, [navigate, isAuthenticated]); // Add isAuthenticated to dependencies
 
   useEffect(() => {
     // Filter requests whenever searchTerm changes

@@ -26,6 +26,8 @@ import profilePic from "../../assets/admin-profile-picture.jpg"
 import LineChartComponent from '../charts/LineChartComponent';
 import PieChartComponent from '../charts/PieChartComponent';
 import { motion, useAnimation } from 'framer-motion';
+import { useDispatch, useSelector } from 'react-redux';
+import { logout, loginFail } from '../../redux/slices/adminAuthSlice';
 
 const socket = io("http://localhost:8080", { withCredentials: true })
 
@@ -46,98 +48,99 @@ const DashboardCard = ({ icon, title, value, change, color }) => (
 )
 
 const AdminDashboard = () => {
-  const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { isAuthenticated, admin } = useSelector(state => state.adminAuth);
+  const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState({
     institutes: { count: 0, change: 0 },
     requests: { count: 0, change: 0 },
     users: { count: 0, change: 0 },
     activities: { count: 0, change: 0 },
-  })
-  const [recentActivity, setRecentActivity] = useState([])
+  });
+  const [recentActivity, setRecentActivity] = useState([]);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    let mounted = true;
+
+    const initializeDashboard = async () => {
       try {
-        // First fetch dashboard data
-        const dashboardResponse = await axios.get("http://localhost:8080/admin/dashboard", {
-          withCredentials: true,
-          headers: { "Content-Type": "application/json" },
+        // First check auth status
+        const authResponse = await axios.get("http://localhost:8080/admin/check-auth", {
+          withCredentials: true
         });
 
-        if (dashboardResponse.status === 200) {
-          setDashboardData(dashboardResponse.data);
-        }
-        console.log('Dashboard Data:', dashboardData.institutes.count)
-
-        // Then fetch notifications
-        const notificationsResponse = await axios.get("http://localhost:8080/admin/notifications?limit=3", {
-          withCredentials: true,
-          headers: { "Content-Type": "application/json" },
-        });
-
-        if (notificationsResponse.status === 200) {
-          setRecentActivity(notificationsResponse.data.notifications);
+        if (!authResponse.data.authenticated) {
+          dispatch(loginFail('Not authenticated'));
+          navigate("/admin/login");
+          return;
         }
 
-      } catch (err) {
-        if (err.response?.status === 401 || err.response?.status === 403) {
+        if (!mounted) return;
+
+        try {
+          const [dashboardResponse, notificationsResponse] = await Promise.all([
+            axios.get("http://localhost:8080/admin/dashboard", {
+              withCredentials: true
+            }),
+            axios.get("http://localhost:8080/admin/notifications?limit=3", {
+              withCredentials: true
+            })
+          ]);
+
+          if (mounted) {
+            setDashboardData(dashboardResponse.data);
+            setRecentActivity(notificationsResponse.data.notifications);
+          }
+        } catch (error) {
+          console.error('Error fetching dashboard data:', error);
+          if (error.response?.status === 401) {
+            dispatch(loginFail('Session expired'));
+            navigate("/admin/login");
+          }
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        if (error.response?.status === 401) {
+          dispatch(loginFail('Not authenticated'));
           navigate("/admin/login");
         }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchDashboardData();
-
-    // Socket event listener setup
-    socket.on("newInstituteRequest", (data) => {
-      console.log("New Institute Request:", data);
-  
-      setRecentActivity((prev) => [
-        {
-          title: "New Institute Request",
-          message: `New institute request from "${data.instituteName}"`,
-          createdAt: new Date().toISOString(), // Keeping consistency with DB format
-        },
-        ...prev.slice(0, 2),
-      ]);
-    });
+    if (isAuthenticated) {
+      initializeDashboard();
+    } else {
+      navigate("/admin/login");
+    }
 
     return () => {
-      socket.off("newInstituteRequest");
+      mounted = false;
     };
-  }, [navigate]);
+  }, [isAuthenticated, navigate, dispatch]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const handleLogout = async () => {
     try {
-      const response = await axios.post("http://localhost:8080/admin/logout", {}, { withCredentials: true });
-      
-      Swal.fire({
-        title: 'Success!',
-        text: 'You have been successfully logged out',
-        icon: 'success',
-        showConfirmButton: false,
-        timer: 2000,
-        timerProgressBar: true,
-        didOpen: () => {
-          Swal.showLoading();
-        },
-        willClose: () => {
-          navigate("/admin/login");
-        }
+      const response = await fetch("http://localhost:8080/admin/logout", {
+        method: "POST",
+        credentials: "include",
       });
-
+      
+      if (response.ok) {
+        dispatch(logout());
+        navigate("/admin/login");
+      }
     } catch (err) {
       console.error("Logout error:", err);
-      Swal.fire({
-        title: 'Error!',
-        text: 'Failed to logout. Please try again.',
-        icon: 'error',
-        confirmButtonColor: '#d33'
-      });
     }
   };
 
@@ -248,7 +251,12 @@ const AdminDashboard = () => {
                   <h2 className="text-2xl font-bold mb-6" style={{ color: '#1b68b3' }}>
                     Activity Trends
                   </h2>
-                  <LineChartComponent key={Math.random()} /> {/* Key forces remount */}
+                  <LineChartComponent 
+                    key={Math.random()}
+                    institutes={dashboardData.institutes.count}
+                    requests={dashboardData.requests.count}
+                    users={dashboardData.users.count}
+                  />
                 </motion.div>
               </div>
 
@@ -264,7 +272,12 @@ const AdminDashboard = () => {
                   <h2 className="text-2xl font-bold mb-6" style={{ color: '#1b68b3' }}>
                     Distribution Overview
                   </h2>
-                  <PieChartComponent key={Math.random()} /> {/* Key forces remount */}
+                  <PieChartComponent 
+                    key={Math.random()}
+                    institutes={dashboardData.institutes.count}
+                    requests={dashboardData.requests.count}
+                    users={dashboardData.users.count}
+                  />
                 </motion.div>
 
                 {/* Recent Activity */}

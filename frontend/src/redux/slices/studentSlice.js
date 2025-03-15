@@ -42,6 +42,7 @@ const studentSlice = createSlice({
     isAuthenticated: false,
     loading: true,
     studentId: null,
+    role: 'student', // Add role field
     error: null,
   },
   reducers: {
@@ -71,6 +72,7 @@ const studentSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = true;
         state.studentId = action.payload.studentId;
+        state.role = 'student'; // Set role on auth success
         state.error = null;
       })
       .addCase(checkStudentAuthStatus.rejected, (state, action) => {

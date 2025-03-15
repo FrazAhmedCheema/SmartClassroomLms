@@ -52,21 +52,25 @@ export const logout = createAsyncThunk(
   }
 );
 
+const initialState = {
+  isAuthenticated: false,
+  loading: true,
+  teacherId: null,
+  role: null, // Add role to initial state
+  error: null,
+};
+
 const teacherSlice = createSlice({
   name: 'teacher',
-  initialState: {
-    isAuthenticated: false,
-    loading: true,
-    teacherId: null,
-    error: null,
-  },
+  initialState,
   reducers: {
     setTeacherLoading: (state) => {
       state.loading = true;
     },
     setTeacherSuccess: (state, action) => {
       state.isAuthenticated = true;
-      state.teacherId = action.payload;
+      state.teacherId = action.payload.teacherId;
+      state.role = 'teacher'; // Set role explicitly
       state.loading = false;
       state.error = null;
     },
@@ -79,6 +83,7 @@ const teacherSlice = createSlice({
     teacherLogout: (state) => {
       state.isAuthenticated = false;
       state.teacherId = null;
+      state.role = null; // Clear role on logout
       state.loading = false;
       state.error = null;
     }
@@ -93,12 +98,14 @@ const teacherSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = true;
         state.teacherId = action.payload.teacherId;
+        state.role = 'teacher'; // Set role when auth check is successful
         state.error = null;
       })
       .addCase(checkAuthStatus.rejected, (state, action) => {
         state.loading = false;
         state.isAuthenticated = false;
         state.teacherId = null;
+        state.role = null; // Clear role on auth check failure
         state.error = action.payload || 'Authentication failed';
       })
       .addCase(logout.fulfilled, (state) => {

@@ -14,14 +14,21 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Swal from 'sweetalert2';
+import { useSelector } from 'react-redux';
 
 const ClassDetails = () => {
+  const { isAuthenticated } = useSelector(state => state.subAdminAuth);
   const { id } = useParams();
   const navigate = useNavigate();
   const [classData, setClassData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/sub-admin/login');
+      return;
+    }
+
     const fetchClassDetails = async () => {
       try {
         const response = await fetch(`http://localhost:8080/sub-admin/classes/${id}`, {
@@ -51,7 +58,7 @@ const ClassDetails = () => {
     };
 
     fetchClassDetails();
-  }, [id, navigate]);
+  }, [id, navigate, isAuthenticated]);
 
   if (loading) {
     return (
