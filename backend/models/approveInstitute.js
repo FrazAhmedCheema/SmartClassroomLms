@@ -6,7 +6,6 @@ const approveInstituteSchema = new mongoose.Schema({
   numberOfStudents: { type: String, required: true }, // Ensure this is a String
   region: { type: String, required: true },
   instituteAdminName: { type: String, required: true },
-  instituteAdminEmail: { type: String, required: true },
   institutePhoneNumber: { type: String, required: true },
   domainName: { type: String, required: true },
   username: { type: String, required: true },

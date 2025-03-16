@@ -1,13 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, CheckCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useSelector } from 'react-redux';
 
 const CsvImportModal = ({ isOpen, onClose, apiEndpoint, entityType, onImportSuccess }) => {
+  const { isAuthenticated } = useSelector(state => state.subAdminAuth);
   const [file, setFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0); // Track upload progress
   const [infoMessage, setInfoMessage] = useState('');
   const fileInputRef = useRef(null); // Ref for file input
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // Updated CSV validation function with domain and name checks
   const validateCSVContent = (csvText) => {
@@ -128,31 +132,69 @@ const CsvImportModal = ({ isOpen, onClose, apiEndpoint, entityType, onImportSucc
     }
     
     setIsSubmitting(true);
+    setUploadProgress(10); // Start progress
     const reader = new FileReader();
     
     reader.onload = async (evt) => {
-      const content = evt.target.result;
-      
-      // Get subAdminDomain for institute identification
-      const subAdminUsername = localStorage.getItem('subAdminUsername');
-      const subAdminDomain = subAdminUsername ? subAdminUsername.split('@')[1] : '';
-      
       try {
+        const content = evt.target.result;
+        setUploadProgress(30); // Update progress after file read
+        
+        const subAdminUsername = localStorage.getItem('subAdminUsername');
+        const subAdminDomain = subAdminUsername ? subAdminUsername.split('@')[1] : '';
+        
+        setUploadProgress(50); // Update progress before API call
         const response = await fetch(`${apiEndpoint}/import-${entityType.toLowerCase()}s`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             data: content,
-            role: entityType.toLowerCase(), // Add role based on entityType
-            domain: subAdminDomain // Add domain for institute identification
+            role: entityType.toLowerCase(),
+            domain: subAdminDomain
           }),
         });
 
-        // ...rest of the response handling...
+        setUploadProgress(80); // Update progress after API call
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.message || 'Import failed');
+        }
+
+        setUploadProgress(100); // Complete progress
+        setShowSuccess(true); // Show success animation
+        
+        // Show success message
+        setInfoMessage(`Successfully imported ${entityType}s`);
+        
+        // Call the success callback
+        if (onImportSuccess) {
+          await onImportSuccess(result.data);
+        }
+
+        // Reset states after longer delay to show success animation
+        setTimeout(() => {
+          setFile(null);
+          setIsSubmitting(false);
+          setUploadProgress(0);
+          setInfoMessage('');
+          setShowSuccess(false);
+          onClose();
+        }, 2500); // Increased delay to show success animation
+
       } catch (error) {
-        // ...existing error handling...
+        console.error('Import error:', error);
+        setError(error.message || 'Failed to import data');
+        setIsSubmitting(false);
+        setUploadProgress(0);
       }
+    };
+
+    reader.onerror = () => {
+      setError('Error reading file');
+      setIsSubmitting(false);
+      setUploadProgress(0);
     };
 
     reader.readAsText(file);
@@ -160,6 +202,11 @@ const CsvImportModal = ({ isOpen, onClose, apiEndpoint, entityType, onImportSucc
 
   // Add this effect to clear file state when modal is closed
   useEffect(() => {
+    if (!isAuthenticated) {
+      onClose();
+      return;
+    }
+
     if (!isOpen) {
       setFile(null);
       setUploadProgress(0);
@@ -168,13 +215,59 @@ const CsvImportModal = ({ isOpen, onClose, apiEndpoint, entityType, onImportSucc
         fileInputRef.current.value = '';
       }
     }
-  }, [isOpen]);
+  }, [isOpen, isAuthenticated, onClose]);
 
   if (!isOpen) return null;
 
+  // Add Success Overlay component
+  const SuccessOverlay = () => (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-50"
+    >
+      <motion.div
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.5, opacity: 0 }}
+        className="flex flex-col items-center space-y-4"
+      >
+        <motion.div
+          initial={{ scale: 0.5, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", damping: 10 }}
+          className="relative"
+        >
+          <CheckCircle className="w-16 h-16 text-green-500" />
+          <motion.div
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ duration: 0.5, repeat: Infinity }}
+            className="absolute inset-0 bg-green-500 rounded-full opacity-20"
+          />
+        </motion.div>
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="text-center"
+        >
+          <h3 className="text-xl font-bold text-gray-800 mb-2">Upload Complete!</h3>
+          <p className="text-green-600">
+            Successfully imported {entityType}s
+          </p>
+        </motion.div>
+      </motion.div>
+    </motion.div>
+  );
+
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black bg-opacity-70">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden relative"
+      >
         {/* Modal Header */}
         <div className="flex justify-between items-center px-6 py-4 bg-gray-100 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800">Import CSV</h2>
@@ -188,6 +281,11 @@ const CsvImportModal = ({ isOpen, onClose, apiEndpoint, entityType, onImportSucc
           </button>
         </div>
         
+        {/* Success Overlay */}
+        <AnimatePresence>
+          {showSuccess && <SuccessOverlay />}
+        </AnimatePresence>
+
         {/* Modal Content */}
         <div className="p-6">
           {/* File Input */}
@@ -249,7 +347,7 @@ const CsvImportModal = ({ isOpen, onClose, apiEndpoint, entityType, onImportSucc
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

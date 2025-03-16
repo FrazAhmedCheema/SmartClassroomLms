@@ -2,15 +2,15 @@ import React from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 
-const data = [
-  { name: 'Institutes', value: 400 },
-  { name: 'Requests', value: 300 },
-  { name: 'Users', value: 300 },
-];
-
 const COLORS = ['#1b68b3', '#4BC0C0', '#FFB547'];
 
-const PieChartComponent = () => {
+const PieChartComponent = ({ institutes, requests, users }) => {
+  const data = [
+    { name: 'Institutes', value: institutes || 0 },
+    { name: 'Requests', value: requests || 0 },
+    { name: 'Users', value: users || 0 },
+  ];
+
   return (
     <motion.div
       initial={{ opacity: 0 }}

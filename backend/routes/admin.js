@@ -18,8 +18,6 @@ router.put('/update-institute/:id', authorizeAdmin, adminController.updateInstit
 router.get('/dashboard', adminController.getDashboardData);
 
 // Authentication check route
-router.get('/check-auth', authorizeAdmin, (req, res) => {
-  res.status(200).json({ authenticated: true });
-});
+router.get('/check-auth', authorizeAdmin, adminController.checkAuth);
 
 module.exports = router;

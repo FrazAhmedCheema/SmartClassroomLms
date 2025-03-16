@@ -149,7 +149,9 @@ const StudentClassPage = () => {
           )}
           
           {activeTab === 'discussion' && (
-            <DiscussionTab classData={classData} userRole="Student" />
+            <DiscussionTab 
+              classId={classData._id} // Make sure to pass the correct classId
+            />
           )}
         </div>
       </div>

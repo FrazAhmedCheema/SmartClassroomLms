@@ -17,22 +17,33 @@ const SubAdminLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      {/* Static Navbar */}
       <Navbar 
         toggleSidebar={toggleSidebar}
         isSidebarOpen={isSidebarOpen}
         isMobile={isMobile}
       />
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        toggle={toggleSidebar}
-        isMobile={isMobile}
-      />
-      <div className={`transition-all duration-300 pt-16 ${isSidebarOpen ? 'ml-64' : isMobile ? 'ml-0' : 'ml-20'}`}>
-        <Outlet />
+      
+      <div className="flex flex-1 pt-16">
+        {/* Static Sidebar */}
+        <Sidebar 
+          isOpen={isSidebarOpen} 
+          toggle={toggleSidebar}
+          isMobile={isMobile}
+        />
+        
+        {/* Main Content Area */}
+        <main className={`flex-1 transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? 'ml-64' : isMobile ? 'ml-0' : 'ml-20'
+        }`}>
+          <div className="h-full min-h-screen bg-gray-50">
+            <Outlet />
+          </div>
+        </main>
       </div>
     </div>
   );
 };
 
-export default SubAdminLayout;
+export default React.memo(SubAdminLayout); // Add memo to prevent unnecessary re-renders

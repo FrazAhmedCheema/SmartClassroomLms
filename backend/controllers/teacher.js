@@ -188,7 +188,7 @@ exports.login = async (req, res) => {
 
         const payload = {
             id: teacher._id,
-            role: 'teacher'
+            role: 'teacher'  // Add role to payload
         };
 
         // Generate JWT
@@ -212,7 +212,8 @@ exports.login = async (req, res) => {
             success: true,
             message: 'Login successful',
             token,
-            teacherId: teacher._id
+            teacherId: teacher._id,
+            role: 'teacher'  // Add role to response
         });
     } catch (error) {
         console.error('Login error:', error);
@@ -288,7 +289,8 @@ exports.authStatus = async (req, res) => {
             success: true,
             teacherId,
             name: teacher.name,
-            email: teacher.email
+            email: teacher.email,
+            role: 'teacher'  // Add role to auth status response
         });
     } catch (error) {
         console.error('Auth status error:', error);
@@ -381,6 +383,54 @@ exports.getClassById = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error fetching class details',
+            error: error.message
+        });
+    }
+};
+
+exports.getTeacherStats = async (req, res) => {
+    try {
+        const teacherId = req.user.id;
+        console.log('Fetching stats for teacher:', teacherId);
+
+        // Find teacher and populate classes with their students
+        const teacher = await Teacher.findById(teacherId)
+            .populate({
+                path: 'classes',
+                populate: {
+                    path: 'students'
+                }
+            });
+
+        if (!teacher) {
+            return res.status(404).json({
+                success: false,
+                message: 'Teacher not found'
+            });
+        }
+
+        // Get active classes count from teacher's classes array
+        const activeClasses = teacher.classes.length;
+
+        // Calculate total students across all classes
+        const totalStudents = teacher.classes.reduce((total, classObj) => {
+            return total + (classObj.students ? classObj.students.length : 0);
+        }, 0);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                activeClasses,
+                totalStudents,
+                assignments: 0, // Dummy value as requested
+                upcoming: 0     // Dummy value as requested
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching teacher stats:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching stats',
             error: error.message
         });
     }

@@ -3,8 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import logo from "../../assets/logo.png";
+import { useDispatch, useSelector } from 'react-redux';
+import { loginSuccess, loginFail, setLoading } from '../../redux/slices/adminAuthSlice';
 
 const AdminLogin = () => {
+  const dispatch = useDispatch();
+  const { loading, error: authError, isAuthenticated } = useSelector(state => state.adminAuth);
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -13,31 +17,39 @@ const AdminLogin = () => {
   });
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
-  const [loading, setLoading] = useState(true);
 
   // Check if admin is already logged in when component mounts
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
+        dispatch(setLoading(true));
         const response = await fetch('http://localhost:8080/admin/check-auth', {
           method: 'GET',
           credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
         });
         
         if (response.ok) {
-          // User is already authenticated, redirect to dashboard
-          navigate('/admin/dashboard');
+          const data = await response.json();
+          if (data.authenticated && data.admin) {
+            dispatch(loginSuccess(data.admin));
+            navigate('/admin/dashboard');
+          }
+        } else {
+          // Clear any existing auth state if not authenticated
+          dispatch(loginFail('Not authenticated'));
         }
       } catch (error) {
-        console.error('Auth check error:', error);
-        // If there's an error, we'll just continue showing the login page
+        dispatch(loginFail(error.message));
       } finally {
-        setLoading(false);
+        dispatch(setLoading(false));
       }
     };
     
     checkAuthStatus();
-  }, [navigate]);
+  }, [dispatch, navigate]);
 
   const validate = () => {
     const errors = {};
@@ -54,38 +66,46 @@ const AdminLogin = () => {
     return errors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
-    } else {
-      fetch("http://localhost:8080/admin/login", { 
+      return;
+    }
+
+    try {
+      dispatch(setLoading(true));
+      console.log('Attempting login...');
+      
+      const response = await fetch("http://localhost:8080/admin/login", { 
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
         credentials: "include",
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`Network response was not ok: ${response.statusText}`);
-          }
-          return response.json();
-        })
-        .then((data) => {
-          if (data.error) {
-            setServerError(data.error);
-          } else {
-            console.log("Form submitted:", data);
-            navigate("/admin/dashboard");
-          }
-        })
-        .catch((error) => {
-          console.error("Fetch error:", error);
-          setServerError(`An unexpected error occurred: ${error.message}`);
-        });
+      });
+
+      const data = await response.json();
+      console.log('Login response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Login failed');
+      }
+
+      if (!data.admin) {
+        console.error('Invalid server response:', data);
+        throw new Error('Admin data missing in response');
+      }
+
+      dispatch(loginSuccess(data.admin));
+      navigate("/admin/dashboard");
+      
+    } catch (error) {
+      console.error('Login error:', error);
+      dispatch(loginFail(error.message));
+      setServerError(error.message || "Login failed. Please try again.");
+    } finally {
+      dispatch(setLoading(false));
     }
   };
 

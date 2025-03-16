@@ -13,5 +13,6 @@ router.post('/logout', studentController.logout);
 router.get('/enrolled-classes', authorizeStudent, studentController.getEnrolledClasses);
 router.post('/join-class', authorizeStudent, studentController.joinClass);
 router.get('/class/:id', authorizeStudent, studentController.getClassById);
+router.get('/stats', authorizeStudent, studentController.getStudentStats);
 
 module.exports = router;

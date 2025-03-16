@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Search, Users, UserCircle, Filter, BookOpen, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 
 const ViewClasses = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useSelector(state => state.subAdminAuth);
   const [searchTerm, setSearchTerm] = useState('');
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +17,11 @@ const ViewClasses = () => {
   });
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/sub-admin/login');
+      return;
+    }
+
     const fetchClasses = async () => {
       try {
         const response = await fetch('http://localhost:8080/sub-admin/classes', {
@@ -28,14 +35,17 @@ const ViewClasses = () => {
           console.error('Failed to fetch classes');
         }
       } catch (error) {
-        console.error('Error fetching classes:', error);
+        if (error.response?.status === 401) {
+          navigate('/sub-admin/login');
+          console.error('Error fetching classes:', error);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchClasses();
-  }, []);
+  }, [navigate, isAuthenticated]);
 
   const filteredClasses = classes.filter(cls => {
     const matchesSearch = 
@@ -72,11 +82,12 @@ const ViewClasses = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gray-100 p-6 overflow-x-hidden">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-7xl mx-auto"
+        className="max-w-7xl mx-auto relative"
+        style={{ zIndex: 20 }}
       >
         {/* Header Section */}
         <div className="bg-white rounded-2xl p-8 shadow-lg mb-8 border-b-4 border-blue-500">
