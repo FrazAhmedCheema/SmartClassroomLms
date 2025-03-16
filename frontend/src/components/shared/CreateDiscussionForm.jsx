@@ -15,7 +15,7 @@ const CreateDiscussionForm = ({
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
-      className="bg-blue-50 p-4 rounded-xl mb-6"
+      className="bg-white p-4 rounded-xl mb-6"
     >
       <form onSubmit={onSubmit}>
         <input
@@ -23,14 +23,14 @@ const CreateDiscussionForm = ({
           value={newTopic}
           onChange={(e) => setNewTopic(e.target.value)}
           placeholder="Enter topic title"
-          className="w-full px-4 py-3 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b68b3] focus:border-transparent"
+          className="w-full px-4 py-3 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b68b3] focus:border-transparent bg-gray-50 text-gray-900 placeholder-gray-500"
           required
         />
         <textarea
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Write your first message"
-          className="w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b68b3] focus:border-transparent resize-none"
+          className="w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b68b3] focus:border-transparent resize-none bg-gray-50 text-gray-900 placeholder-gray-500"
           rows={4}
           required
         />
