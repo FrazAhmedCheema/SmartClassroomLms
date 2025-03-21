@@ -27,7 +27,7 @@ import LineChartComponent from '../charts/LineChartComponent';
 import PieChartComponent from '../charts/PieChartComponent';
 import { motion, useAnimation } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
-import { logout, loginFail } from '../../redux/slices/adminAuthSlice';
+import { logout, loginFail, setLoading } from '../../redux/slices/adminAuthSlice';
 
 const socket = io("http://localhost:8080", { withCredentials: true })
 
@@ -50,8 +50,7 @@ const DashboardCard = ({ icon, title, value, change, color }) => (
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { isAuthenticated, admin } = useSelector(state => state.adminAuth);
-  const [loading, setLoading] = useState(true);
+  const { isAuthenticated, admin, loading } = useSelector(state => state.adminAuth);
   const [dashboardData, setDashboardData] = useState({
     institutes: { count: 0, change: 0 },
     requests: { count: 0, change: 0 },
@@ -59,13 +58,14 @@ const AdminDashboard = () => {
     activities: { count: 0, change: 0 },
   });
   const [recentActivity, setRecentActivity] = useState([]);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
     const initializeDashboard = async () => {
       try {
+        dispatch(setLoading(true));  // Use Redux loading state
         // First check auth status
         const authResponse = await axios.get("http://localhost:8080/admin/check-auth", {
           withCredentials: true
@@ -99,16 +99,16 @@ const AdminDashboard = () => {
             dispatch(loginFail('Session expired'));
             navigate("/admin/login");
           }
+        } finally {
+          if (mounted) {
+            dispatch(setLoading(false));  // Use Redux loading state
+          }
         }
       } catch (error) {
         console.error('Auth check error:', error);
         if (error.response?.status === 401) {
           dispatch(loginFail('Not authenticated'));
           navigate("/admin/login");
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
         }
       }
     };
@@ -171,8 +171,10 @@ const AdminDashboard = () => {
         <AdminNavbar title="Admin Dashboard" />
         <div className="container mx-auto px-4 py-8">
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-lg shadow-xl text-center">
+                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              </div>
             </div>
           ) : (
             <>

@@ -409,7 +409,7 @@ exports.getDashboardData = async (req, res) => {
         students: studentCount,
         teachers: teacherCount
       },
-      activities: { count: activities || 23, change: 5 } // Keeping as dummy value for now
+      activities: { count: activities || 0, change: 5 } // Keeping as dummy value for now
     });
   } catch (err) {
     console.error('Error fetching dashboard data:', err.message);

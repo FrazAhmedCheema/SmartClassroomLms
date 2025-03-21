@@ -125,6 +125,30 @@ const DiscussionTab = ({ classId }) => {
     }
   };
 
+  const handleDeleteMessage = async (messageId) => {
+    try {
+      const response = await axios.delete(
+        `http://localhost:8080/discussions/message/${activeTopic}/${messageId}`,
+        { withCredentials: true }
+      );
+
+      if (response.data.success) {
+        // Update discussions by removing the deleted message
+        setDiscussions(prev => prev.map(d => {
+          if (d._id === activeTopic) {
+            return {
+              ...d,
+              messages: d.messages.filter(m => m._id !== messageId)
+            };
+          }
+          return d;
+        }));
+      }
+    } catch (err) {
+      console.error('Delete message error:', err);
+    }
+  };
+
   const filteredMessages = discussions.find(d => d._id === activeTopic)?.messages || [];
 
   if (!classId || loading) {
@@ -235,6 +259,7 @@ const DiscussionTab = ({ classId }) => {
           newMessage={newMessage}
           setNewMessage={setNewMessage}
           onSendMessage={handleSendMessage}
+          onDeleteMessage={handleDeleteMessage}
           topic={discussions.find(t => t._id === activeTopic)}
           onBack={() => setActiveTopic(null)}
         />

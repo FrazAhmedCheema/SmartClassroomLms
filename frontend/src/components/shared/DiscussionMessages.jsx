@@ -25,7 +25,7 @@ const DiscussionMessages = ({ messages, newMessage, setNewMessage, onSendMessage
   };
 
   const confirmDelete = () => {
-    if (messageToDelete) {
+    if (messageToDelete && onDeleteMessage) {
       onDeleteMessage(messageToDelete);
       setMessageToDelete(null);
     }
