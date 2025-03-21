@@ -171,6 +171,7 @@ exports.deleteMessage = async (req, res) => {
   try {
     const { discussionId, messageId } = req.params;
     const userId = req.user.id;
+    console.log("Reached !!!!!!!!!!!!!!!!!! here ?")
 
     const discussion = await Discussion.findById(discussionId);
     if (!discussion) {
