@@ -22,12 +22,9 @@ import StudentDashboard from './screens/student/StudentDashboard';
 import TeacherLogin from './screens/teacher/TeacherLogin';
 import PrivateRoute from './components/PrivateRoute';
 import StudentLogin from './screens/student/StudentLogin';
-// Import the class page components
-import TeacherClassPage from './screens/teacher/TeacherClassPage';
-import StudentClassPage from './screens/student/StudentClassPage';
 import AdminNavbar from './components/admin/AdminNavbar';
+import ClassPage from './components/shared/ClassPage';
 
-// Create AdminLayout component
 const AdminLayout = () => {
   return (
     <>
@@ -102,10 +99,6 @@ const AppRoutes = () => {
         }>
           <Route index element={<Navigate to="home" replace />} />
           <Route path="home" element={<TeacherDashboard />} />
-          <Route path="dashboard" element={<Navigate to="/teacher/home" replace />} />
-          {/* Add TeacherClassPage route */}
-          <Route path="class/:id" element={<TeacherClassPage />} />
-          {/* Additional teacher routes go here */}
         </Route>
       </Route>
 
@@ -126,9 +119,22 @@ const AppRoutes = () => {
         }>
           <Route index element={<Navigate to="home" replace />} />
           <Route path="home" element={<StudentDashboard />} />
-          {/* Add StudentClassPage route */}
-          <Route path="class/:id" element={<StudentClassPage />} />
         </Route>
+      </Route>
+
+      {/* Class Routes - Common for both teacher and student */}
+      <Route element={
+        <PrivateRoute 
+          isAuthenticated={isTeacherAuthenticated || isStudentAuthenticated}
+          redirectPath={isTeacherAuthenticated ? "/teacher/login" : "/student/login"}
+        >
+          {isTeacherAuthenticated ? <TeacherLayout /> : <StudentLayout />}
+        </PrivateRoute>
+      }>
+        <Route path="/class/:id" element={<ClassPage defaultTab="stream" />} />
+        <Route path="/cw/:id" element={<ClassPage defaultTab="classwork" />} />
+        <Route path="/people/:id" element={<ClassPage defaultTab="people" />} />
+        <Route path="/discussions/:id" element={<ClassPage defaultTab="discussion" />} />
       </Route>
 
       {/* Fallback */}

@@ -12,9 +12,6 @@ router.post('/login', teacherController.login);
 router.get('/check-auth', authorizeTeacher, teacherController.checkAuth);
 router.post('/logout', authorizeTeacher, teacherController.logout);
 
-// New route to get class details by ID
-router.get('/class/:id', authorizeTeacher, teacherController.getClassById);
-
 // Add this new route before module.exports
 router.get('/stats', authorizeTeacher, teacherController.getTeacherStats);
 

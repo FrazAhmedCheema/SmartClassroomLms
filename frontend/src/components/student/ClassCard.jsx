@@ -2,7 +2,7 @@ import React from 'react';
 import { MoreVertical, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const ClassCard = ({ cls }) => {
+const StudentClassCard = ({ cls, onClick }) => {
   const { 
     _id,
     className, 
@@ -15,7 +15,7 @@ const ClassCard = ({ cls }) => {
   const navigate = useNavigate();
 
   const handleCardClick = () => {
-    navigate(`/student/class/${_id}`);
+    navigate(`/class/${_id}`);
   };
 
   const handleMoreClick = (e) => {
@@ -26,7 +26,7 @@ const ClassCard = ({ cls }) => {
   return (
     <div 
       className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
-      onClick={handleCardClick}
+      onClick={onClick} // Use the onClick prop directly
     >
       {/* Header/Banner with cover image */}
       <div 
@@ -72,4 +72,4 @@ const ClassCard = ({ cls }) => {
   );
 };
 
-export default ClassCard;
+export default StudentClassCard;
