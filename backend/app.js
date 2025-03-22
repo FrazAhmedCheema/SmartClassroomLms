@@ -11,6 +11,7 @@ const adminRoutes = require('./routes/admin');
 const teacherRoutes = require('./routes/teacher');
 const studentRoutes = require('./routes/student');
 const discussionRoutes = require('./routes/discussion');
+const classRoutes = require('./routes/class');
 
 const app = express();
 const server = http.createServer(app);
@@ -59,6 +60,7 @@ app.use((req, res, next) => {
 });
 
 app.use('/sub-admin', subAdminRoutes);
+app.use('/class', classRoutes);
 app.use('/admin', adminRoutes);
 app.use('/teacher', teacherRoutes);
 app.use('/student', studentRoutes);

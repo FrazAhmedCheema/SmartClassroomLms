@@ -8,6 +8,7 @@ import studentReducer from './slices/studentSlice';
 import enrolledClassesReducer from './slices/enrolledClassesSlice';
 import adminAuthReducer from './slices/adminAuthSlice';
 import subAdminAuthReducer from './slices/subAdminAuthSlice';
+import classReducer from './slices/classSlice';
 
 const persistConfig = {
   key: 'root',
@@ -23,6 +24,7 @@ const rootReducer = combineReducers({
   enrolledClasses: enrolledClassesReducer,
   adminAuth: adminAuthReducer,
   subAdminAuth: subAdminAuthReducer,
+  class: classReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

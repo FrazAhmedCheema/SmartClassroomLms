@@ -55,67 +55,49 @@ exports.getDiscussions = async (req, res) => {
 
 exports.createDiscussion = async (req, res) => {
   try {
-    const { classId, title, message } = req.body;
-    
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required'
-      });
-    }
+    const { classId, title, message, authorModel } = req.body;
+    const userId = req.user.id;
 
-    // Ensure required fields
-    if (!classId || !title || !message) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields'
-      });
-    }
-
-    // Verify user has access to class
-    const classDoc = await Class.findById(classId);
-    if (!classDoc) {
-      return res.status(404).json({
-        success: false,
-        message: 'Class not found'
-      });
-    }
-
-    // For teachers
-    if (req.user.role === 'teacher' && classDoc.teacherId.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to create discussion in this class'
-      });
-    }
-
-    // Create discussion with correct author model based on role
+    // Create the discussion
     const discussion = new Discussion({
       classId,
       title,
-      author: req.user.id,
-      authorModel: req.user.role === 'teacher' ? 'Teacher' : 'Student',
+      author: userId,
+      authorModel,
       messages: [{
         content: message,
-        author: req.user.id,
-        authorModel: req.user.role === 'teacher' ? 'Teacher' : 'Student'
+        author: userId,
+        authorModel
       }]
     });
 
-    await discussion.save();
-    await discussion.populate('author', 'name');
-    await discussion.populate('messages.author', 'name');
+    // Save the discussion
+    const savedDiscussion = await discussion.save();
+
+    // Update the class with the new discussion ID
+    await Class.findByIdAndUpdate(
+      classId,
+      { 
+        $push: { discussions: savedDiscussion._id } 
+      },
+      { new: true }
+    );
+
+    // Populate author details before sending response
+    const populatedDiscussion = await Discussion.findById(savedDiscussion._id)
+      .populate('author', 'name email')
+      .populate('messages.author', 'name email');
 
     res.status(201).json({
       success: true,
-      discussion
+      discussion: populatedDiscussion
     });
 
   } catch (error) {
     console.error('Create discussion error:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to create discussion'
+      message: error.message
     });
   }
 };
