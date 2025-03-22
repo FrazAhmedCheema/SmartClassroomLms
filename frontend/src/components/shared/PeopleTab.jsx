@@ -1,15 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, ChevronDown, Mail, UserPlus, MoreVertical, Search } from 'lucide-react';
+import { User, Mail, UserPlus, MoreVertical, Search } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchPeople } from '../../redux/actions/classActions';
 
-const PeopleTab = ({ classData, userRole }) => {
-  const isTeacher = userRole === 'Teacher';
+const PeopleTab = ({ classId, userRole }) => {
+  const dispatch = useDispatch();
+  const { data: peopleData, loading, error } = useSelector(state => state.class.people);
   const [inviteEmail, setInviteEmail] = useState('');
   const [showInviteForm, setShowInviteForm] = useState(false);
-  
-  // Use the data from props and fall back to empty arrays
-  const teachers = classData?.teachers || [];
-  const students = classData?.students || [];
+  const isTeacher = userRole === 'Teacher';
+
+  // Ensure safe access to teachers and students with default empty arrays
+  const teachers = peopleData?.teacher ? [peopleData.teacher] : [];
+  const students = peopleData?.students || [];
+
+  useEffect(() => {
+    if (classId) {
+      dispatch(fetchPeople(classId));
+    }
+  }, [classId, dispatch]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-red-500 text-center py-8">
+        {error}
+      </div>
+    );
+  }
 
   const handleInvite = (e) => {
     e.preventDefault();
@@ -36,20 +62,20 @@ const PeopleTab = ({ classData, userRole }) => {
           {teachers.length > 0 ? (
             teachers.map((teacher, index) => (
               <div 
-                key={teacher.id || index}
+                key={teacher?._id || index}
                 className={`flex items-center justify-between p-4 ${
                   index !== teachers.length - 1 ? 'border-b border-gray-100' : ''
                 }`}
               >
                 <div className="flex items-center">
                   <div className="w-10 h-10 rounded-full text-white flex items-center justify-center font-bold" style={{ backgroundColor: '#1b68b3' }}>
-                    {teacher.name ? teacher.name.charAt(0) : 'T'}
+                    {teacher?.name?.charAt(0) || 'T'}
                   </div>
                   <div className="ml-4">
-                    <h3 className="font-medium text-gray-900">{teacher.name}</h3>
+                    <h3 className="font-medium text-gray-900">{teacher?.name || 'Unknown Teacher'}</h3>
                     <div className="flex items-center text-sm text-gray-500">
                       <Mail size={14} className="mr-1" />
-                      {teacher.email}
+                      {teacher?.email || 'No email'}
                     </div>
                   </div>
                 </div>
@@ -125,7 +151,7 @@ const PeopleTab = ({ classData, userRole }) => {
           {students.length > 0 ? (
             students.map((student, index) => (
               <div 
-                key={student.id || index}
+                key={student?._id || index}
                 className={`flex items-center justify-between p-4 ${
                   index !== students.length - 1 ? 'border-b border-gray-100' : ''
                 }`}

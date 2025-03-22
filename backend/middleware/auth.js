@@ -147,6 +147,25 @@ const authorizeTeacherOrStudent = (req, res, next) => {
   }
 };
 
+exports.auth = async (req, res, next) => {
+    try {
+        const token = req.cookies.teacherToken || req.cookies.studentToken;
+        if (!token) {
+            return res.status(401).json({ message: 'Not authenticated' });
+        }
+
+        // Verify and decode the token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = {
+            id: decoded.id,
+            role: decoded.role
+        };
+        next();
+    } catch (error) {
+        return res.status(401).json({ message: 'Invalid token' });
+    }
+};
+
 module.exports = {
     authorize,
     authorizeAdmin,

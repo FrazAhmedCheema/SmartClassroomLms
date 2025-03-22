@@ -42,7 +42,7 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
       isDropdown: true,
       children: classes.map(cls => ({
         title: cls.className,
-        path: `/${baseRoute}/class/${cls._id}`,
+        path: `/class/${cls._id}`,
         initial: cls.className ? cls.className.charAt(0).toUpperCase() : '?'
       }))
     },

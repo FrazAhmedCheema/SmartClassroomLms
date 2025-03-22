@@ -1,33 +1,42 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import CreateAnnouncementForm from './CreateAnnouncementForm';
+import { formatDistanceToNow } from 'date-fns';
 import { Send, Link, File, Image, Calendar, Paperclip, User, Clock } from 'lucide-react';
 
-const StreamTab = ({ classData, userRole }) => {
+const defaultClassData = {
+  coverImage: 'https://gstatic.com/classroom/themes/img_code.jpg', // default cover image
+  section: 'Loading...',
+  className: 'Loading...',
+  teachers: [{ name: 'Loading...' }],
+  classCode: 'Loading...',
+  announcements: []
+};
+
+const StreamTab = ({ classData = defaultClassData, userRole }) => {
   const [announcement, setAnnouncement] = useState('');
   const [hoveredButton, setHoveredButton] = useState(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const isTeacher = userRole === 'Teacher';
   
-  const announcements = classData.announcements || [
+  // Merge provided classData with default values to ensure all properties exist
+  const safeClassData = {
+    ...defaultClassData,
+    ...classData,
+    teachers: classData?.teachers || defaultClassData.teachers,
+    classCode: classData?.classCode || 'Loading...' // Only show loading if classCode is undefined
+  };
+
+  const announcements = safeClassData?.announcements || [
     {
-      id: 1,
-      author: 'Dr. Sarah Johnson',
-      authorRole: 'Teacher',
-      content: 'Welcome to our class! Please review the syllabus and let me know if you have any questions.',
-      createdAt: '2023-09-05T14:30:00Z',
-      attachments: [],
-      likes: 12,
-      comments: 3
-    },
-    {
-      id: 2,
-      author: 'Dr. Sarah Johnson',
-      authorRole: 'Teacher',
-      content: 'Remember to submit your project proposals by Friday.',
-      createdAt: '2023-09-07T09:15:00Z',
-      attachments: [{ name: 'Project_Guidelines.pdf', type: 'pdf' }],
-      likes: 8,
-      comments: 2
-    },
+      _id: 'default-1',
+      content: 'Welcome to the class! 👋',
+      createdBy: {
+        name: 'System',
+        role: 'system'
+      },
+      createdAt: new Date().toISOString()
+    }
   ];
 
   const handleSubmit = (e) => {
@@ -35,6 +44,10 @@ const StreamTab = ({ classData, userRole }) => {
     // Handle submission logic
     console.log('Announcement submitted:', announcement);
     setAnnouncement('');
+  };
+
+  const handleCreateAnnouncement = async (content) => {
+    // ...existing code...
   };
 
   return (
@@ -50,7 +63,7 @@ const StreamTab = ({ classData, userRole }) => {
         animate={{ y: 0, opacity: 1 }}
         className="h-72 rounded-2xl relative bg-cover bg-center mb-8 overflow-hidden"
         style={{ 
-          backgroundImage: `url(${classData.coverImage})`,
+          backgroundImage: `url(${safeClassData.coverImage})`,
           boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
         }}
       >
@@ -68,10 +81,10 @@ const StreamTab = ({ classData, userRole }) => {
                   backgroundColor: 'rgba(59, 130, 246, 0.3)', 
                   backdropFilter: 'blur(10px)'
                 }}>
-              <span className="text-white text-sm font-medium">{classData.section}</span>
+              <span className="text-white text-sm font-medium">{safeClassData.section}</span>
             </div>
             <h1 className="text-4xl font-bold text-white mb-3" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-              {classData.className}
+              {safeClassData.className}
             </h1>
             <div className="flex items-center flex-wrap gap-2">
               <div className="px-4 py-1.5 rounded-full flex items-center space-x-2" 
@@ -80,18 +93,17 @@ const StreamTab = ({ classData, userRole }) => {
                     backdropFilter: 'blur(10px)'
                   }}>
                 <User size={14} style={{ color: 'white' }} />
-                <span className="text-sm text-white">Teacher: {isTeacher ? "You" : classData.teachers?.[0]?.name || "Dr. Sarah Johnson"}</span>
+                <span className="text-sm text-white">Teacher: {isTeacher ? "You" : safeClassData.teachers?.[0]?.name || "Dr. Sarah Johnson"}</span>
               </div>
-              <div className="px-4 py-1.5 rounded-full flex items-center space-x-2"
-                  style={{ 
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)', 
-                    backdropFilter: 'blur(10px)'
-                  }}>
-                    {isTeacher ?
-                <span className="text-sm text-white">Class Code: {classData.classCode}</span>
-             : <></>
-                    }
-              </div>
+                {isTeacher && safeClassData.classCode !== 'Loading...' && (
+                  <div className="px-4 py-1.5 rounded-full flex items-center space-x-2"
+                      style={{ 
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)', 
+                        backdropFilter: 'blur(10px)'
+                      }}>
+                    <span className="text-sm text-white">Class Code: {safeClassData.classCode}</span>
+                  </div>
+                )}
             </div>
           </motion.div>
         </div>
@@ -112,7 +124,7 @@ const StreamTab = ({ classData, userRole }) => {
             <div className="flex items-center mb-4">
               <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold mr-3" 
                    style={{ backgroundColor: '#1b68b3', color: 'white' }}>
-                {classData.teachers?.[0]?.name?.charAt(0) || "T"}
+                {safeClassData.teachers?.[0]?.name?.charAt(0) || "T"}
               </div>
               <p className="font-medium" style={{ color: '#374151' }}>Announce something to your class</p>
             </div>
@@ -172,11 +184,30 @@ const StreamTab = ({ classData, userRole }) => {
         </motion.div>
       )}
       
+      {/* Create announcement button for teachers */}
+      {userRole === 'Teacher' && (
+        <div className="bg-white rounded-xl shadow-md p-6">
+          {showCreateForm ? (
+            <CreateAnnouncementForm
+              onSubmit={handleCreateAnnouncement}
+              onCancel={() => setShowCreateForm(false)}
+            />
+          ) : (
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="w-full text-left px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-500 transition-colors"
+            >
+              Create announcement...
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Announcements list with professional design */}
       <div className="space-y-6">
         {announcements.map((post, index) => (
           <motion.div
-            key={post.id}
+            key={post._id || `announcement-${index}`} // Updated key prop
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
@@ -189,12 +220,12 @@ const StreamTab = ({ classData, userRole }) => {
             <div className="p-6">
               <div className="flex items-center mb-4">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold" style={{ backgroundColor: '#1b68b3', color: 'white' }}>
-                  {post.author.charAt(0)}
+                  {post.createdBy?.name?.charAt(0) || 'U'}
                 </div>
                 <div className="ml-4">
                   <div className="flex items-center">
-                    <h3 className="font-medium" style={{ color: '#111827' }}>{post.author}</h3>
-                    {post.authorRole === 'Teacher' && (
+                    <h3 className="font-medium" style={{ color: '#111827' }}>{post.createdBy?.name || 'Unknown User'}</h3>
+                    {post.createdBy?.role === 'Teacher' && (
                       <span className="ml-2 px-2 py-0.5 rounded-full text-xs" 
                             style={{ backgroundColor: '#dbeafe', color: '#1e40af' }}>
                         Teacher
@@ -203,12 +234,7 @@ const StreamTab = ({ classData, userRole }) => {
                   </div>
                   <div className="flex items-center text-xs mt-1" style={{ color: '#6b7280' }}>
                     <Clock size={12} className="mr-1" />
-                    {new Date(post.createdAt).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric', 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
+                    {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
                   </div>
                 </div>
               </div>
@@ -221,7 +247,7 @@ const StreamTab = ({ classData, userRole }) => {
                     const [isHovered, setIsHovered] = useState(false);
                     return (
                       <div 
-                        key={i}
+                        key={`${post._id}-attachment-${i}`} // Added unique key
                         className="flex items-center p-3 border rounded-lg transition-colors"
                         style={{
                           backgroundColor: isHovered ? '#eff6ff' : '#f9fafb',
@@ -251,7 +277,7 @@ const StreamTab = ({ classData, userRole }) => {
               <div className="mt-4 pt-3 flex items-center" style={{ borderTop: '1px solid #f3f4f6' }}>
                 <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold" 
                      style={{ backgroundColor: '#1b68b3', color: 'white' }}>
-                  {post.author.charAt(0)}
+                  {post.createdBy?.name?.charAt(0) || 'U'}
                 </div>
                 <div className="flex-1 ml-3">
                   <input 

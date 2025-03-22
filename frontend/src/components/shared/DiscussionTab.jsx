@@ -4,9 +4,12 @@ import { MessageSquare } from 'lucide-react';
 import axios from 'axios';
 import CreateDiscussionForm from './CreateDiscussionForm';
 import DiscussionMessages from './DiscussionMessages';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchDiscussions, updateDiscussions } from '../../redux/actions/classActions';
 
 const DiscussionTab = ({ classId }) => {
+  const dispatch = useDispatch();
+  const { data: discussionsData, loading, error } = useSelector(state => state.class.discussions);
   const teacherState = useSelector(state => state.teacher);
   const studentState = useSelector(state => state.student);
   
@@ -14,44 +17,17 @@ const DiscussionTab = ({ classId }) => {
   const { isAuthenticated, role } = teacherState.role ? teacherState : studentState;
   const userId = teacherState.teacherId || studentState.studentId;
 
-  const [discussions, setDiscussions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [newTopic, setNewTopic] = useState('');
   const [newMessage, setNewMessage] = useState('');
   const [showTopicForm, setShowTopicForm] = useState(false);
   const [activeTopic, setActiveTopic] = useState(null);
 
+  // Use cached data from Redux
   useEffect(() => {
-    if (!classId) {
-      console.warn('Waiting for classId...');
-      return;
+    if (classId && !discussionsData) {
+      dispatch(fetchDiscussions(classId));
     }
-
-    console.log('Fetching discussions for class:', classId);
-    fetchDiscussions();
-  }, [classId]);
-
-  const fetchDiscussions = async () => {
-    if (!classId) return;
-
-    try {
-      const response = await axios.get(`http://localhost:8080/discussions/class/${classId}`, {
-        withCredentials: true
-      });
-      
-      if (response.data.discussions) {
-        setDiscussions(response.data.discussions);
-      } else {
-        setDiscussions([]);
-      }
-    } catch (err) {
-      console.error('Failed to load discussions:', err);
-      setError('Failed to load discussions');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [classId, discussionsData, dispatch]);
 
   const handleCreateTopic = async (e) => {
     e.preventDefault();
@@ -77,7 +53,11 @@ const DiscussionTab = ({ classId }) => {
       });
       
       if (response.data.success) {
-        setDiscussions([response.data.discussion, ...discussions]);
+        // Update local state with new discussion
+        const newDiscussion = response.data.discussion;
+        const updatedDiscussions = discussionsData ? [...discussionsData, newDiscussion] : [newDiscussion];
+        dispatch(updateDiscussions(updatedDiscussions));
+        
         setNewTopic('');
         setNewMessage('');
         setShowTopicForm(false);
@@ -107,17 +87,19 @@ const DiscussionTab = ({ classId }) => {
       );
 
       if (response.data.success && response.data.message) {
-        // Update discussions with new message
-        setDiscussions(prev => prev.map(d => {
-          if (d._id === activeTopic) {
+        // Update local state with new message
+        const updatedDiscussions = discussionsData.map(discussion => {
+          if (discussion._id === activeTopic) {
             return {
-              ...d,
-              messages: [...d.messages, response.data.message],
-              lastActivity: new Date()
+              ...discussion,
+              messages: [...discussion.messages, response.data.message],
+              lastActivity: new Date().toISOString()
             };
           }
-          return d;
-        }));
+          return discussion;
+        });
+        
+        dispatch(updateDiscussions(updatedDiscussions));
         setNewMessage('');
       }
     } catch (err) {
@@ -133,23 +115,12 @@ const DiscussionTab = ({ classId }) => {
       );
 
       if (response.data.success) {
-        // Update discussions by removing the deleted message
-        setDiscussions(prev => prev.map(d => {
-          if (d._id === activeTopic) {
-            return {
-              ...d,
-              messages: d.messages.filter(m => m._id !== messageId)
-            };
-          }
-          return d;
-        }));
+        dispatch(fetchDiscussions(classId)); // Refresh discussions
       }
     } catch (err) {
       console.error('Delete message error:', err);
     }
   };
-
-  const filteredMessages = discussions.find(d => d._id === activeTopic)?.messages || [];
 
   if (!classId || loading) {
     return <div className="flex justify-center items-center p-8">
@@ -193,7 +164,7 @@ const DiscussionTab = ({ classId }) => {
           )}
 
           <div className="space-y-2">
-            {discussions.length === 0 ? (
+            {discussionsData?.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -211,7 +182,7 @@ const DiscussionTab = ({ classId }) => {
                 </button>
               </motion.div>
             ) : (
-              discussions.map((topic) => (
+              discussionsData?.map((topic) => (
                 <motion.div
                   key={topic._id}
                   initial={{ opacity: 0, y: 10 }}
@@ -255,12 +226,12 @@ const DiscussionTab = ({ classId }) => {
         </>
       ) : (
         <DiscussionMessages 
-          messages={filteredMessages}
+          messages={discussionsData?.find(d => d._id === activeTopic)?.messages || []}
           newMessage={newMessage}
           setNewMessage={setNewMessage}
           onSendMessage={handleSendMessage}
           onDeleteMessage={handleDeleteMessage}
-          topic={discussions.find(t => t._id === activeTopic)}
+          topic={discussionsData?.find(t => t._id === activeTopic)}
           onBack={() => setActiveTopic(null)}
         />
       )}
