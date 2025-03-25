@@ -14,4 +14,8 @@ router.get('/enrolled-classes', authorizeStudent, studentController.getEnrolledC
 router.post('/join-class', authorizeStudent, studentController.joinClass);
 router.get('/stats', authorizeStudent, studentController.getStudentStats);
 
+// Add profile routes
+router.get('/profile', authorizeStudent, studentController.getCurrentStudentProfile);
+router.get('/profile/:id', studentController.getStudentProfileById);
+
 module.exports = router;
