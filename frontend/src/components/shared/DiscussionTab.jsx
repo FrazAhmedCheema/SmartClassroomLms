@@ -107,18 +107,37 @@ const DiscussionTab = ({ classId }) => {
     }
   };
 
+  // Update the handleDeleteMessage function to properly update Redux state
   const handleDeleteMessage = async (messageId) => {
     try {
-      const response = await axios.delete(
-        `http://localhost:8080/discussions/message/${activeTopic}/${messageId}`,
-        { withCredentials: true }
+      // Find the current discussion
+      const currentDiscussion = discussionsData.find(d => d._id === activeTopic);
+      
+      if (!currentDiscussion) return;
+      
+      // Filter out the deleted message
+      const updatedMessages = currentDiscussion.messages.filter(msg => msg._id !== messageId);
+      
+      // Create a new discussion object with the updated messages
+      const updatedDiscussion = {
+        ...currentDiscussion,
+        messages: updatedMessages
+      };
+      
+      // Create a new array of discussions with the updated one
+      const updatedDiscussions = discussionsData.map(disc => 
+        disc._id === activeTopic ? updatedDiscussion : disc
       );
-
-      if (response.data.success) {
-        dispatch(fetchDiscussions(classId)); // Refresh discussions
-      }
+      
+      // Update the Redux store
+      dispatch(updateDiscussions(updatedDiscussions));
+      
+      // No need to refetch all discussions since we've updated the state locally
     } catch (err) {
-      console.error('Delete message error:', err);
+      console.error('Error handling message deletion:', err);
+      
+      // On error, refresh all discussions to ensure consistency
+      dispatch(fetchDiscussions(classId));
     }
   };
 
