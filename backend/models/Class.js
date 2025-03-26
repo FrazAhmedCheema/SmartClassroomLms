@@ -26,28 +26,55 @@ const classSchema = new mongoose.Schema({
         ref: 'Student'
     }],
     announcements: [{
-        author: {
-            type: mongoose.Schema.Types.ObjectId,
-            refPath: 'announcements.authorModel',
-            required: true
-        },
-        authorModel: {
-            type: String,
-            required: true,
-            enum: ['Teacher', 'Student']
-        },
-        authorName: {
-            type: String,
-            required: true
-        },
         content: {
             type: String,
             required: true
+        },
+        author: {
+            name: {
+                type: String,
+                default: 'Teacher' // Add default to prevent validation errors
+            }
+        },
+        authorRole: {
+            type: String,
+            enum: ['Teacher', 'Student'],
+            default: 'Teacher'
         },
         attachments: [{
             fileName: String,
             fileUrl: String,
             fileType: String
+        }],
+        comments: [{ // Add comments array to each announcement
+            content: {
+                type: String,
+                required: true
+            },
+            author: {
+                name: {
+                    type: String,
+                    required: true
+                },
+                id: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    refPath: 'announcements.comments.authorModel'
+                }
+            },
+            authorModel: {
+                type: String,
+                enum: ['Teacher', 'Student'],
+                default: 'Student'
+            },
+            authorRole: {
+                type: String,
+                enum: ['Teacher', 'Student'],
+                default: 'Student'
+            },
+            createdAt: {
+                type: Date,
+                default: Date.now
+            }
         }],
         createdAt: {
             type: Date,

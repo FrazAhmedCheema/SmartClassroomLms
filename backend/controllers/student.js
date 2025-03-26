@@ -357,6 +357,66 @@ const studentController = {
                 error: error.message
             });
         }
+    },
+
+    // Get current student profile
+    getCurrentStudentProfile: async (req, res) => {
+        try {
+            if (!req.user || !req.user.id) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Not authenticated'
+                });
+            }
+
+            const student = await Student.findById(req.user.id)
+                .select('name email registrationId');
+
+            if (!student) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Student not found'
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                student
+            });
+        } catch (error) {
+            console.error('Error getting student profile:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Server error'
+            });
+        }
+    },
+
+    // Get student profile by ID
+    getStudentProfileById: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const student = await Student.findById(id)
+                .select('name email registrationId');
+
+            if (!student) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Student not found'
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                student
+            });
+        } catch (error) {
+            console.error('Error getting student profile by ID:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Server error'
+            });
+        }
     }
 };
 

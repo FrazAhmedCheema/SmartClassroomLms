@@ -105,7 +105,7 @@ exports.getClassById = async (req, res) => {
 exports.getBasicClassInfo = async (req, res) => {
   try {
     const classData = await Class.findById(req.params.id)
-      .select('className section teacherId coverImage announcements classCode') // Added classCode here
+      .select('className section teacherId coverImage announcements classCode')
       .populate('teacherId', 'name email');
 
     if (!classData) {
@@ -115,18 +115,39 @@ exports.getBasicClassInfo = async (req, res) => {
       });
     }
 
+    // Process announcements to ensure they have the proper format
+    const processedAnnouncements = classData.announcements.map(announcement => {
+      // Make sure author always has a name
+      if (!announcement.author || !announcement.author.name) {
+        return {
+          ...announcement.toObject(),
+          author: {
+            name: classData.teacherId.name || 'Teacher'
+          }
+        };
+      }
+      return announcement;
+    });
+
     const formattedResponse = {
       _id: classData._id,
       className: classData.className,
       section: classData.section,
-      classCode: classData.classCode, // Make sure this is included
+      classCode: classData.classCode,
       teacherId: classData.teacherId._id,
       teacher: {
         name: classData.teacherId.name,
         email: classData.teacherId.email
       },
+      teachers: [
+        {
+          id: classData.teacherId._id,
+          name: classData.teacherId.name,
+          email: classData.teacherId.email
+        }
+      ],
       coverImage: classData.coverImage || 'https://gstatic.com/classroom/themes/img_code.jpg',
-      announcements: classData.announcements || []
+      announcements: processedAnnouncements
     };
 
     res.json({ success: true, class: formattedResponse });
@@ -261,6 +282,281 @@ exports.getDiscussions = async (req, res) => {
       success: false, 
       message: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
+exports.createAnnouncement = async (req, res) => {
+    try {
+        console.log('Creating announcement with data:', req.body);
+        
+        const { classId, content, authorName } = req.body;
+        
+        if (!classId || !content) {
+            return res.status(400).json({
+                success: false,
+                message: 'Class ID and content are required'
+            });
+        }
+        
+        // Find the class
+        const classDoc = await Class.findById(classId);
+        if (!classDoc) {
+            return res.status(404).json({
+                success: false,
+                message: 'Class not found'
+            });
+        }
+
+        console.log('Found class:', classDoc.className);
+
+        try {
+            // Define the announcement structure explicitly matching our desired format
+            const newAnnouncement = {
+                content: content,
+                author: {
+                    name: authorName && authorName !== "Loading..." ? authorName : classDoc.teacherId.name || "Teacher"
+                },
+                authorRole: 'Teacher',
+                createdAt: new Date(),
+                attachments: []
+            };
+
+            console.log('New announcement prepared:', newAnnouncement);
+
+            // Add the announcement to the beginning of the array
+            classDoc.announcements.unshift(newAnnouncement);
+            await classDoc.save();
+            
+            console.log('Class saved with new announcement');
+
+            // Return success response with the full announcement object
+            res.status(201).json({
+                success: true,
+                message: 'Announcement created successfully',
+                announcement: classDoc.announcements[0]
+            });
+        } catch (saveError) {
+            console.error('Error saving announcement:', saveError);
+            res.status(500).json({
+                success: false,
+                message: 'Error saving announcement',
+                error: saveError.message
+            });
+        }
+    } catch (error) {
+        console.error('Error in createAnnouncement controller:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error creating announcement',
+            error: error.message
+        });
+    }
+};
+
+exports.deleteAnnouncement = async (req, res) => {
+  try {
+    const { classId, announcementId } = req.body;
+    
+    if (!classId || !announcementId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Class ID and announcement ID are required'
+      });
+    }
+    
+    // Find the class
+    const classDoc = await Class.findById(classId);
+    if (!classDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Class not found'
+      });
+    }
+    
+    // Find the announcement index
+    const announcementIndex = classDoc.announcements.findIndex(
+      announcement => announcement._id.toString() === announcementId
+    );
+    
+    if (announcementIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Announcement not found'
+      });
+    }
+    
+    // Remove the announcement
+    classDoc.announcements.splice(announcementIndex, 1);
+    await classDoc.save();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Announcement deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error in deleteAnnouncement:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting announcement',
+      error: error.message
+    });
+  }
+};
+
+exports.addComment = async (req, res) => {
+    try {
+        const { classId, announcementId, content, authorName, authorRole, userId } = req.body;
+        // Use userId from request body if available, otherwise fall back to req.user
+        const authorId = userId || req.user?.id;
+        
+        console.log("Comment request details:", {
+            classId,
+            announcementId,
+            authorName,
+            authorRole,
+            userId: userId || "not provided",
+            authUserId: req.user?.id || "not authenticated"
+        });
+        
+        if (!classId || !announcementId || !content) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields'
+            });
+        }
+        
+        // Find the class
+        const classDoc = await Class.findById(classId);
+        if (!classDoc) {
+            return res.status(404).json({
+                success: false,
+                message: 'Class not found'
+            });
+        }
+        
+        // Find the announcement
+        const announcement = classDoc.announcements.id(announcementId);
+        if (!announcement) {
+            return res.status(404).json({
+                success: false,
+                message: 'Announcement not found'
+            });
+        }
+        
+        // Determine the author model based on role
+        const authorModelName = authorRole === 'Teacher' ? 'Teacher' : 'Student';
+        let verifiedAuthorName = authorName;
+        
+        // Get the correct user name from database
+        try {
+            if (authorId) {
+                const AuthorModel = mongoose.model(authorModelName);
+                const author = await AuthorModel.findById(authorId).select('name');
+                
+                if (author && author.name) {
+                    console.log(`Found ${authorModelName} with ID ${authorId}, name: ${author.name}`);
+                    verifiedAuthorName = author.name;
+                } else {
+                    console.log(`Using provided name as fallback: ${authorName}`);
+                }
+            }
+        } catch (err) {
+            console.error("Could not verify author:", err);
+        }
+        
+        // Create new comment
+        const newComment = {
+            content,
+            author: {
+                name: verifiedAuthorName || 'Unknown User',
+                id: authorId
+            },
+            authorModel: authorModelName,
+            authorRole: authorRole || 'Student',
+            createdAt: new Date()
+        };
+        
+        console.log("Final comment data being sent:", newComment);
+        
+        // Add comment to the announcement
+        if (!announcement.comments) {
+            announcement.comments = [];
+        }
+        
+        announcement.comments.push(newComment);
+        await classDoc.save();
+        
+        res.status(201).json({
+            success: true,
+            message: 'Comment added successfully',
+            comment: newComment
+        });
+    } catch (error) {
+        console.error('Error adding comment:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error adding comment',
+            error: error.message
+        });
+    }
+};
+
+exports.deleteComment = async (req, res) => {
+  try {
+    const { classId, announcementId, commentId } = req.body;
+    
+    if (!classId || !announcementId || !commentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Class ID, announcement ID, and comment ID are required'
+      });
+    }
+    
+    // Find the class
+    const classDoc = await Class.findById(classId);
+    if (!classDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Class not found'
+      });
+    }
+    
+    // Find the announcement
+    const announcement = classDoc.announcements.id(announcementId);
+    if (!announcement) {
+      return res.status(404).json({
+        success: false,
+        message: 'Announcement not found'
+      });
+    }
+    
+    // Find the comment index
+    const commentIndex = announcement.comments.findIndex(
+      comment => comment._id.toString() === commentId
+    );
+    
+    if (commentIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found'
+      });
+    }
+    
+    // Remove the comment
+    announcement.comments.splice(commentIndex, 1);
+    await classDoc.save();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Comment deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error in deleteComment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting comment',
+      error: error.message
     });
   }
 };
