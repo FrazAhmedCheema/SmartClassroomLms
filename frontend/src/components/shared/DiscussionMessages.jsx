@@ -8,10 +8,26 @@ import axios from 'axios';
 const DiscussionMessages = ({ messages, newMessage, setNewMessage, onSendMessage, onDeleteMessage, topic, onBack }) => {
   const teacherState = useSelector(state => state.teacher);
   const studentState = useSelector(state => state.student);
-  
-  // Get current user ID based on role
-  const currentUserId = teacherState.teacherId || studentState.studentId;
-  const userRole = teacherState.role || studentState.role;
+
+  // Determine the role and user ID based on authentication state
+  const isTeacherAuthenticated = teacherState?.isAuthenticated;
+  const isStudentAuthenticated = studentState?.isAuthenticated;
+
+  const currentUserId = isTeacherAuthenticated
+    ? teacherState?.teacherId
+    : isStudentAuthenticated
+    ? studentState?.studentId
+    : null;
+
+  const userRole = isTeacherAuthenticated
+    ? 'teacher'
+    : isStudentAuthenticated
+    ? 'student'
+    : null;
+
+  // Log derived values for debugging
+  console.log('Derived currentUserId:', currentUserId);
+  console.log('Derived userRole:', userRole);
 
   const messagesEndRef = useRef(null);
   const messageContainerRef = useRef(null);
@@ -24,16 +40,22 @@ const DiscussionMessages = ({ messages, newMessage, setNewMessage, onSendMessage
 
   const handleDelete = async (messageId) => {
     try {
-      // Use SweetAlert instead of the built-in confirm dialog
+      // Use SweetAlert with smaller and more concise text
       const result = await Swal.fire({
-        title: 'Delete Message',
-        text: 'Are you sure you want to delete this message? This action cannot be undone.',
+        title: 'Delete Message?',
+        text: 'This cannot be undone.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, delete it!',
-        cancelButtonText: 'Cancel'
+        confirmButtonText: 'Delete',
+        cancelButtonText: 'Cancel',
+        width: '300px', // Smaller width
+        heightAuto: false, // Reduce extra space
+        customClass: {
+          title: 'text-lg',
+          content: 'text-sm'
+        }
       });
       
       if (result.isConfirmed) {
@@ -44,13 +66,15 @@ const DiscussionMessages = ({ messages, newMessage, setNewMessage, onSendMessage
         );
 
         if (response.data.success) {
-          // Show success toast
+          // Show a smaller success toast
           Swal.fire({
             title: 'Deleted!',
-            text: 'Your message has been deleted.',
             icon: 'success',
-            timer: 2000,
-            showConfirmButton: false
+            timer: 1500,
+            showConfirmButton: false,
+            width: '250px',
+            toast: true,
+            position: 'top-end'
           });
           
           // Update UI by filtering out the deleted message
@@ -67,8 +91,11 @@ const DiscussionMessages = ({ messages, newMessage, setNewMessage, onSendMessage
       // Show error toast
       Swal.fire({
         title: 'Error',
-        text: 'Failed to delete message. Please try again.',
-        icon: 'error'
+        text: 'Failed to delete',
+        icon: 'error',
+        width: '250px',
+        timer: 1500,
+        showConfirmButton: false
       });
       setMessageToDelete(null);
     }
@@ -96,7 +123,62 @@ const DiscussionMessages = ({ messages, newMessage, setNewMessage, onSendMessage
     return message.replyTo ? 'ml-8' : '';
   };
 
-  const isAuthor = (message) => message.author?._id === currentUserId;
+  const isAuthor = (message) => {
+    // Log details for debugging
+    console.log('Checking isAuthor for message:', message);
+    console.log('Current user ID:', currentUserId);
+    console.log('Message author ID:', message.author?._id);
+    console.log('User role:', userRole);
+
+    // Teachers can delete all messages; students can delete only their own
+    return userRole === 'teacher' || message.author?._id === currentUserId;
+  };
+
+  const handleTerminateDiscussion = async () => {
+    try {
+      const result = await Swal.fire({
+        title: 'Terminate Discussion?',
+        text: 'This will disable further messages in this discussion.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Terminate',
+        cancelButtonText: 'Cancel',
+      });
+
+      if (!result.isConfirmed) return;
+
+      const response = await axios.post(
+        `http://localhost:8080/discussions/terminate/${topic._id}`,
+        {},
+        {
+          withCredentials: true, // Ensure cookies are sent with the request
+        }
+      );
+
+      if (response.data.success) {
+        Swal.fire({
+          title: 'Terminated!',
+          text: 'This discussion has been terminated.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false,
+        });
+
+        // Update the topic's terminated status without mutating the original object
+        const updatedTopic = { ...topic, terminated: true };
+        onBack(); // Navigate back to the discussion list
+      }
+    } catch (error) {
+      console.error('Error terminating discussion:', error);
+      Swal.fire({
+        title: 'Error',
+        text: 'Failed to terminate discussion. Please try again.',
+        icon: 'error',
+      });
+    }
+  };
 
   return (
     <motion.div
@@ -119,6 +201,14 @@ const DiscussionMessages = ({ messages, newMessage, setNewMessage, onSendMessage
             Started by {topic?.author?.name || 'Unknown'} • {messages.length} messages
           </div>
         </div>
+        {userRole === 'teacher' && !topic.terminated && (
+          <button
+            onClick={handleTerminateDiscussion}
+            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+          >
+            Terminate
+          </button>
+        )}
       </div>
 
       {/* Messages Container */}
@@ -126,10 +216,17 @@ const DiscussionMessages = ({ messages, newMessage, setNewMessage, onSendMessage
         ref={messageContainerRef}
         className="flex-1 overflow-y-auto px-6 py-4 space-y-6"
       >
+        {topic.terminated && (
+          <div className="text-center text-red-500 font-semibold mb-4">
+            This discussion has been terminated. No further messages are allowed.
+          </div>
+        )}
         <AnimatePresence>
           {messages.map((message, index) => (
             <motion.div
               key={message._id}
+              // Log message details for debugging
+              onMouseEnter={() => console.log('Rendering message:', message)}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -156,25 +253,24 @@ const DiscussionMessages = ({ messages, newMessage, setNewMessage, onSendMessage
                     </span>
                   </div>
                   
-                  {/* Action Buttons */}
-                  <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {isAuthor(message) ? (
+                  {/* Action Buttons - Show both delete and reply buttons */}
+                  <div className="flex items-center space-x-2 opacity-100 group-hover:opacity-100 transition-opacity">
+                    {isAuthor(message) && (
                       <button
                         onClick={() => handleDelete(message._id)}
-                        className="p-1 hover:bg-red-50 rounded-lg text-red-500 hover:text-red-600 transition-colors"
+                        className="p-2 hover:bg-red-500 rounded-lg bg-red-500 text-white hover:text-white transition-colors"
                         title="Delete message"
                       >
-                        <Trash2 size={16} />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleReply(message)}
-                        className="p-1 hover:bg-blue-50 rounded-lg text-blue-500 hover:text-blue-600 transition-colors"
-                        title="Reply to message"
-                      >
-                        <Reply size={16} />
+                        <Trash2 size={18} className="text-white" />
                       </button>
                     )}
+                    <button
+                      onClick={() => handleReply(message)}
+                      className="p-2 hover:bg-blue-500 rounded-lg bg-blue-500 text-white hover:text-white transition-colors"
+                      title="Reply to message"
+                    >
+                      <Reply size={18} className="text-white" />
+                    </button>
                   </div>
                 </div>
                 {message.replyTo && (
@@ -193,70 +289,72 @@ const DiscussionMessages = ({ messages, newMessage, setNewMessage, onSendMessage
       </div>
 
       {/* Message Input */}
-      <div className="p-4 bg-white border-t border-gray-100">
-        {replyingTo && (
-          <div className="flex items-center justify-between mb-2 p-2 bg-blue-50 rounded">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-blue-600">
-                Replying to {replyingTo.author?.name}
-              </span>
-              <span className="text-xs text-gray-500">
-                "{replyingTo.content.substring(0, 50)}..."
-              </span>
-            </div>
-            <button
-              onClick={() => {
-                setReplyingTo(null);
-                setNewMessage('');
-              }}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              ×
-            </button>
-          </div>
-        )}
-        <form onSubmit={handleSend} className="flex flex-col">
-          <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden">
-            <textarea
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type your message..."
-              className="w-full p-3 bg-white text-gray-900 focus:outline-none resize-none"
-              rows={3}
-              required
-            />
-            
-            {/* Buttons below textarea */}
-            <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100">
-              <div className="flex items-center space-x-4">
-                {[
-                  { icon: Paperclip, tooltip: "Attach file" },
-                  { icon: Image, tooltip: "Add image" },
-                ].map((item, index) => (
-                    <button
-                        key={index}
-                        type="button"
-                        title={item.tooltip}
-                        style={{ backgroundColor: '#f9fafb' , border: '1px solid #f9fafb',  padding: '0.5rem' , margin: '0.1rem' , cursor: 'pointer' }}
-                        className="p-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-700"
-                    >
-                        <item.icon size={18} />
-                    </button>
-                ))}
+      {!topic.terminated && (
+        <div className="p-4 bg-white border-t border-gray-100">
+          {replyingTo && (
+            <div className="flex items-center justify-between mb-2 p-2 bg-blue-50 rounded">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-blue-600">
+                  Replying to {replyingTo.author?.name}
+                </span>
+                <span className="text-xs text-gray-500">
+                  "{replyingTo.content.substring(0, 50)}..."
+                </span>
               </div>
               <button
-                type="submit"
-                disabled={!newMessage.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
-                         transition-colors disabled:opacity-50 disabled:cursor-not-allowed
-                         flex items-center space-x-2"
+                onClick={() => {
+                  setReplyingTo(null);
+                  setNewMessage('');
+                }}
+                className="text-gray-400 hover:text-gray-600"
               >
-                <Send size={18} />
+                ×
               </button>
             </div>
-          </div>
-        </form>
-      </div>
+          )}
+          <form onSubmit={handleSend} className="flex flex-col">
+            <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden">
+              <textarea
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Type your message..."
+                className="w-full p-3 bg-white text-gray-900 focus:outline-none resize-none"
+                rows={3}
+                required
+              />
+              
+              {/* Buttons below textarea */}
+              <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100">
+                <div className="flex items-center space-x-4">
+                  {[
+                    { icon: Paperclip, tooltip: "Attach file" },
+                    { icon: Image, tooltip: "Add image" },
+                  ].map((item, index) => (
+                      <button
+                          key={index}
+                          type="button"
+                          title={item.tooltip}
+                          style={{ backgroundColor: '#f9fafb' , border: '1px solid #f9fafb',  padding: '0.5rem' , margin: '0.1rem' , cursor: 'pointer' }}
+                          className="p-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-700"
+                      >
+                          <item.icon size={18} />
+                      </button>
+                  ))}
+                </div>
+                <button
+                  type="submit"
+                  disabled={!newMessage.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
+                           transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                           flex items-center space-x-2"
+                >
+                  <Send size={18} />
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
     </motion.div>
   );
 };

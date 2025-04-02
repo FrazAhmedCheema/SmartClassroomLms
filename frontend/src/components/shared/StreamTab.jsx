@@ -385,6 +385,16 @@ const StreamTab = ({ classData = defaultClassData, userRole }) => {
     }
   };
 
+  // Add a helper function to check if the logged-in user is the author of a comment
+  const isCommentAuthor = (comment) => {
+    console.log('Checking isCommentAuthor for comment:', comment);
+    console.log('Current user ID:', studentId || teacherId);
+    console.log('Comment author ID:', comment.author?.id);
+  
+    // Teachers can delete any comment; students can delete only their own
+    return userRole === 'Teacher' || comment.author?.id === (studentId || teacherId);
+  };
+
   const handleCommentSubmit = async (announcementId, commentText) => {
     if (!commentText.trim()) return;
     
@@ -748,8 +758,7 @@ const StreamTab = ({ classData = defaultClassData, userRole }) => {
                               </div>
                               
                               {/* Comment actions menu button - styled more elegantly with white background */}
-                              {((isTeacher && comment.authorRole === 'Teacher') || 
-                                (!isTeacher && comment.authorRole === 'Student')) && (
+                              {isCommentAuthor(comment) && (
                                 <div className="relative" onClick={(e) => e.stopPropagation()}>
                                   <button 
                                     onClick={(e) => toggleCommentMenu(comment._id, e)}

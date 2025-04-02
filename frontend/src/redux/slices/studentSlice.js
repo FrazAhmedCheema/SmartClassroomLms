@@ -4,17 +4,28 @@ export const checkStudentAuthStatus = createAsyncThunk(
   'student/checkAuthStatus',
   async (_, { rejectWithValue }) => {
     try {
+      console.log('Checking student auth status...');
       const response = await fetch('http://localhost:8080/student/auth-status', {
         credentials: 'include',
       });
-      
-      if (!response.ok) {
-        throw new Error('Authentication failed');
+
+      console.log('Student auth status response:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Student auth status success:', data);
+        return {
+          studentId: data.student?._id, // Ensure studentId is extracted correctly
+          name: data.student?.name,
+          email: data.student?.email,
+        };
+      } else {
+        const errorData = await response.json();
+        console.error('Student auth status error:', errorData);
+        return rejectWithValue(errorData);
       }
-      
-      const data = await response.json();
-      return data;
     } catch (error) {
+      console.error('Student auth status exception:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -50,8 +61,9 @@ const studentSlice = createSlice({
       state.loading = true;
     },
     setStudentSuccess: (state, action) => {
+      console.log('Setting student success state:', action.payload);
       state.isAuthenticated = true;
-      state.studentId = action.payload;
+      state.studentId = action.payload.studentId;
       state.loading = false;
       state.error = null;
     },
@@ -69,13 +81,15 @@ const studentSlice = createSlice({
         state.error = null;
       })
       .addCase(checkStudentAuthStatus.fulfilled, (state, action) => {
+        console.log('Student auth fulfilled:', action.payload);
         state.loading = false;
         state.isAuthenticated = true;
-        state.studentId = action.payload.studentId;
+        state.studentId = action.payload.studentId; // Ensure studentId is set
         state.role = 'student'; // Set role on auth success
         state.error = null;
       })
       .addCase(checkStudentAuthStatus.rejected, (state, action) => {
+        console.error('Student auth rejected:', action.payload);
         state.loading = false;
         state.isAuthenticated = false;
         state.studentId = null;
