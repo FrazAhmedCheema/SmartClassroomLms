@@ -237,6 +237,12 @@ const DiscussionTab = ({ classId }) => {
                         })}
                       </div>
                     </div>
+                    {/* Add Terminated Label */}
+                    {topic.terminated && (
+                      <div className="mt-3 inline-block px-3 py-1 text-xs font-medium text-red-600 bg-red-100 rounded-full">
+                        Terminated
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ))

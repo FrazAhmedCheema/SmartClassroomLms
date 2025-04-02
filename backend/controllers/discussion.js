@@ -153,7 +153,7 @@ exports.deleteMessage = async (req, res) => {
   try {
     const { discussionId, messageId } = req.params;
     const userId = req.user.id;
-    console.log("Reached !!!!!!!!!!!!!!!!!! here ?")
+    const userRole = req.user.role;
 
     const discussion = await Discussion.findById(discussionId);
     if (!discussion) {
@@ -176,8 +176,8 @@ exports.deleteMessage = async (req, res) => {
 
     const message = discussion.messages[messageIndex];
 
-    // Verify message owner
-    if (message.author.toString() !== userId) {
+    // Allow teachers to delete any message, but students can only delete their own
+    if (userRole !== 'teacher' && message.author.toString() !== userId) {
       return res.status(403).json({ 
         success: false, 
         message: 'Not authorized to delete this message' 
@@ -206,5 +206,33 @@ exports.deleteMessage = async (req, res) => {
       success: false, 
       message: error.message || 'Failed to delete message'
     });
+  }
+};
+
+exports.terminateDiscussion = async (req, res) => {
+  try {
+    const { discussionId } = req.params;
+
+    console.log('Terminating discussion:', discussionId);
+    console.log('User making the request:', req.user);
+
+    const discussion = await Discussion.findById(discussionId);
+    if (!discussion) {
+      return res.status(404).json({ success: false, message: 'Discussion not found' });
+    }
+
+    // Only allow teachers to terminate discussions
+    if (req.user.role !== 'teacher') {
+      console.warn('Unauthorized attempt to terminate discussion by:', req.user);
+      return res.status(403).json({ success: false, message: 'Not authorized to terminate this discussion' });
+    }
+
+    discussion.terminated = true;
+    await discussion.save();
+
+    res.status(200).json({ success: true, message: 'Discussion terminated successfully' });
+  } catch (error) {
+    console.error('Error terminating discussion:', error);
+    res.status(500).json({ success: false, message: 'Failed to terminate discussion', error: error.message });
   }
 };

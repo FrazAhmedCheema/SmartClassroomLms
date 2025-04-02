@@ -4,7 +4,7 @@ export const checkAuthStatus = createAsyncThunk(
   'teacher/checkAuthStatus',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('Checking auth status...');
+      console.log('Checking teacher auth status...');
       const response = await fetch('http://localhost:8080/teacher/auth-status', {
         method: 'GET',
         credentials: 'include',
@@ -14,19 +14,19 @@ export const checkAuthStatus = createAsyncThunk(
         }
       });
       
-      console.log('Auth status response:', response.status);
+      console.log('Teacher auth status response:', response.status);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Auth status success:', data);
+        console.log('Teacher auth status success:', data);
         return data;
       } else {
         const errorData = await response.json();
-        console.error('Auth status error:', errorData);
+        console.error('Teacher auth status error:', errorData);
         return rejectWithValue(errorData);
       }
     } catch (error) {
-      console.error('Auth status exception:', error);
+      console.error('Teacher auth status exception:', error);
       return rejectWithValue(error.message || 'Authentication check failed');
     }
   }
@@ -68,6 +68,7 @@ const teacherSlice = createSlice({
       state.loading = true;
     },
     setTeacherSuccess: (state, action) => {
+      console.log('Setting teacher success state:', action.payload);
       state.isAuthenticated = true;
       state.teacherId = action.payload.teacherId;
       state.role = 'teacher'; // Set role explicitly
@@ -95,6 +96,7 @@ const teacherSlice = createSlice({
         state.error = null;
       })
       .addCase(checkAuthStatus.fulfilled, (state, action) => {
+        console.log('Teacher auth fulfilled:', action.payload);
         state.loading = false;
         state.isAuthenticated = true;
         state.teacherId = action.payload.teacherId;
@@ -102,6 +104,7 @@ const teacherSlice = createSlice({
         state.error = null;
       })
       .addCase(checkAuthStatus.rejected, (state, action) => {
+        console.error('Teacher auth rejected:', action.payload);
         state.loading = false;
         state.isAuthenticated = false;
         state.teacherId = null;

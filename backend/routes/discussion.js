@@ -18,5 +18,6 @@ router.get('/class/:classId', discussionController.getDiscussions);
 router.post('/create', discussionController.createDiscussion);
 router.post('/message/:discussionId', discussionController.addMessage);
 router.delete('/message/:discussionId/:messageId', discussionController.deleteMessage);
+router.post('/terminate/:discussionId', discussionController.terminateDiscussion);
 
 module.exports = router;

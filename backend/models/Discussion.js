@@ -44,7 +44,11 @@ const discussionSchema = new mongoose.Schema({
   },
   messages: [messageSchema],
   createdAt: { type: Date, default: Date.now },
-  lastActivity: { type: Date, default: Date.now }
+  lastActivity: { type: Date, default: Date.now },
+  terminated: {
+    type: Boolean,
+    default: false // Default to false, meaning the discussion is active
+  }
 });
 
 // Pre-save middleware
