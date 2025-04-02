@@ -107,29 +107,34 @@ const authorizeTeacher = (req, res, next) => {
 const authorizeStudent = (req, res, next) => {
     const token = req.cookies.studentToken;
     if (!token) {
+        console.warn('No student token found in cookies');
         return res.status(401).json({ message: 'No token, authorization denied' });
     }
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('Decoded student token:', decoded);
         req.user = decoded;
         next();
     } catch (err) {
+        console.error('Student token verification failed:', err.message);
         res.status(401).json({ message: 'Token is not valid' });
     }
 };
 
 const authorizeTeacherOrStudent = (req, res, next) => {
   const token = req.cookies.teacherToken || req.cookies.studentToken;
-  
+
   if (!token) {
+    console.warn('No token found in cookies');
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     if (!['teacher', 'student'].includes(decoded.role)) {
+      console.warn('Invalid user role:', decoded.role);
       return res.status(403).json({ message: 'Invalid user role' });
     }
 
@@ -140,9 +145,10 @@ const authorizeTeacherOrStudent = (req, res, next) => {
       id: decoded.id,
     };
 
+    console.log('User authorized:', req.user);
     next();
   } catch (err) {
-    console.error('Token verification failed:', err);
+    console.error('Token verification failed:', err.message);
     res.status(401).json({ message: 'Token is not valid' });
   }
 };

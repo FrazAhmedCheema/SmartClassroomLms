@@ -67,9 +67,12 @@ const studentController = {
     // Check authentication status
     checkAuthStatus: async (req, res) => {
         try {
+            console.log('Auth status check for student:', req.user);
             const student = await Student.findById(req.user.id).select('-password');
-            res.json({ student });
+            console.log('Found student:', student);
+            res.json({ success: true, student });
         } catch (error) {
+            console.error('Error in checkAuthStatus:', error);
             res.status(500).json({ message: 'Server error' });
         }
     },
