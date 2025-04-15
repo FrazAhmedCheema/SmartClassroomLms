@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux'; // Add this import
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Paperclip, File, Plus, Calendar, Clock, FileText, CheckCircle, MessageCircle, Folder } from 'lucide-react';
+import { createClassworkItem } from '../../redux/actions/classActions'; // Add this import
 
 const CreateClassworkModal = ({ isOpen, onClose, option, classData }) => {
+  const dispatch = useDispatch(); // Add this line
+  const teacherId = useSelector(state => state.teacher.teacherId); // Add this line
   const [formData, setFormData] = useState({
     title: '',
     instructions: '',
@@ -13,11 +17,70 @@ const CreateClassworkModal = ({ isOpen, onClose, option, classData }) => {
     questionType: 'short_answer',
     attachments: []
   });
+  const [errors, setErrors] = useState({}); // Add error state
 
-  const handleSubmit = (e) => {
+  const ErrorMessage = ({ message }) => {
+    if (!message) return null;
+    return (
+      <div className="text-red-500 text-sm mt-1 flex items-center">
+        <span className="mr-1">•</span>
+        <span>{message}</span>
+      </div>
+    );
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    onClose();
+    
+    // Reset errors
+    setErrors({});
+    
+    // Validate title
+    if (!formData.title.trim()) {
+      setErrors({ title: 'Title is required' });
+      return;
+    }
+
+    // Get teacherId from redux state
+    if (!teacherId) {
+      setErrors({ submit: 'Teacher not authenticated. Please log in again.' });
+      return;
+    }
+
+    const payload = {
+      title: formData.title.trim(),
+      instructions: formData.instructions?.trim() || '',
+      type: option.id,
+      points: Number(formData.points) || 0,
+      createdBy: teacherId // Use teacherId instead of localStorage
+    };
+
+    // Add date if it exists
+    if (formData.dueDate && formData.dueTime) {
+      try {
+        payload.dueDate = new Date(`${formData.dueDate}T${formData.dueTime}`).toISOString();
+      } catch (error) {
+        setErrors({ dueDate: 'Invalid date format' });
+        return;
+      }
+    }
+
+    // Add topic if selected
+    if (formData.topic) {
+      payload.topicId = formData.topic;
+    }
+
+    try {
+      const result = await dispatch(createClassworkItem(classData._id, payload, formData.attachments));
+      if (result.success) {
+        onClose();
+      } else {
+        setErrors({ submit: result.error });
+      }
+    } catch (error) {
+      console.error('Error creating assignment:', error);
+      setErrors({ submit: error.message });
+    }
   };
 
   const handleFileUpload = (e) => {
@@ -38,15 +101,21 @@ const CreateClassworkModal = ({ isOpen, onClose, option, classData }) => {
     const commonFields = (
       <>
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Title</label>
+          <label className="block text-sm font-medium text-gray-700">
+            Title <span className="text-red-500">*</span>
+          </label>
           <input
             type="text"
             value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 transition-all"
+            onChange={(e) => {
+              setFormData({ ...formData, title: e.target.value });
+              if (errors.title) setErrors({ ...errors, title: '' });
+            }}
+            className={`w-full px-4 py-2.5 border ${errors.title ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg focus:ring-2 focus:border-blue-500 bg-white text-gray-900 transition-all`}
             placeholder={`Enter ${option.label.toLowerCase()} title`}
             required
           />
+          <ErrorMessage message={errors.title} />
         </div>
 
         <div className="space-y-1">
