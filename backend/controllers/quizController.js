@@ -1,0 +1,76 @@
+const Quiz = require('../models/Quiz');
+
+exports.getQuizzes = async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const quizzes = await Quiz.find({ classId }).sort({ createdAt: -1 });
+    console.log('Fetched quizzes:', quizzes); // Log quizzes from the database
+    res.status(200).json({ success: true, quizzes });
+  } catch (error) {
+    console.error('Error fetching quizzes:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch quizzes', error: error.message });
+  }
+};
+
+exports.getQuiz = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const quiz = await Quiz.findById(id);
+    if (!quiz) {
+      return res.status(404).json({ success: false, message: 'Quiz not found' });
+    }
+    res.status(200).json({ success: true, quiz });
+  } catch (error) {
+    console.error('Error fetching quiz:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch quiz', error: error.message });
+  }
+};
+
+exports.createQuiz = async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const { title, instructions, points, dueDate, createdBy, questions } = req.body;
+
+    if (!title || !classId || !createdBy) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    const quiz = new Quiz({
+      title,
+      instructions: instructions || '',
+      classId,
+      points: points || 0,
+      dueDate: dueDate || null,
+      createdBy,
+      questions: questions || [],
+    });
+
+    const savedQuiz = await quiz.save();
+    res.status(201).json({ success: true, message: 'Quiz created successfully', quiz: savedQuiz });
+  } catch (error) {
+    console.error('Error creating quiz:', error);
+    res.status(500).json({ success: false, message: 'Failed to create quiz', error: error.message });
+  }
+};
+
+exports.updateQuiz = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedQuiz = await Quiz.findByIdAndUpdate(id, req.body, { new: true });
+    res.status(200).json({ success: true, message: 'Quiz updated successfully', quiz: updatedQuiz });
+  } catch (error) {
+    console.error('Error updating quiz:', error);
+    res.status(500).json({ success: false, message: 'Failed to update quiz', error: error.message });
+  }
+};
+
+exports.deleteQuiz = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Quiz.findByIdAndDelete(id);
+    res.status(200).json({ success: true, message: 'Quiz deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting quiz:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete quiz', error: error.message });
+  }
+};

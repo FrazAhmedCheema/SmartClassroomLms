@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const classController = require('../controllers/class');
+const { getClassBasicInfo } = require('../controllers/classController');
 
 // Temporarily remove authentication to fix the 401 errors
 router.get('/:id', classController.getClassById);
@@ -14,5 +15,8 @@ router.post('/announcement', classController.createAnnouncement);
 router.delete('/announcement', classController.deleteAnnouncement);
 router.post('/announcement/comment', classController.addComment);
 router.delete('/announcement/comment', classController.deleteComment);
+
+// Route to fetch basic class info
+router.get('/:classId/basic', getClassBasicInfo);
 
 module.exports = router;
