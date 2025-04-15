@@ -8,6 +8,12 @@ const initialState = {
     lastFetched: null
   },
   classwork: {
+    data: [], // Change from null to empty array
+    loading: false,
+    error: null,
+    lastFetched: null
+  },
+  topics: {
     data: null,
     loading: false,
     error: null,
@@ -62,6 +68,70 @@ const classSlice = createSlice({
       state.classwork.loading = false;
       state.classwork.error = action.payload;
     },
+    addClasswork: (state, action) => {
+      if (state.classwork.data) {
+        state.classwork.data = [action.payload, ...state.classwork.data];
+      } else {
+        state.classwork.data = [action.payload];
+      }
+      state.classwork.lastFetched = Date.now();
+    },
+    updateClasswork: (state, action) => {
+      if (state.classwork.data) {
+        state.classwork.data = state.classwork.data.map(item => 
+          item._id === action.payload._id ? action.payload : item
+        );
+        state.classwork.lastFetched = Date.now();
+      }
+    },
+    removeClasswork: (state, action) => {
+      if (state.classwork.data) {
+        state.classwork.data = state.classwork.data.filter(item => 
+          item._id !== action.payload
+        );
+        state.classwork.lastFetched = Date.now();
+      }
+    },
+
+    // Topics
+    fetchTopicsStart: (state) => {
+      state.topics.loading = true;
+      state.topics.error = null;
+    },
+    fetchTopicsSuccess: (state, action) => {
+      state.topics.loading = false;
+      state.topics.data = action.payload;
+      state.topics.error = null;
+      state.topics.lastFetched = Date.now();
+    },
+    fetchTopicsFailure: (state, action) => {
+      state.topics.loading = false;
+      state.topics.error = action.payload;
+    },
+    addTopic: (state, action) => {
+      if (state.topics.data) {
+        state.topics.data = [action.payload, ...state.topics.data];
+      } else {
+        state.topics.data = [action.payload];
+      }
+      state.topics.lastFetched = Date.now();
+    },
+    updateTopic: (state, action) => {
+      if (state.topics.data) {
+        state.topics.data = state.topics.data.map(topic => 
+          topic._id === action.payload._id ? action.payload : topic
+        );
+        state.topics.lastFetched = Date.now();
+      }
+    },
+    removeTopic: (state, action) => {
+      if (state.topics.data) {
+        state.topics.data = state.topics.data.filter(topic => 
+          topic._id !== action.payload
+        );
+        state.topics.lastFetched = Date.now();
+      }
+    },
 
     // People
     fetchPeopleStart: (state) => {
@@ -94,12 +164,10 @@ const classSlice = createSlice({
       state.discussions.loading = false;
       state.discussions.error = action.payload;
     },
-
     clearDiscussionsData: (state) => {
       state.discussions.data = null;
       state.discussions.lastFetched = null;
     },
-
     updateDiscussions: (state, action) => {
       state.discussions.data = action.payload;
       state.discussions.lastFetched = Date.now();
@@ -109,7 +177,8 @@ const classSlice = createSlice({
 
 export const {
   fetchBasicInfoStart, fetchBasicInfoSuccess, fetchBasicInfoFailure,
-  fetchClassworkStart, fetchClassworkSuccess, fetchClassworkFailure,
+  fetchClassworkStart, fetchClassworkSuccess, fetchClassworkFailure, addClasswork, updateClasswork, removeClasswork,
+  fetchTopicsStart, fetchTopicsSuccess, fetchTopicsFailure, addTopic, updateTopic, removeTopic,
   fetchPeopleStart, fetchPeopleSuccess, fetchPeopleFailure,
   fetchDiscussionsStart, fetchDiscussionsSuccess, fetchDiscussionsFailure,
   clearDiscussionsData,

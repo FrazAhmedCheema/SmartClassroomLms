@@ -24,6 +24,8 @@ import PrivateRoute from './components/PrivateRoute';
 import StudentLogin from './screens/student/StudentLogin';
 import AdminNavbar from './components/admin/AdminNavbar';
 import ClassPage from './components/shared/ClassPage';
+import AssignmentDetailScreen from './screens/teacher/AssignmentDetailScreen';
+import QuizDetailScreen from './components/shared/classwork/quiz/QuizDetailScreen';
 
 const AdminLayout = () => {
   return (
@@ -135,6 +137,8 @@ const AppRoutes = () => {
         <Route path="/cw/:id" element={<ClassPage defaultTab="classwork" />} />
         <Route path="/people/:id" element={<ClassPage defaultTab="people" />} />
         <Route path="/discussions/:id" element={<ClassPage defaultTab="discussion" />} />
+        <Route path="/assignment/:id" element={<AssignmentDetailScreen />} />
+        <Route path="/quiz/:id" element={<QuizDetailScreen />} />
       </Route>
 
       {/* Fallback */}

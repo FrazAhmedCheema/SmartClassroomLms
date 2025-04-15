@@ -1,7 +1,8 @@
 import axios from 'axios';
 import {
   fetchBasicInfoStart, fetchBasicInfoSuccess, fetchBasicInfoFailure,
-  fetchClassworkStart, fetchClassworkSuccess, fetchClassworkFailure,
+  fetchClassworkStart, fetchClassworkSuccess, fetchClassworkFailure, addClasswork, updateClasswork, removeClasswork,
+  fetchTopicsStart, fetchTopicsSuccess, fetchTopicsFailure, addTopic, updateTopic, removeTopic,
   fetchPeopleStart, fetchPeopleSuccess, fetchPeopleFailure,
   fetchDiscussionsStart, fetchDiscussionsSuccess, fetchDiscussionsFailure,
   updateDiscussions,
@@ -24,13 +25,16 @@ const isCacheValid = (lastFetched) => {
 };
 
 export const fetchBasicInfo = (classId) => async (dispatch, getState) => {
-  if (!classId) return;
-  
+  if (!classId) {
+    console.error('Class ID is missing. Cannot fetch class info.');
+    return;
+  }
+
   const { basicInfo } = getState().class;
   if (basicInfo.data && isCacheValid(basicInfo.lastFetched)) {
     return; // Use cached data
   }
-  
+
   dispatch(fetchBasicInfoStart());
   try {
     const response = await api.get(`/class/${classId}/basic`);
@@ -45,20 +49,251 @@ export const fetchBasicInfo = (classId) => async (dispatch, getState) => {
   }
 };
 
-export const fetchClasswork = (classId) => async (dispatch, getState) => {
+// Topic-related actions
+export const fetchTopics = (classId) => async (dispatch, getState) => {
+  if (!classId) return;
+  
+  const { topics } = getState().class;
+  if (topics.data && isCacheValid(topics.lastFetched)) {
+    return; // Use cached data
+  }
+  
+  dispatch(fetchTopicsStart());
+  try {
+    const response = await api.get(`/classwork/topics/${classId}`);
+    if (response.data.success) {
+      dispatch(fetchTopicsSuccess(response.data.topics));
+    } else {
+      throw new Error(response.data.message || 'Failed to fetch topics');
+    }
+  } catch (error) {
+    console.error('Error fetching topics:', error);
+    dispatch(fetchTopicsFailure(error.message));
+  }
+};
+
+export const createTopic = (classId, topicData) => async (dispatch) => {
+  try {
+    const { name, category } = topicData; // Ensure only required fields are sent
+    const response = await api.post(`/classwork/topics`, { name, category, classId });
+    if (response.data.success) {
+      dispatch(addTopic(response.data.topic));
+      return { success: true, topic: response.data.topic };
+    } else {
+      throw new Error(response.data.message || 'Failed to create topic');
+    }
+  } catch (error) {
+    console.error('Error creating topic:', error);
+    return { success: false, error: error.response?.data?.message || error.message || 'Failed to create topic' };
+  }
+};
+
+export const updateTopicAction = (topicId, topicData) => async (dispatch) => {
+  try {
+    const response = await api.put(`/classwork/topics/${topicId}`, topicData);
+    if (response.data.success) {
+      dispatch(updateTopic(response.data.topic));
+      return { success: true, topic: response.data.topic };
+    } else {
+      throw new Error(response.data.message || 'Failed to update topic');
+    }
+  } catch (error) {
+    console.error('Error updating topic:', error);
+    return { success: false, error: error.response?.data?.message || error.message || 'Failed to update topic' };
+  }
+};
+
+export const deleteTopicAction = (topicId) => async (dispatch) => {
+  try {
+    const response = await api.delete(`/classwork/topics/${topicId}`);
+    if (response.data.success) {
+      dispatch(removeTopic(topicId));
+      return { success: true, message: response.data.message };
+    } else {
+      throw new Error(response.data.message || 'Failed to delete topic');
+    }
+  } catch (error) {
+    console.error('Error deleting topic:', error);
+    return { success: false, error: error.message || 'Failed to delete topic' };
+  }
+};
+
+// Classwork-related actions
+export const fetchClasswork = (classId, topicId = null) => async (dispatch, getState) => {
   if (!classId) return;
   
   const { classwork } = getState().class;
-  if (classwork.data && isCacheValid(classwork.lastFetched)) {
-    return; // Use cached data
+  const useCache = classwork.data && isCacheValid(classwork.lastFetched) && !topicId;
+  
+  if (useCache) {
+    return;
   }
   
   dispatch(fetchClassworkStart());
   try {
-    const response = await api.get(`/class/${classId}/classwork`);
-    dispatch(fetchClassworkSuccess(response.data.classwork));
+    const response = await api.get(`/assignment/${classId}`);
+    
+    if (response.data.success) {
+      dispatch(fetchClassworkSuccess(response.data.assignments));
+    } else {
+      throw new Error(response.data.message || 'Failed to fetch assignments');
+    }
   } catch (error) {
+    console.error('Error fetching assignments:', error);
     dispatch(fetchClassworkFailure(error.message));
+  }
+};
+
+export const getClassworkItem = async (classworkId) => {
+  try {
+    const response = await api.get(`/classwork/item/${classworkId}`);
+    if (response.data.success) {
+      return { 
+        success: true, 
+        classwork: response.data.classwork,
+        typeSpecificData: response.data.typeSpecificData
+      };
+    } else {
+      throw new Error(response.data.message || 'Failed to fetch classwork item');
+    }
+  } catch (error) {
+    console.error('Error fetching classwork item:', error);
+    return { success: false, error: error.message || 'Failed to fetch classwork item' };
+  }
+};
+
+export const createClassworkItem = (classId, formData, files) => async (dispatch) => {
+  try {
+    // Create FormData for both assignments and quizzes
+    const payload = {
+      title: formData.title,
+      instructions: formData.instructions || '',
+      // payload.type should be 'assignment' or 'quiz'
+      type: formData.type || 'assignment',
+      points: formData.points,
+      dueDate: formData.dueDate,
+      createdBy: formData.createdBy,
+      topicId: formData.topicId
+    };
+
+    const data = new FormData();
+    
+    // Add form fields
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        data.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
+      }
+    });
+    
+    // Add files if any
+    if (files?.length > 0) {
+      files.forEach(file => {
+        data.append('files', file);
+      });
+    }
+    
+    // Determine endpoint based on type: quiz or assignment
+    const endpoint = payload.type === 'quiz'
+      ? `/quiz/${classId}/create-quiz`
+      : `/assignment/${classId}/create-assignment`;
+    
+    const response = await api.post(endpoint, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    
+    if (response.data.success) {
+      // Use quiz key if available; fallback to assignment
+      dispatch(addClasswork(response.data.quiz || response.data.assignment));
+      return { success: true, assignment: response.data.quiz || response.data.assignment };
+    } else {
+      throw new Error(response.data.message || 'Failed to create classwork item');
+    }
+  } catch (error) {
+    console.error('Error creating assignment:', error);
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};
+
+export const updateClassworkItem = (classworkId, formData, files) => async (dispatch) => {
+  try {
+    // Create FormData object for file uploads
+    const data = new FormData();
+    
+    // Add form fields to FormData
+    Object.entries(formData).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        data.append(key, value);
+      }
+    });
+    
+    // Add files to FormData
+    if (files && files.length > 0) {
+      files.forEach(file => {
+        data.append('files', file);
+      });
+    }
+    
+    // Send the request
+    const response = await axios.put(`http://localhost:8080/classwork/item/${classworkId}`, data, {
+      withCredentials: true,
+    });
+    
+    if (response.data.success) {
+      dispatch(updateClasswork(response.data.classwork));
+      return { 
+        success: true, 
+        classwork: response.data.classwork, 
+        message: response.data.message 
+      };
+    } else {
+      throw new Error(response.data.message || 'Failed to update classwork item');
+    }
+  } catch (error) {
+    console.error('Error updating classwork item:', error);
+    return { 
+      success: false, 
+      error: error.response?.data?.message || error.message || 'Failed to update classwork item'
+    };
+  }
+};
+
+export const deleteClassworkItem = (classworkId) => async (dispatch) => {
+  try {
+    const response = await api.delete(`/classwork/item/${classworkId}`);
+    if (response.data.success) {
+      dispatch(removeClasswork(classworkId));
+      return { success: true, message: response.data.message };
+    } else {
+      throw new Error(response.data.message || 'Failed to delete classwork item');
+    }
+  } catch (error) {
+    console.error('Error deleting classwork item:', error);
+    return { 
+      success: false, 
+      error: error.response?.data?.message || error.message || 'Failed to delete classwork item'
+    };
+  }
+};
+
+export const removeClassworkAttachment = (classworkId, attachmentId) => async (dispatch) => {
+  try {
+    const response = await api.delete(`/classwork/item/${classworkId}/attachment/${attachmentId}`);
+    if (response.data.success) {
+      dispatch(updateClasswork(response.data.classwork));
+      return { 
+        success: true, 
+        classwork: response.data.classwork, 
+        message: response.data.message 
+      };
+    } else {
+      throw new Error(response.data.message || 'Failed to remove attachment');
+    }
+  } catch (error) {
+    console.error('Error removing attachment:', error);
+    return { 
+      success: false, 
+      error: error.response?.data?.message || error.message || 'Failed to remove attachment'
+    };
   }
 };
 
