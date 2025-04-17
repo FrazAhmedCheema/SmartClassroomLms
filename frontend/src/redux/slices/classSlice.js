@@ -59,10 +59,12 @@ const classSlice = createSlice({
       state.classwork.error = null;
     },
     fetchClassworkSuccess: (state, action) => {
+      console.log('fetchClassworkSuccess called with payload:', action.payload);
       state.classwork.loading = false;
       state.classwork.data = action.payload;
       state.classwork.error = null;
       state.classwork.lastFetched = Date.now();
+      console.log('Updated classwork state:', state.classwork);
     },
     fetchClassworkFailure: (state, action) => {
       state.classwork.loading = false;
@@ -85,12 +87,8 @@ const classSlice = createSlice({
       }
     },
     removeClasswork: (state, action) => {
-      if (state.classwork.data) {
-        state.classwork.data = state.classwork.data.filter(item => 
-          item._id !== action.payload
-        );
-        state.classwork.lastFetched = Date.now();
-      }
+      state.classwork.data = state.classwork.data.filter(item => item._id !== action.payload);
+      state.classwork.lastFetched = Date.now(); // Update the timestamp to reflect the change
     },
 
     // Topics
@@ -172,6 +170,8 @@ const classSlice = createSlice({
       state.discussions.data = action.payload;
       state.discussions.lastFetched = Date.now();
     },
+
+    resetClassState: () => initialState, // Reset the class slice to its initial state
   }
 });
 
@@ -182,7 +182,8 @@ export const {
   fetchPeopleStart, fetchPeopleSuccess, fetchPeopleFailure,
   fetchDiscussionsStart, fetchDiscussionsSuccess, fetchDiscussionsFailure,
   clearDiscussionsData,
-  updateDiscussions
+  updateDiscussions,
+  resetClassState // Export the reset action
 } = classSlice.actions;
 
 export default classSlice.reducer;

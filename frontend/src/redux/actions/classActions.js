@@ -32,12 +32,16 @@ export const fetchBasicInfo = (classId) => async (dispatch, getState) => {
 
   const { basicInfo } = getState().class;
   if (basicInfo.data && isCacheValid(basicInfo.lastFetched)) {
+    console.log('Using cached basic info data');
     return; // Use cached data
   }
 
   dispatch(fetchBasicInfoStart());
   try {
+    console.log('Fetching basic info from API for class ID:', classId);
     const response = await api.get(`/class/${classId}/basic`);
+    console.log('API response for basic info:', response.data);
+
     if (response.data.success) {
       dispatch(fetchBasicInfoSuccess(response.data.class));
     } else {
@@ -122,24 +126,49 @@ export const deleteTopicAction = (topicId) => async (dispatch) => {
 export const fetchClasswork = (classId, topicId = null) => async (dispatch, getState) => {
   if (!classId) return;
   
+  console.log('fetchClasswork called with classId:', classId);
+  
   const { classwork } = getState().class;
   const useCache = classwork.data && isCacheValid(classwork.lastFetched) && !topicId;
   
   if (useCache) {
+    console.log('Using cached classwork data');
     return;
   }
   
   dispatch(fetchClassworkStart());
   try {
-    const response = await api.get(`/assignment/${classId}`);
+    console.log('Fetching classwork items...');
+    const [assignmentsResponse, quizzesResponse, materialsResponse] = await Promise.all([
+      api.get(`/assignment/${classId}`),
+      api.get(`/quiz/${classId}`),
+      api.get(`/material/${classId}`)
+    ]);
     
-    if (response.data.success) {
-      dispatch(fetchClassworkSuccess(response.data.assignments));
+    console.log('Assignments response:', assignmentsResponse.data);
+    console.log('Quizzes response:', quizzesResponse.data);
+    console.log('Materials response:', materialsResponse.data);
+    
+    if (assignmentsResponse.data.success) {
+      const assignments = assignmentsResponse.data.assignments.map(a => ({...a, type: 'assignment'}));
+      const quizzes = quizzesResponse.data.success ? quizzesResponse.data.quizzes.map(q => ({...q, type: 'quiz'})) : [];
+      const materials = materialsResponse.data.success ? materialsResponse.data.materials.map(m => ({...m, type: 'material'})) : [];
+      
+      console.log('Processed assignments:', assignments.length);
+      console.log('Processed quizzes:', quizzes.length);
+      console.log('Processed materials:', materials.length);
+      
+      const allClasswork = [...assignments, ...quizzes, ...materials].sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      
+      console.log('Combined classwork items:', allClasswork);
+      dispatch(fetchClassworkSuccess(allClasswork));
     } else {
-      throw new Error(response.data.message || 'Failed to fetch assignments');
+      throw new Error(assignmentsResponse.data.message || 'Failed to fetch classwork items');
     }
   } catch (error) {
-    console.error('Error fetching assignments:', error);
+    console.error('Error fetching classwork:', error);
     dispatch(fetchClassworkFailure(error.message));
   }
 };
@@ -162,47 +191,17 @@ export const getClassworkItem = async (classworkId) => {
   }
 };
 
-export const createClassworkItem = (classId, formData, files) => async (dispatch) => {
+export const createClassworkItem = (classId, formData) => async (dispatch) => {
   try {
-    // Create FormData for both assignments and quizzes
-    const payload = {
-      title: formData.title,
-      instructions: formData.instructions || '',
-      // payload.type should be 'assignment' or 'quiz'
-      type: formData.type || 'assignment',
-      points: formData.points,
-      dueDate: formData.dueDate,
-      createdBy: formData.createdBy,
-      topicId: formData.topicId
-    };
-
-    const data = new FormData();
-    
-    // Add form fields
-    Object.entries(payload).forEach(([key, value]) => {
-      if (value !== null && value !== undefined) {
-        data.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
-      }
-    });
-    
-    // Add files if any
-    if (files?.length > 0) {
-      files.forEach(file => {
-        data.append('files', file);
-      });
-    }
-    
-    // Determine endpoint based on type: quiz or assignment
-    const endpoint = payload.type === 'quiz'
+    const endpoint = formData.get('type') === 'quiz'
       ? `/quiz/${classId}/create-quiz`
       : `/assignment/${classId}/create-assignment`;
-    
-    const response = await api.post(endpoint, data, {
+
+    const response = await api.post(endpoint, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    
+
     if (response.data.success) {
-      // Use quiz key if available; fallback to assignment
       dispatch(addClasswork(response.data.quiz || response.data.assignment));
       return { success: true, assignment: response.data.quiz || response.data.assignment };
     } else {
@@ -343,3 +342,17 @@ export const fetchDiscussions = (classId) => async (dispatch, getState) => {
 };
 
 export { updateDiscussions };
+
+export const deleteAssignment = (assignmentId) => async (dispatch) => {
+  try {
+    const response = await api.delete(`/assignment/${assignmentId}`);
+    if (response.data.success) {
+      dispatch(removeClasswork(assignmentId)); // Update Redux state immediately
+      return { success: true };
+    }
+    throw new Error(response.data.message || 'Failed to delete assignment');
+  } catch (error) {
+    console.error('Error deleting assignment:', error);
+    return { success: false, error: error.message };
+  }
+};

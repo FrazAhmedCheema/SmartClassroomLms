@@ -1,5 +1,5 @@
 import React from 'react';
-import AssignmentDetail from './AssignmentDetail';
+import AssignmentDetail from './AssignmentDetailScreen';
 
 const AssignmentModal = ({ assignment, onClose, isTeacher, classId }) => {
   const handleSubmit = async (files) => {

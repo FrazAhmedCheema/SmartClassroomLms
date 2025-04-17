@@ -85,6 +85,10 @@ const classSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Discussion'
     }],
+    quizzes: [{ // Add quizzes array to reference Quiz model
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Quiz'
+    }],
     createdAt: {
         type: Date,
         default: Date.now

@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { FileText, Calendar, Clock, User, Paperclip, X } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { FileText, Calendar, Clock, User, Paperclip, X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const QuizDetailScreen = () => {
   const { id } = useParams();
-  // Assume quizzes are stored in a separate slice "quiz" (if not, adjust accordingly)
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const quiz = useSelector((state) => state.quiz?.quizzes?.find(q => q._id === id));
+  
+  // Get user role from teacher/student slice
+  const teacherAuth = useSelector((state) => state.teacher);
+  const studentAuth = useSelector((state) => state.student);
+  const isTeacher = teacherAuth.isAuthenticated;
+  
   const [previewAttachment, setPreviewAttachment] = useState(null);
 
   if (!quiz) {
@@ -62,7 +69,10 @@ const QuizDetailScreen = () => {
               </p>
             </div>
           </div>
-          <button onClick={() => window.history.back()} className="p-2 hover:bg-green-700 rounded-full">
+          <button
+            onClick={() => window.history.back()}
+            className="p-2 hover:bg-green-700 rounded-full transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>

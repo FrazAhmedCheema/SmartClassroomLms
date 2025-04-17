@@ -70,8 +70,19 @@ const CreateClassworkModal = ({ isOpen, onClose, option, classData }) => {
       payload.topicId = formData.topic;
     }
 
+    // Prepare FormData for attachments
+    const formDataPayload = new FormData();
+    Object.entries(payload).forEach(([key, value]) => {
+      formDataPayload.append(key, value);
+    });
+
+    // Add attachments to FormData
+    formData.attachments.forEach((file) => {
+      formDataPayload.append('attachments', file); // Ensure the field name matches 'attachments'
+    });
+
     try {
-      const result = await dispatch(createClassworkItem(classData._id, payload, formData.attachments));
+      const result = await dispatch(createClassworkItem(classData._id, formDataPayload));
       if (result.success) {
         onClose();
       } else {
@@ -81,7 +92,7 @@ const CreateClassworkModal = ({ isOpen, onClose, option, classData }) => {
       console.error('Error creating assignment:', error);
       setErrors({ submit: error.message });
     }
-  };
+  };  
 
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
