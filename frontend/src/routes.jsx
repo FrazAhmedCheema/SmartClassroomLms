@@ -24,8 +24,8 @@ import PrivateRoute from './components/PrivateRoute';
 import StudentLogin from './screens/student/StudentLogin';
 import AdminNavbar from './components/admin/AdminNavbar';
 import ClassPage from './components/shared/ClassPage';
-import AssignmentDetailScreen from './screens/teacher/AssignmentDetailScreen';
-import QuizDetailScreen from './components/shared/classwork/quiz/QuizDetailScreen';
+import AssignmentDetailScreen from './components/shared/classwork/AssignmentDetailScreen';
+import QuizDetailScreen from './components/shared/classwork/QuizDetailScreen';
 
 const AdminLayout = () => {
   return (

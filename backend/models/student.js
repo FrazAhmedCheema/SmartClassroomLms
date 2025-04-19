@@ -14,4 +14,11 @@ const AddStudentSchema = new mongoose.Schema({
 
 AddStudentSchema.plugin(AutoIncrement, { inc_field: 'studentId' });
 
+AddStudentSchema.methods.enrollInClass = function(classId) {
+  if (!this.enrolledClasses.includes(classId)) {
+    this.enrolledClasses.push(classId);
+  }
+  return this.save();
+};
+
 module.exports = mongoose.model('Student', AddStudentSchema);

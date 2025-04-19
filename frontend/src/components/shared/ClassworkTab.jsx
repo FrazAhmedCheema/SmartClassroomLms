@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, CheckCircle, MessageCircle, File, Plus } from 'lucide-react';
+import { FileText, CheckCircle, MessageCircle, File, Plus, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchClasswork, fetchBasicInfo, fetchTopics } from '../../redux/actions/classActions';
-import { fetchQuizzes } from '../../redux/actions/quizActions';
+import { fetchClasswork, fetchBasicInfo, fetchTopics, deleteAssignment } from '../../redux/actions/classActions';
+import { fetchQuizzes, deleteQuiz } from '../../redux/actions/quizActions';
+import { removeClasswork } from '../../redux/slices/classSlice'; // Import from slice instead
 import CreateClassworkModal from '../teacher/CreateClassworkModal';
 import CreateTopicModal from '../teacher/CreateTopicModal';
 import { useNavigate } from 'react-router-dom';
@@ -16,7 +17,7 @@ import QuestionModal from './classwork/QuestionModal';
 
 // Import TeacherControls
 import TeacherControls from './classwork/TeacherControls';
-import AssignmentDetail from './classwork/AssignmentDetail';
+import AssignmentDetail from './classwork/AssignmentDetailScreen';
 
 const ClassworkTab = ({ classId, userRole }) => {
   const dispatch = useDispatch();
@@ -28,6 +29,7 @@ const ClassworkTab = ({ classId, userRole }) => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [isCreateTopicModalOpen, setIsCreateTopicModalOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
+  const [activeDropdown, setActiveDropdown] = useState(null);
   const navigate = useNavigate();
 
   // Memoize selectors to avoid unnecessary re-renders
@@ -41,19 +43,32 @@ const ClassworkTab = ({ classId, userRole }) => {
 
   useEffect(() => {
     if (classId) {
+      console.log("Fetching classwork and quizzes for class ID:", classId);
       dispatch(fetchBasicInfo(classId));
       dispatch(fetchTopics(classId));
       dispatch(fetchClasswork(classId));
-      dispatch(fetchQuizzes(classId));
+      dispatch(fetchQuizzes(classId)); // Ensure quizzes are fetched
     }
   }, [dispatch, classId]);
 
   useEffect(() => {
     if (classData?._id) {
+      console.log("Fetching classwork and quizzes for expanded topic:", expandedTopic);
       dispatch(fetchClasswork(classData._id, expandedTopic !== 'all' ? expandedTopic : null));
-      dispatch(fetchQuizzes(classData._id));
+      dispatch(fetchQuizzes(classData._id)); // Ensure quizzes are fetched for the class
     }
   }, [dispatch, classData, expandedTopic]);
+
+  // Debug logs for quizzes
+  useEffect(() => {
+    console.log("Quizzes from Redux state:", quizzes);
+  }, [quizzes]);
+
+  // Debug logs for Redux state
+  const reduxState = useSelector((state) => state);
+  useEffect(() => {
+    console.log("Complete Redux state:", reduxState);
+  }, [reduxState]);
 
   const handleOptionSelect = (option) => {
     setSelectedOption(option);
@@ -65,9 +80,15 @@ const ClassworkTab = ({ classId, userRole }) => {
     }
   };
 
+  // Add logging to handleClassworkClick
   const handleClassworkClick = (classwork) => {
+    console.log('Clicked classwork:', classwork);
+    console.log('Classwork type:', classwork.type);
     if (classwork.type === 'quiz') {
       navigate(`/quiz/${classwork._id}`);
+    } else if (classwork.type === 'material') {
+      console.log('Navigating to material:', classwork._id);
+      navigate(`/material/${classwork._id}`);
     } else {
       navigate(`/assignment/${classwork._id}`);
     }
@@ -106,43 +127,116 @@ const ClassworkTab = ({ classId, userRole }) => {
     setCreateModalOpen(true);
   };
 
-  // Memoize derived data to avoid unnecessary re-renders
-  const allAssignments = useMemo(() => classworks.filter(item => item.type !== 'quiz'), [classworks]);
-  const allQuizzes = useMemo(() => quizzes, [quizzes]);
+  const handleDeleteClasswork = async (classworkId, type) => {
+    if (window.confirm('Are you sure you want to delete this item?')) {
+      try {
+        if (type === 'quiz') {
+          const result = await dispatch(deleteQuiz(classworkId));
+          if (result.payload?.success) {
+            // Remove from both quiz and classwork state
+            dispatch(removeClasswork(classworkId)); // Remove from classwork list
+          } else {
+            console.error('Failed to delete quiz:', result.error);
+          }
+        } else {
+          const result = await dispatch(deleteAssignment(classworkId));
+          if (result.success) {
+            console.log('Assignment deleted successfully');
+          } else {
+            console.error('Failed to delete assignment:', result.error);
+          }
+        }
+      } catch (error) {
+        console.error('Error deleting classwork:', error);
+      }
+    }
+  };
 
+  // Memoize derived data
+  // Add debug logs for materials filtering
+  const allMaterials = useMemo(() => {
+    const materials = classworks.filter(item => item.type === 'material');
+    console.log('Filtered materials:', materials);
+    return materials;
+  }, [classworks]);
+
+  const allAssignments = useMemo(() => {
+    const assignments = classworks.filter(item => item.type === 'assignment');
+    console.log('Filtered assignments:', assignments);
+    return assignments;
+  }, [classworks]);
+
+  const allQuizzes = useMemo(() => {
+    const quizzes = classworks.filter(item => item.type === 'quiz');
+    console.log('Filtered quizzes:', quizzes);
+    return quizzes;
+  }, [classworks]);
+
+  // Add logging to ClassworkItem
   const ClassworkItem = ({ classwork, onClick }) => {
-    const formatDate = (date) => {
-      if (!date) return 'No due date';
-      return new Date(date).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+    console.log('Rendering ClassworkItem:', classwork);
+    const handleOptionClick = (e, action) => {
+      e.stopPropagation();
+      setActiveDropdown(null);
+      
+      if (action === 'delete') {
+        handleDeleteClasswork(classwork._id, classwork.type);
+      } else if (action === 'edit') {
+        // TODO: Implement edit functionality
+        console.log('Edit clicked for:', classwork._id);
+      }
     };
 
     return (
-      <div
-        onClick={() => onClick(classwork)}
-        className="p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-500 cursor-pointer transition-all shadow-sm hover:shadow-md"
-      >
+      <div className="p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-500 transition-all shadow-sm hover:shadow-md relative">
         <div className="flex items-start justify-between">
-          <div className="flex items-start space-x-3">
-            <FileText className="w-5 h-5 text-blue-600 mt-1" />
-            <div>
-              <h3 className="font-medium text-gray-900">{classwork.title}</h3>
+          <div className="flex-1 cursor-pointer" onClick={() => onClick(classwork)}>
+            <div className="flex items-start space-x-3">
+              <FileText className="w-5 h-5 text-blue-600 mt-1" />
+              <div>
+                <h3 className="font-medium text-gray-900">{classwork.title}</h3>
+                <p className="text-sm text-gray-500">
+                  Due {formatDueDate(classwork.dueDate)}
+                </p>
+              </div>
             </div>
           </div>
-          <div className="text-right">
-            {classwork.points > 0 && (
-              <span className="text-sm font-medium text-gray-600">
-                {classwork.points} points
-              </span>
-            )}
-            <p className="text-xs text-gray-500 mt-1">
-              Due {formatDate(classwork.dueDate)}
-            </p>
-          </div>
+          
+          {isTeacher && (
+            <div className="relative ml-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveDropdown(activeDropdown === classwork._id ? null : classwork._id);
+                }}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <MoreVertical className="w-5 h-5 text-gray-500" />
+              </button>
+
+              {activeDropdown === classwork._id && (
+                <div 
+                  className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1 min-w-[120px]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={(e) => handleOptionClick(e, 'edit')}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={(e) => handleOptionClick(e, 'delete')}
+                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -200,20 +294,43 @@ const ClassworkTab = ({ classId, userRole }) => {
             </div>
           ) : expandedTopic === 'all' ? (
             <div className="space-y-8 h-full overflow-y-auto">
+              {/* Materials Section */}
+              {allMaterials && allMaterials.length > 0 && (
+                <>
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">Materials</h2>
+                  <div className="space-y-4">
+                    {console.log('Rendering materials section, count:', allMaterials.length)}
+                    {allMaterials.map((material) => {
+                      console.log('Rendering material item:', material);
+                      return (
+                        <ClassworkItem
+                          key={material._id}
+                          classwork={material}
+                          onClick={() => handleClassworkClick(material)}
+                        />
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {/* Assignments Section */}
               {allAssignments && allAssignments.length > 0 && (
                 <>
-                  <h2 className="text-xl font-semibold text-gray-800 mb-4">Assignments</h2>
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4 mt-8">Assignments</h2>
                   <div className="space-y-4">
-                    {allAssignments.map((classwork) => (
+                    {allAssignments.map((assignment) => (
                       <ClassworkItem
-                        key={classwork._id}
-                        classwork={classwork}
-                        onClick={() => handleClassworkClick(classwork)}
+                        key={assignment._id}
+                        classwork={assignment}
+                        onClick={() => handleClassworkClick(assignment)}
                       />
                     ))}
                   </div>
                 </>
               )}
+
+              {/* Quizzes Section */}
               {allQuizzes && allQuizzes.length > 0 && (
                 <>
                   <h2 className="text-xl font-semibold text-gray-800 mb-4 mt-8">Quizzes</h2>
@@ -256,7 +373,7 @@ const ClassworkTab = ({ classId, userRole }) => {
         )}
       </div>
 
-      {/* Create Modals */}
+      {/* Modals */}
       {createModalOpen && (
         <CreateClassworkModal
           isOpen={createModalOpen}

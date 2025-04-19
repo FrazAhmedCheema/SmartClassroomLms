@@ -104,4 +104,42 @@ exports.getAssignment = async (req, res) => {
   }
 };
 
+exports.deleteAssignment = async (req, res) => {
+  try {
+    const assignment = await Assignment.findById(req.params.id);
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assignment not found'
+      });
+    }
+
+    // Delete attachments from S3 if they exist
+    if (assignment.attachments && assignment.attachments.length > 0) {
+      for (const attachment of assignment.attachments) {
+        try {
+          await deleteFile(attachment.key);
+        } catch (error) {
+          console.error('Error deleting file from S3:', error);
+          // Continue with deletion even if S3 deletion fails
+        }
+      }
+    }
+
+    await Assignment.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Assignment deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting assignment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete assignment',
+      error: error.message
+    });
+  }
+};
+
 // ...other assignment controller methods...

@@ -9,6 +9,7 @@ import enrolledClassesReducer from './slices/enrolledClassesSlice';
 import adminAuthReducer from './slices/adminAuthSlice';
 import subAdminAuthReducer from './slices/subAdminAuthSlice';
 import classReducer from './slices/classSlice';
+import quizReducer from './slices/quizSlice';
 
 const persistConfig = {
   key: 'root',
@@ -25,6 +26,7 @@ const rootReducer = combineReducers({
   adminAuth: adminAuthReducer,
   subAdminAuth: subAdminAuthReducer,
   class: classReducer,
+  quiz: quizReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
@@ -40,6 +42,17 @@ export const store = configureStore({
 });
 
 export const persistor = persistStore(store);
+
+export const clearPersistedState = async () => {
+  try {
+    await persistor.purge(); // Clear persisted state
+    console.log('Persisted state cleared successfully.');
+  } catch (error) {
+    console.error('Error clearing persisted state:', error);
+  }
+};
+
+// Example usage: Call `clearPersistedState()` in your app initialization or debugging process.
 
 // Keep the default export for backward compatibility
 export default store;

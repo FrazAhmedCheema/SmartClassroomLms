@@ -18,5 +18,12 @@ const approveInstituteSchema = new mongoose.Schema({
 
 approveInstituteSchema.plugin(AutoIncrement, { inc_field: 'instituteId' });
 
+approveInstituteSchema.methods.addTeacher = function(teacherId) {
+  if (!this.teachers.includes(teacherId)) {
+    this.teachers.push(teacherId);
+  }
+  return this.save();
+};
+
 module.exports = mongoose.model('RegisteredInstitutes', approveInstituteSchema);
 
