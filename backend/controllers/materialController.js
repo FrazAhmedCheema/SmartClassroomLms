@@ -4,8 +4,9 @@ const { uploadFile, deleteFile } = require('../utils/s3Service');
 exports.createMaterial = async (req, res) => {
   try {
     const { classId } = req.params;
-    const { title, description, topicId } = req.body;
+    const { title, description, topicId } = req.body; // Ensure description is extracted
     const createdBy = req.user.id;
+    console.log("Material des : " + description);
 
     let attachments = [];
     if (req.files && req.files.length > 0) {
@@ -23,16 +24,16 @@ exports.createMaterial = async (req, res) => {
 
     const material = new Material({
       title,
-      description,
+      description, // Save description in the database
       classId,
       topicId: topicId || null,
       createdBy,
       attachments,
-      type: 'material'
+      type: 'material' // Ensure type is set to material
     });
 
     const savedMaterial = await material.save();
-    
+
     res.status(201).json({
       success: true,
       message: 'Material created successfully',
@@ -122,6 +123,7 @@ exports.deleteMaterial = async (req, res) => {
       message: 'Material deleted successfully'
     });
   } catch (error) {
+    console.error('Error deleting material:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete material',

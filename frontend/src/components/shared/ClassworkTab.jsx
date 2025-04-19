@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, CheckCircle, MessageCircle, File, Plus, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchClasswork, fetchBasicInfo, fetchTopics, deleteAssignment } from '../../redux/actions/classActions';
+import { fetchClasswork, fetchBasicInfo, fetchTopics, deleteAssignment, deleteMaterial, deleteQuestion } from '../../redux/actions/classActions';
 import { fetchQuizzes, deleteQuiz } from '../../redux/actions/quizActions';
-import { removeClasswork } from '../../redux/slices/classSlice'; // Import from slice instead
+import { removeClasswork } from '../../redux/slices/classSlice';
 import CreateClassworkModal from '../teacher/CreateClassworkModal';
 import CreateTopicModal from '../teacher/CreateTopicModal';
 import { useNavigate } from 'react-router-dom';
@@ -89,6 +89,9 @@ const ClassworkTab = ({ classId, userRole }) => {
     } else if (classwork.type === 'material') {
       console.log('Navigating to material:', classwork._id);
       navigate(`/material/${classwork._id}`);
+    } else if (classwork.type === 'question') {
+      console.log('Navigating to question:', classwork._id);
+      navigate(`/question/${classwork._id}`);
     } else {
       navigate(`/assignment/${classwork._id}`);
     }
@@ -133,10 +136,23 @@ const ClassworkTab = ({ classId, userRole }) => {
         if (type === 'quiz') {
           const result = await dispatch(deleteQuiz(classworkId));
           if (result.payload?.success) {
-            // Remove from both quiz and classwork state
-            dispatch(removeClasswork(classworkId)); // Remove from classwork list
+            dispatch(removeClasswork(classworkId));
           } else {
             console.error('Failed to delete quiz:', result.error);
+          }
+        } else if (type === 'material') {
+          const result = await dispatch(deleteMaterial(classworkId));
+          if (result.success) {
+            console.log('Material deleted successfully');
+          } else {
+            console.error('Failed to delete material:', result.error);
+          }
+        } else if (type === 'question') {
+          const result = await dispatch(deleteQuestion(classworkId));
+          if (result.success) {
+            console.log('Question deleted successfully');
+          } else {
+            console.error('Failed to delete question:', result.error);
           }
         } else {
           const result = await dispatch(deleteAssignment(classworkId));
@@ -153,7 +169,6 @@ const ClassworkTab = ({ classId, userRole }) => {
   };
 
   // Memoize derived data
-  // Add debug logs for materials filtering
   const allMaterials = useMemo(() => {
     const materials = classworks.filter(item => item.type === 'material');
     console.log('Filtered materials:', materials);
@@ -171,10 +186,17 @@ const ClassworkTab = ({ classId, userRole }) => {
     console.log('Filtered quizzes:', quizzes);
     return quizzes;
   }, [classworks]);
+  
+  const allQuestions = useMemo(() => {
+    const questions = classworks.filter(item => item.type === 'question');
+    console.log('Filtered questions:', questions);
+    return questions;
+  }, [classworks]);
 
   // Add logging to ClassworkItem
   const ClassworkItem = ({ classwork, onClick }) => {
     console.log('Rendering ClassworkItem:', classwork);
+    
     const handleOptionClick = (e, action) => {
       e.stopPropagation();
       setActiveDropdown(null);
@@ -297,7 +319,7 @@ const ClassworkTab = ({ classId, userRole }) => {
               {/* Materials Section */}
               {allMaterials && allMaterials.length > 0 && (
                 <>
-                  <h2 className="text-xl font-semibold text-gray-800 mb-4">Materials</h2>
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">Lecture Material</h2>
                   <div className="space-y-4">
                     {console.log('Rendering materials section, count:', allMaterials.length)}
                     {allMaterials.map((material) => {
@@ -340,6 +362,22 @@ const ClassworkTab = ({ classId, userRole }) => {
                         key={quiz._id}
                         classwork={quiz}
                         onClick={() => handleClassworkClick(quiz)}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+              
+              {/* Questions Section */}
+              {allQuestions && allQuestions.length > 0 && (
+                <>
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4 mt-8">Questions</h2>
+                  <div className="space-y-4">
+                    {allQuestions.map((question) => (
+                      <ClassworkItem
+                        key={question._id}
+                        classwork={question}
+                        onClick={() => handleClassworkClick(question)}
                       />
                     ))}
                   </div>

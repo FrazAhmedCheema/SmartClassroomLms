@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const materialController = require('../controllers/materialController');
+const questionController = require('../controllers/questionController');
 const { authorizeTeacher, authorizeTeacherOrStudent } = require('../middleware/auth');
 
 const storage = multer.memoryStorage();
@@ -11,11 +11,11 @@ const upload = multer({
 });
 
 // Public routes (accessible by both teachers and students)
-router.get('/:classId', authorizeTeacherOrStudent, materialController.getMaterials);
-router.get('/item/:id', authorizeTeacherOrStudent, materialController.getMaterial);
+router.get('/:classId', authorizeTeacherOrStudent, questionController.getQuestions);
+router.get('/item/:id', authorizeTeacherOrStudent, questionController.getQuestion);
 
 // Protected routes (only for teachers)
-router.post('/:classId/create-material', authorizeTeacher, upload.array('attachments', 10), materialController.createMaterial);
-router.delete('/item/:id', authorizeTeacher, materialController.deleteMaterial);
+router.post('/:classId/create-question', authorizeTeacher, upload.array('attachments', 10), questionController.createQuestion);
+router.delete('/item/:id', authorizeTeacher, questionController.deleteQuestion);
 
 module.exports = router;
