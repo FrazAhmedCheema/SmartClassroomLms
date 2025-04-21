@@ -167,3 +167,170 @@ exports.deleteQuestion = async (req, res) => {
     });
   }
 };
+
+exports.submitAnswer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { answer, studentName } = req.body;
+    const studentId = req.user.id;
+
+    // Validation
+    if (!answer) {
+      return res.status(400).json({
+        success: false,
+        message: 'Answer is required'
+      });
+    }
+
+    const question = await Question.findById(id);
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found'
+      });
+    }
+
+    // Check if student has already submitted an answer
+    const existingAnswer = question.answers.find(a => 
+      a.studentId.toString() === studentId.toString()
+    );
+
+    if (existingAnswer) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already submitted an answer to this question',
+        submittedAnswer: existingAnswer.answer
+      });
+    }
+
+    // Add new answer
+    question.answers.push({
+      studentId,
+      studentName: studentName || req.user.name || 'Anonymous Student',
+      answer
+    });
+
+    await question.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Answer submitted successfully'
+    });
+  } catch (error) {
+    console.error('Error submitting answer:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit answer',
+      error: error.message
+    });
+  }
+};
+
+exports.getAnswers = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const question = await Question.findById(id)
+      .populate('answers.studentId', 'name');
+
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      answers: question.answers
+    });
+  } catch (error) {
+    console.error('Error fetching answers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch answers',
+      error: error.message
+    });
+  }
+};
+
+exports.submitPollVote = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { response } = req.body;
+    const studentId = req.user.id;
+
+    const question = await Question.findById(id);
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found'
+      });
+    }
+
+    // Remove any existing vote from this student
+    question.pollResponses = question.pollResponses.filter(
+      vote => vote.studentId.toString() !== studentId.toString()
+    );
+
+    // Add new vote
+    question.pollResponses.push({
+      studentId,
+      response
+    });
+
+    await question.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Vote submitted successfully'
+    });
+  } catch (error) {
+    console.error('Error submitting vote:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit vote',
+      error: error.message
+    });
+  }
+};
+
+exports.getPollResults = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const question = await Question.findById(id)
+      .populate('pollResponses.studentId', 'name');
+
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found'
+      });
+    }
+
+    // Calculate poll results
+    const results = question.options.map((option, index) => {
+      const votes = question.pollResponses.filter(
+        vote => vote.response === index.toString()
+      ).length;
+
+      return {
+        option,
+        votes,
+        percentage: (votes / question.pollResponses.length) * 100 || 0
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      results,
+      totalVotes: question.pollResponses.length
+    });
+  } catch (error) {
+    console.error('Error fetching poll results:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch poll results',
+      error: error.message
+    });
+  }
+};

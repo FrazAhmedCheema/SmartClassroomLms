@@ -17,7 +17,7 @@ const CreateClassworkModal = ({ isOpen, onClose, option, classData }) => {
     questionType: 'short_answer',
     attachments: [],
     questionText: '',
-    options: ['', '', '', ''],
+    options: ['', ''],
     correctAnswer: '',
     allowMultipleAnswers: false
   });
@@ -343,9 +343,7 @@ const CreateClassworkModal = ({ isOpen, onClose, option, classData }) => {
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
           >
             <option value="short_answer">Short answer</option>
-            <option value="multiple_choice">Multiple choice</option>
-            <option value="checkbox">Checkbox</option>
-            <option value="dropdown">Dropdown</option>
+            <option value="poll">Poll</option>
           </select>
         </div>
 
@@ -356,43 +354,12 @@ const CreateClassworkModal = ({ isOpen, onClose, option, classData }) => {
         ) : (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-gray-700">Answer Options</label>
-              {formData.questionType === 'multiple_choice' && (
-                <div className="flex items-center space-x-2 bg-white px-2 py-1 rounded border border-gray-100">
-                  <input
-                    type="checkbox"
-                    id="allowMultipleAnswers"
-                    checked={formData.allowMultipleAnswers}
-                    onChange={(e) => setFormData({...formData, allowMultipleAnswers: e.target.checked})}
-                    className="rounded text-blue-600 focus:ring-blue-500 bg-white"
-                  />
-                  <label htmlFor="allowMultipleAnswers" className="text-xs text-gray-600">
-                    Allow multiple answers
-                  </label>
-                </div>
-              )}
+              <label className="block text-sm font-medium text-gray-700">Poll Options</label>
             </div>
             
             <div className="space-y-2">
               {formData.options.map((option, index) => (
                 <div key={index} className="flex items-center space-x-2">
-                  {formData.questionType === 'multiple_choice' && (
-                    <div 
-                      onClick={() => handleCorrectAnswerChange(index)}
-                      className={`w-5 h-5 flex-shrink-0 rounded-full border cursor-pointer flex items-center justify-center ${
-                        isOptionCorrect(index) 
-                          ? 'bg-blue-600 border-blue-600' 
-                          : 'border-gray-300 hover:border-blue-500'
-                      }`}
-                    >
-                      {isOptionCorrect(index) && (
-                        <span className="text-white text-xs">✓</span>
-                      )}
-                    </div>
-                  )}
-                  {formData.questionType === 'checkbox' && (
-                    <div className="w-5 h-5 flex-shrink-0 border border-gray-300 rounded"></div>
-                  )}
                   <input
                     type="text"
                     value={option}
@@ -420,19 +387,12 @@ const CreateClassworkModal = ({ isOpen, onClose, option, classData }) => {
                 className="flex items-center space-x-1 text-blue-600 text-sm bg-white px-2 py-1 rounded"
               >
                 <Plus size={16} />
-                <span>Add option</span>
+                <span>Add poll option</span>
               </button>
             )}
             
             <p className="text-xs text-gray-500">
-              {formData.questionType === 'multiple_choice' ? (
-                formData.allowMultipleAnswers
-                  ? 'Click on circles to select the correct answers.'
-                  : 'Click on a circle to select the correct answer.'
-              ) : formData.questionType === 'checkbox' ? (
-                'Students can select multiple options.'
-              ) : 'Students will select one option from a dropdown.'
-              }
+              Add up to 8 options for students to vote on.
             </p>
           </div>
         )}

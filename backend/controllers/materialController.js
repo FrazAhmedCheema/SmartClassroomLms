@@ -131,3 +131,113 @@ exports.deleteMaterial = async (req, res) => {
     });
   }
 };
+
+exports.addComment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { text, userName } = req.body;
+
+    if (!text) {
+      return res.status(400).json({
+        success: false,
+        message: 'Comment text is required'
+      });
+    }
+
+    const material = await Material.findById(id);
+    if (!material) {
+      return res.status(404).json({
+        success: false,
+        message: 'Material not found'
+      });
+    }
+
+    // Determine if the user is a teacher or student
+    const isTeacher = req.user.role === 'teacher';
+    const authorModel = isTeacher ? 'Teacher' : 'Student';
+    const authorRole = isTeacher ? 'Teacher' : 'Student';
+    
+    // Use name from request body or req.user, with a fallback
+    const authorName = userName || req.user.name || (isTeacher ? 'Teacher' : 'Student');
+    
+    console.log('Creating comment with author name:', authorName);
+    
+    const comment = {
+      text,
+      author: req.user.id,
+      authorModel,
+      authorName,
+      authorRole
+    };
+
+    material.comments.push(comment);
+    await material.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Comment added successfully',
+      comment: material.comments[material.comments.length - 1]
+    });
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add comment',
+      error: error.message
+    });
+  }
+};
+
+exports.deleteComment = async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+    const { id: userId, role } = req.user; // Get user ID and role
+
+    const material = await Material.findById(id);
+    if (!material) {
+      return res.status(404).json({
+        success: false,
+        message: 'Material not found'
+      });
+    }
+
+    // Find the comment
+    const commentIndex = material.comments.findIndex(
+      comment => comment._id.toString() === commentId
+    );
+
+    if (commentIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found'
+      });
+    }
+
+    const comment = material.comments[commentIndex];
+
+    // Allow teachers to delete any comment OR allow users to delete their own comments
+    if (role === 'teacher' || comment.author.toString() === userId) {
+      // Remove the comment
+      material.comments.splice(commentIndex, 1);
+      await material.save();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Comment deleted successfully'
+      });
+    }
+
+    return res.status(403).json({
+      success: false,
+      message: 'You are not authorized to delete this comment'
+    });
+    
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete comment',
+      error: error.message
+    });
+  }
+};

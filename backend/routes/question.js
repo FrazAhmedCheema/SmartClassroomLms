@@ -14,6 +14,14 @@ const upload = multer({
 router.get('/:classId', authorizeTeacherOrStudent, questionController.getQuestions);
 router.get('/item/:id', authorizeTeacherOrStudent, questionController.getQuestion);
 
+// Add new answer routes
+router.post('/item/:id/answer', authorizeTeacherOrStudent, questionController.submitAnswer);
+router.get('/item/:id/answers', authorizeTeacherOrStudent, questionController.getAnswers);
+
+// Poll specific routes
+router.post('/item/:id/vote', authorizeTeacherOrStudent, questionController.submitPollVote);
+router.get('/item/:id/results', authorizeTeacherOrStudent, questionController.getPollResults);
+
 // Protected routes (only for teachers)
 router.post('/:classId/create-question', authorizeTeacher, upload.array('attachments', 10), questionController.createQuestion);
 router.delete('/item/:id', authorizeTeacher, questionController.deleteQuestion);
