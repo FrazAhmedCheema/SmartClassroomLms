@@ -199,22 +199,62 @@ exports.submitAnswer = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'You have already submitted an answer to this question',
-        submittedAnswer: existingAnswer.answer
+        submittedAnswer: existingAnswer.answer,
+        submissionTime: existingAnswer.submittedAt
       });
     }
 
     // Add new answer
-    question.answers.push({
+    const newAnswer = {
       studentId,
       studentName: studentName || req.user.name || 'Anonymous Student',
       answer
-    });
+    };
+    
+    question.answers.push(newAnswer);
+
+    // For poll questions, also update poll responses and calculate results
+    if (question.questionType === 'poll') {
+      // Add to poll responses
+      question.pollResponses.push({
+        studentId,
+        response: answer
+      });
+      
+      // Update totalVotes
+      question.totalVotes = question.pollResponses.length;
+      
+      // Calculate updated results
+      const voteCounts = {};
+      question.options.forEach((_, index) => {
+        voteCounts[index] = 0;
+      });
+      
+      // Count votes for each option
+      question.pollResponses.forEach(response => {
+        const optionIndex = Number(response.response);
+        if (voteCounts[optionIndex] !== undefined) {
+          voteCounts[optionIndex]++;
+        }
+      });
+
+      // Calculate percentages
+      question.results = Object.keys(voteCounts).map(optionIndex => {
+        const votes = voteCounts[optionIndex];
+        return {
+          optionIndex: Number(optionIndex),
+          votes: votes,
+          percentage: (votes / question.totalVotes) * 100 || 0
+        };
+      });
+    }
 
     await question.save();
 
     res.status(200).json({
       success: true,
-      message: 'Answer submitted successfully'
+      message: 'Answer submitted successfully',
+      answer: newAnswer
     });
   } catch (error) {
     console.error('Error submitting answer:', error);
@@ -239,9 +279,24 @@ exports.getAnswers = async (req, res) => {
       });
     }
 
+    // If the user is a student, make sure we return only their answer
+    if (req.user.role === 'student') {
+      const studentAnswers = question.answers.filter(a => 
+        a.studentId._id.toString() === req.user.id
+      );
+      
+      return res.status(200).json({
+        success: true,
+        answers: studentAnswers,
+        hasSubmitted: studentAnswers.length > 0
+      });
+    }
+
+    // For teachers, return all answers
     res.status(200).json({
       success: true,
-      answers: question.answers
+      answers: question.answers,
+      totalAnswers: question.answers.length
     });
   } catch (error) {
     console.error('Error fetching answers:', error);
@@ -297,8 +352,7 @@ exports.submitPollVote = async (req, res) => {
 exports.getPollResults = async (req, res) => {
   try {
     const { id } = req.params;
-    const question = await Question.findById(id)
-      .populate('pollResponses.studentId', 'name');
+    const question = await Question.findById(id);
 
     if (!question) {
       return res.status(404).json({
@@ -307,23 +361,41 @@ exports.getPollResults = async (req, res) => {
       });
     }
 
-    // Calculate poll results
+    // If results are already calculated, return them
+    if (question.results && question.results.length > 0) {
+      return res.status(200).json({
+        success: true,
+        results: question.results,
+        totalVotes: question.totalVotes || question.pollResponses.length
+      });
+    }
+
+    // Otherwise, calculate results on the fly
+    const totalVotes = question.pollResponses.length;
+    
+    // Create an array of results
     const results = question.options.map((option, index) => {
       const votes = question.pollResponses.filter(
-        vote => vote.response === index.toString()
+        vote => Number(vote.response) === index
       ).length;
 
       return {
+        optionIndex: index,
         option,
         votes,
-        percentage: (votes / question.pollResponses.length) * 100 || 0
+        percentage: (votes / totalVotes) * 100 || 0
       };
     });
+
+    // Save results for future use
+    question.results = results;
+    question.totalVotes = totalVotes;
+    await question.save();
 
     res.status(200).json({
       success: true,
       results,
-      totalVotes: question.pollResponses.length
+      totalVotes
     });
   } catch (error) {
     console.error('Error fetching poll results:', error);
