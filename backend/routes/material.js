@@ -14,8 +14,12 @@ const upload = multer({
 router.get('/:classId', authorizeTeacherOrStudent, materialController.getMaterials);
 router.get('/item/:id', authorizeTeacherOrStudent, materialController.getMaterial);
 
+// Comment routes
+router.post('/item/:id/comment', authorizeTeacherOrStudent, materialController.addComment);
+router.delete('/item/:id/comment/:commentId', authorizeTeacherOrStudent, materialController.deleteComment);
+
 // Protected routes (only for teachers)
-router.post('/:classId/create', authorizeTeacher, upload.array('attachments', 10), materialController.createMaterial);
+router.post('/:classId/create-material', authorizeTeacher, upload.array('attachments', 10), materialController.createMaterial);
 router.delete('/item/:id', authorizeTeacher, materialController.deleteMaterial);
 
 module.exports = router;

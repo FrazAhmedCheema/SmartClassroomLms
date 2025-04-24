@@ -100,6 +100,7 @@ const teacherSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = true;
         state.teacherId = action.payload.teacherId;
+        state.name = action.payload.name; // Add name to state
         state.role = 'teacher'; // Set role when auth check is successful
         state.error = null;
       })

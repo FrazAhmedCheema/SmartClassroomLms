@@ -129,6 +129,7 @@ export const fetchClasswork = (classId, topicId = null) => async (dispatch, getS
   console.log('fetchClasswork called with classId:', classId);
   
   const { classwork } = getState().class;
+  // Force refresh if we're explicitly fetching with topicId
   const useCache = classwork.data && isCacheValid(classwork.lastFetched) && !topicId;
   
   if (useCache) {
@@ -139,34 +140,43 @@ export const fetchClasswork = (classId, topicId = null) => async (dispatch, getS
   dispatch(fetchClassworkStart());
   try {
     console.log('Fetching classwork items...');
-    const [assignmentsResponse, quizzesResponse, materialsResponse] = await Promise.all([
+    const [assignmentsResponse, quizzesResponse, materialsResponse, questionsResponse] = await Promise.all([
       api.get(`/assignment/${classId}`),
       api.get(`/quiz/${classId}`),
-      api.get(`/material/${classId}`)
+      api.get(`/material/${classId}`),
+      api.get(`/question/${classId}`) // Add this line to fetch questions
     ]);
     
     console.log('Assignments response:', assignmentsResponse.data);
     console.log('Quizzes response:', quizzesResponse.data);
     console.log('Materials response:', materialsResponse.data);
+    console.log('Questions response:', questionsResponse.data);
     
-    if (assignmentsResponse.data.success) {
-      const assignments = assignmentsResponse.data.assignments.map(a => ({...a, type: 'assignment'}));
-      const quizzes = quizzesResponse.data.success ? quizzesResponse.data.quizzes.map(q => ({...q, type: 'quiz'})) : [];
-      const materials = materialsResponse.data.success ? materialsResponse.data.materials.map(m => ({...m, type: 'material'})) : [];
-      
-      console.log('Processed assignments:', assignments.length);
-      console.log('Processed quizzes:', quizzes.length);
-      console.log('Processed materials:', materials.length);
-      
-      const allClasswork = [...assignments, ...quizzes, ...materials].sort((a, b) => 
-        new Date(b.createdAt) - new Date(a.createdAt)
-      );
-      
-      console.log('Combined classwork items:', allClasswork);
-      dispatch(fetchClassworkSuccess(allClasswork));
-    } else {
-      throw new Error(assignmentsResponse.data.message || 'Failed to fetch classwork items');
-    }
+    // Process all responses
+    const assignments = assignmentsResponse.data.success ? 
+      assignmentsResponse.data.assignments.map(a => ({...a, type: 'assignment'})) : [];
+    
+    const quizzes = quizzesResponse.data.success ? 
+      quizzesResponse.data.quizzes.map(q => ({...q, type: 'quiz'})) : [];
+    
+    const materials = materialsResponse.data.success ? 
+      materialsResponse.data.materials.map(m => ({...m, type: 'material'})) : [];
+    
+    // Process questions properly
+    const questions = questionsResponse.data.success ? 
+      questionsResponse.data.questions.map(q => ({...q, type: 'question'})) : [];
+    
+    console.log('Processed assignments:', assignments.length);
+    console.log('Processed quizzes:', quizzes.length);
+    console.log('Processed materials:', materials.length);
+    console.log('Processed questions:', questions.length);
+    
+    const allClasswork = [...assignments, ...quizzes, ...materials, ...questions].sort((a, b) => 
+      new Date(b.createdAt) - new Date(a.createdAt)
+    );
+    
+    console.log('Combined classwork items:', allClasswork);
+    dispatch(fetchClassworkSuccess(allClasswork));
   } catch (error) {
     console.error('Error fetching classwork:', error);
     dispatch(fetchClassworkFailure(error.message));
@@ -193,22 +203,38 @@ export const getClassworkItem = async (classworkId) => {
 
 export const createClassworkItem = (classId, formData) => async (dispatch) => {
   try {
-    const endpoint = formData.get('type') === 'quiz'
-      ? `/quiz/${classId}/create-quiz`
-      : `/assignment/${classId}/create-assignment`;
+    let endpoint;
 
+    // Determine the endpoint based on the type
+    const type = formData.get('type');
+    if (type === 'quiz') {
+      endpoint = `/quiz/${classId}/create-quiz`;
+    } else if (type === 'material') {
+      endpoint = `/material/${classId}/create-material`; // Call the material creation endpoint
+    } else if (type === 'question') {
+      endpoint = `/question/${classId}/create-question`; // New endpoint for questions
+    } else {
+      endpoint = `/assignment/${classId}/create-assignment`;
+    }
+
+    console.log(`Creating ${type} with endpoint: ${endpoint}`);
+    
     const response = await api.post(endpoint, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
 
     if (response.data.success) {
-      dispatch(addClasswork(response.data.quiz || response.data.assignment));
-      return { success: true, assignment: response.data.quiz || response.data.assignment };
+      const resultData = response.data.quiz || response.data.assignment || 
+                         response.data.material || response.data.question;
+      
+      console.log(`Successfully created ${type}:`, resultData);
+      dispatch(addClasswork(resultData));
+      return { success: true, classwork: resultData };
     } else {
       throw new Error(response.data.message || 'Failed to create classwork item');
     }
   } catch (error) {
-    console.error('Error creating assignment:', error);
+    console.error('Error creating classwork item:', error);
     return { success: false, error: error.response?.data?.message || error.message };
   }
 };
@@ -353,6 +379,84 @@ export const deleteAssignment = (assignmentId) => async (dispatch) => {
     throw new Error(response.data.message || 'Failed to delete assignment');
   } catch (error) {
     console.error('Error deleting assignment:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const fetchMaterials = (classId) => async (dispatch) => {
+  try {
+    const response = await api.get(`/material/${classId}`);
+    if (response.data.success) {
+      return response.data.materials;
+    } else {
+      throw new Error(response.data.message || 'Failed to fetch materials');
+    }
+  } catch (error) {
+    console.error('Error fetching materials:', error);
+    return [];
+  }
+};
+
+export const deleteMaterial = (materialId) => async (dispatch) => {
+  try {
+    const response = await api.delete(`/material/item/${materialId}`); // Call the correct endpoint
+    if (response.data.success) {
+      dispatch(removeClasswork(materialId)); // Update Redux state immediately
+      return { success: true };
+    }
+    throw new Error(response.data.message || 'Failed to delete material');
+  } catch (error) {
+    console.error('Error deleting material:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Add delete question action
+export const deleteQuestion = (questionId) => async (dispatch) => {
+  try {
+    const response = await api.delete(`/question/item/${questionId}`);
+    if (response.data.success) {
+      dispatch(removeClasswork(questionId)); // Update Redux state immediately
+      return { success: true };
+    }
+    throw new Error(response.data.message || 'Failed to delete question');
+  } catch (error) {
+    console.error('Error deleting question:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const submitPollVote = (questionId, response) => async (dispatch) => {
+  try {
+    const apiResponse = await api.post(`/question/item/${questionId}/vote`, { response });
+    if (apiResponse.data.success) {
+      // Fetch updated question data to refresh the UI
+      const questionResponse = await api.get(`/question/item/${questionId}`);
+      if (questionResponse.data.success) {
+        dispatch(updateClasswork(questionResponse.data.question));
+      }
+      return { success: true };
+    }
+    throw new Error(apiResponse.data.message);
+  } catch (error) {
+    console.error('Error submitting poll vote:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getPollResults = async (questionId) => {
+  try {
+    const response = await api.get(`/question/item/${questionId}/results`);
+    if (response.data.success) {
+      return {
+        success: true,
+        results: response.data.results,
+        totalVotes: response.data.totalVotes
+      };
+    }
+    throw new Error(response.data.message);
+  } catch (error) {
+    console.error('Error fetching poll results:', error);
     return { success: false, error: error.message };
   }
 };

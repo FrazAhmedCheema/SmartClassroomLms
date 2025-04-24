@@ -164,7 +164,8 @@ exports.auth = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = {
             id: decoded.id,
-            role: decoded.role
+            role: decoded.role,
+            name: decoded.name // Add name to the user object
         };
         next();
     } catch (error) {
