@@ -8,7 +8,6 @@ import { removeClasswork } from '../../redux/slices/classSlice';
 import CreateClassworkModal from '../teacher/CreateClassworkModal';
 import CreateTopicModal from '../teacher/CreateTopicModal';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 
 // Import modal components
 import AssignmentModal from './classwork/AssignmentModal';
@@ -169,38 +168,6 @@ const ClassworkTab = ({ classId, userRole }) => {
     }
   };
 
-  const handleAssignmentSubmit = async (files, privateComment, assignmentId) => {
-    try {
-      console.log('ClassworkTab handleAssignmentSubmit called:', { files, privateComment, assignmentId });
-      
-      const formData = new FormData();
-      files.forEach(file => {
-        formData.append('files', file);
-      });
-      if (privateComment) {
-        formData.append('privateComment', privateComment);
-      }
-
-      const response = await axios.post(
-        `http://localhost:8080/submission/${assignmentId}/submit`,
-        formData,
-        {
-          withCredentials: true,
-          headers: { 'Content-Type': 'multipart/form-data' }
-        }
-      );
-
-      if (response.data.success) {
-        console.log('Assignment submitted successfully:', response.data);
-        return response.data;
-      }
-      throw new Error(response.data.message || 'Failed to submit assignment');
-    } catch (error) {
-      console.error('Error submitting assignment:', error);
-      throw error;
-    }
-  };
-
   // Memoize derived data
   const allMaterials = useMemo(() => {
     const materials = classworks.filter(item => item.type === 'material');
@@ -297,6 +264,35 @@ const ClassworkTab = ({ classId, userRole }) => {
     );
   };
 
+  const handleAssignmentSubmit = async (files, privateComment) => {
+    try {
+      const formData = new FormData();
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+      if (privateComment) {
+        formData.append('privateComment', privateComment);
+      }
+
+      const response = await axios.post(
+        `http://localhost:8080/submission/${selectedClasswork._id}/submit`,
+        formData,
+        {
+          withCredentials: true,
+          headers: { 'Content-Type': 'multipart/form-data' }
+        }
+      );
+
+      if (response.data.success) {
+        alert('Assignment submitted successfully!');
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Error submitting assignment:', error);
+      throw new Error(error.response?.data?.message || 'Failed to submit assignment');
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-6 px-4 sm:px-6 bg-gray-50">
       {/* Modals */}
@@ -306,8 +302,7 @@ const ClassworkTab = ({ classId, userRole }) => {
             assignment={selectedClasswork}
             onClose={() => setSelectedClasswork(null)}
             isTeacher={isTeacher}
-            onSubmit={handleAssignmentSubmit} // Pass the submission handler
-            isSubmitting={false}
+            onSubmit={handleAssignmentSubmit}
           />
         )}
       </AnimatePresence>
