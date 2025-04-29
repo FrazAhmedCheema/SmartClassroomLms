@@ -55,6 +55,12 @@ const AssignmentSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  studentSubmissions: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Submission' // Reference to the Submission model
+    }
+  ],
   createdAt: {
     type: Date,
     default: Date.now

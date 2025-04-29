@@ -13,7 +13,17 @@ exports.submitAssignment = async (req, res) => {
 
     const { assignmentId } = req.params;
     const { privateComment } = req.body;
-    const studentId = req.user._id;
+    const studentId = req.user.id; // Get studentId from authenticated user
+
+    console.log('Student ID from auth:', studentId);
+
+    // Verify studentId exists
+    if (!studentId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Student ID not found. Please log in again.'
+      });
+    }
 
     // Check if assignment exists
     const assignment = await Assignment.findById(assignmentId);
@@ -56,7 +66,7 @@ exports.submitAssignment = async (req, res) => {
     // Create or update submission
     const submissionData = {
       assignmentId,
-      studentId,
+      studentId, // Use the studentId from auth
       files: submissionFiles,
       privateComment: privateComment || '',
       submittedAt: Date.now(),
@@ -70,6 +80,12 @@ exports.submitAssignment = async (req, res) => {
       submissionData,
       { new: true, upsert: true }
     );
+
+    // Push submission ID to the assignment's studentSubmissions array
+    if (!assignment.studentSubmissions.includes(savedSubmission._id)) {
+      assignment.studentSubmissions.push(savedSubmission._id);
+      await assignment.save();
+    }
 
     console.log(`Submission saved successfully with ID: ${savedSubmission._id}`);
     res.status(200).json({
@@ -143,17 +159,37 @@ exports.getStudentSubmission = async (req, res) => {
     const { assignmentId } = req.params;
     const studentId = req.user._id;
 
-    const submission = await Submission.findOne({ assignmentId, studentId });
-    
+    console.log('Fetching submission:', { assignmentId, studentId });
+
+    const submission = await Submission.findOne({ 
+      assignmentId, 
+      studentId 
+    });
+
+    console.log('Found submission:', submission);
+
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: 'No submission found for this assignment'
+      });
+    }
+
     res.status(200).json({
       success: true,
-      submission: submission || null
+      submission: {
+        _id: submission._id,
+        files: submission.files,
+        privateComment: submission.privateComment,
+        submittedAt: submission.submittedAt,
+        status: submission.status
+      }
     });
   } catch (error) {
     console.error('Error fetching student submission:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch submission',
+      message: 'Error fetching submission',
       error: error.message
     });
   }
@@ -268,6 +304,49 @@ exports.deleteSubmission = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to delete submission',
+      error: error.message
+    });
+  }
+};
+
+exports.unsubmitAssignment = async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+    const studentId = req.user._id;
+
+    console.log(`Unsubmitting assignment for student: ${studentId}, assignment: ${assignmentId}`);
+
+    const submission = await Submission.findOne({ assignmentId, studentId });
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: 'Submission not found'
+      });
+    }
+
+    // Delete files from S3 if they exist
+    if (submission.files && submission.files.length > 0) {
+      for (const file of submission.files) {
+        try {
+          await deleteFile(file.key);
+        } catch (error) {
+          console.error('Error deleting file from S3:', error);
+        }
+      }
+    }
+
+    // Remove the submission
+    await Submission.findOneAndDelete({ assignmentId, studentId });
+
+    res.status(200).json({
+      success: true,
+      message: 'Submission unsubmitted successfully'
+    });
+  } catch (error) {
+    console.error('Error unsubmitting assignment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to unsubmit assignment',
       error: error.message
     });
   }

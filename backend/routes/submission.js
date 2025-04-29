@@ -24,14 +24,21 @@ router.post('/:assignmentId/comment',
   submissionController.addOrUpdatePrivateComment
 );
 
+// Get student's submission for an assignment
 router.get('/student/:assignmentId', 
-  authorizeTeacherOrStudent,
+  authorizeStudent,
   submissionController.getStudentSubmission
 );
 
 router.delete('/:submissionId', 
   authorizeTeacherOrStudent,
   submissionController.deleteSubmission
+);
+
+// Add route for unsubmission
+router.delete('/:assignmentId/unsubmit', 
+  authorizeStudent, 
+  submissionController.unsubmitAssignment
 );
 
 // Routes for teachers

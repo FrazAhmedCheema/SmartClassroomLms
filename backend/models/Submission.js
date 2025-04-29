@@ -49,7 +49,7 @@ const SubmissionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['submitted', 'late', 'graded', 'returned'],
+    enum: ['draft', 'submitted', 'graded'],
     default: 'submitted'
   },
   isLate: {

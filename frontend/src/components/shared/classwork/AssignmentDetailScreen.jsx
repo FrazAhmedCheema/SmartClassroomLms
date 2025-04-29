@@ -16,6 +16,7 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
   const assignments = useSelector((state) => state.class.classwork.data);
   const teacherAuth = useSelector((state) => state.teacher);
   const studentAuth = useSelector((state) => state.student);
+  const studentId = useSelector(state => state.student.studentId);
   
   // Determine if we're using props or Redux data
   const assignment = propAssignment || (id && assignments.find((a) => a._id === id));
@@ -69,11 +70,17 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
   const handleSubmitAssignment = async (files, privateComment) => {
     try {
       console.log('AssignmentDetailScreen handleSubmitAssignment called');
+      console.log('Student ID:', studentId);
       setIsSubmitting(true);
+
+      if (!studentId) {
+        throw new Error('Student ID not found. Please log in again.');
+      }
 
       const formData = new FormData();
       files.forEach(file => formData.append('files', file));
       if (privateComment) formData.append('privateComment', privateComment);
+      formData.append('studentId', studentId); // Add studentId to formData
 
       const response = await axios.post(
         `http://localhost:8080/submission/${assignment._id}/submit`,
