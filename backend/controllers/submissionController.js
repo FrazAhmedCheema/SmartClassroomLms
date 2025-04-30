@@ -4,49 +4,22 @@ const { uploadFile, deleteFile } = require('../utils/s3Service');
 
 exports.submitAssignment = async (req, res) => {
   try {
-    console.log('Submission request received:', {
-      params: req.params,
-      body: req.body,
-      files: req.files?.length || 0,
-      user: req.user
-    });
-
     const { assignmentId } = req.params;
-    const { privateComment } = req.body;
-    const studentId = req.user.id; // Get studentId from authenticated user
+    const { privateComment, existingFiles } = req.body;
+    const studentId = req.user.id;
 
-    console.log('Student ID from auth:', studentId);
+    // Parse existing files from JSON string
+    const existingFilesArray = existingFiles ? JSON.parse(existingFiles) : [];
 
-    // Verify studentId exists
-    if (!studentId) {
-      return res.status(401).json({
-        success: false,
-        message: 'Student ID not found. Please log in again.'
-      });
-    }
-
-    // Check if assignment exists
-    const assignment = await Assignment.findById(assignmentId);
-    if (!assignment) {
-      console.error(`Assignment not found with ID: ${assignmentId}`);
-      return res.status(404).json({
-        success: false,
-        message: 'Assignment not found'
-      });
-    }
-
-    console.log(`Found assignment: ${assignment.title}`);
-
-    // Create submission attachments array from uploaded files
-    let submissionFiles = [];
+    // Create submission attachments array from new uploaded files
+    let newSubmissionFiles = [];
     if (req.files && req.files.length > 0) {
-      console.log(`Processing ${req.files.length} uploaded files`);
       try {
         for (const file of req.files) {
           const key = `submissions/${assignmentId}/${studentId}/${Date.now()}-${file.originalname}`;
           const uploadResult = await uploadFile(file, key);
           
-          submissionFiles.push({
+          newSubmissionFiles.push({
             fileName: file.originalname,
             fileType: file.mimetype,
             key: key,
@@ -54,26 +27,27 @@ exports.submitAssignment = async (req, res) => {
           });
         }
       } catch (error) {
-        console.error('Error uploading submission files:', error);
+        console.error('Error uploading new files:', error);
         return res.status(500).json({
           success: false,
-          message: 'Error uploading files',
+          message: 'Error uploading new files',
           error: error.message
         });
       }
     }
 
+    // Combine existing and new files
+    const allFiles = [...existingFilesArray, ...newSubmissionFiles];
+
     // Create or update submission
     const submissionData = {
       assignmentId,
-      studentId, // Use the studentId from auth
-      files: submissionFiles,
+      studentId,
+      files: allFiles,
       privateComment: privateComment || '',
       submittedAt: Date.now(),
       status: 'submitted'
     };
-
-    console.log('Creating or updating submission with data:', submissionData);
 
     const savedSubmission = await Submission.findOneAndUpdate(
       { assignmentId, studentId },
@@ -81,13 +55,13 @@ exports.submitAssignment = async (req, res) => {
       { new: true, upsert: true }
     );
 
-    // Push submission ID to the assignment's studentSubmissions array
+    // Update assignment's studentSubmissions array if needed
+    const assignment = await Assignment.findById(assignmentId);
     if (!assignment.studentSubmissions.includes(savedSubmission._id)) {
       assignment.studentSubmissions.push(savedSubmission._id);
       await assignment.save();
     }
 
-    console.log(`Submission saved successfully with ID: ${savedSubmission._id}`);
     res.status(200).json({
       success: true,
       message: 'Assignment submitted successfully',
@@ -157,7 +131,7 @@ exports.addOrUpdatePrivateComment = async (req, res) => {
 exports.getStudentSubmission = async (req, res) => {
   try {
     const { assignmentId } = req.params;
-    const studentId = req.user._id;
+    const studentId = req.user.id;
 
     console.log('Fetching submission:', { assignmentId, studentId });
 
@@ -199,8 +173,17 @@ exports.getAllSubmissions = async (req, res) => {
   try {
     const { assignmentId } = req.params;
 
-    // Check if the assignment exists
-    const assignment = await Assignment.findById(assignmentId);
+    // First, get the assignment and populate class details to get all students
+    const assignment = await Assignment.findById(assignmentId)
+      .populate({
+        path: 'classId',
+        select: 'students',
+        populate: {
+          path: 'students',
+          select: 'name email profilePicture'
+        }
+      });
+
     if (!assignment) {
       return res.status(404).json({
         success: false,
@@ -210,12 +193,32 @@ exports.getAllSubmissions = async (req, res) => {
 
     // Get all submissions for this assignment
     const submissions = await Submission.find({ assignmentId })
-      .populate('studentId', 'name email profilePicture') // Populate student info
-      .sort({ submittedAt: -1 });
+      .populate('studentId', 'name email profilePicture');
+
+    // Create a map of submissions by student ID
+    const submissionMap = submissions.reduce((acc, submission) => {
+      acc[submission.studentId._id.toString()] = submission;
+      return acc;
+    }, {});
+
+    // Create final array with all students and their submission status
+    const allStudentSubmissions = assignment.classId.students.map(student => {
+      const submission = submissionMap[student._id.toString()];
+      return {
+        student: {
+          _id: student._id,
+          name: student.name,
+          email: student.email,
+          profilePicture: student.profilePicture
+        },
+        submission: submission || null,
+        status: submission ? submission.status : 'missing'
+      };
+    });
 
     res.status(200).json({
       success: true,
-      submissions
+      submissions: allStudentSubmissions
     });
   } catch (error) {
     console.error('Error fetching submissions:', error);
@@ -312,7 +315,7 @@ exports.deleteSubmission = async (req, res) => {
 exports.unsubmitAssignment = async (req, res) => {
   try {
     const { assignmentId } = req.params;
-    const studentId = req.user._id;
+    const studentId = req.user.id; // Ensure studentId is retrieved from auth
 
     console.log(`Unsubmitting assignment for student: ${studentId}, assignment: ${assignmentId}`);
 

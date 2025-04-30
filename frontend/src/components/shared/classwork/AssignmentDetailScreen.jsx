@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import AssignmentSubmission from '../../student/AssignmentSubmission';
 import axios from 'axios';
+import SubmissionsList from '../../teacher/SubmissionsList';
 
 const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitting: propIsSubmitting, isTeacher: propIsTeacher }) => {
   const { id } = useParams();
@@ -174,6 +175,16 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
             onSubmit={handleSubmitAssignment} // Pass handleSubmitAssignment to AssignmentSubmission
             isSubmitting={propIsSubmitting || isSubmitting}
           />
+        )}
+
+        {/* Add SubmissionsList component for teachers */}
+        {isTeacher && (
+          <div className="mt-8">
+            <SubmissionsList 
+              assignment={assignment} 
+              classId={assignment.classId} // Pass the classId
+            />
+          </div>
         )}
       </div>
 

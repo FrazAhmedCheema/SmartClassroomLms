@@ -89,6 +89,18 @@ const classSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Quiz'
     }],
+    assignments: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Assignment'
+    }],
+    materials: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Material'
+    }],
+    questions: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Question'
+    }],
     createdAt: {
         type: Date,
         default: Date.now
