@@ -1,5 +1,6 @@
 const Question = require('../models/Question');
 const { uploadFile, deleteFile } = require('../utils/s3Service');
+const Class = require('../models/Class'); // Import Class model
 
 exports.createQuestion = async (req, res) => {
   try {
@@ -70,6 +71,13 @@ exports.createQuestion = async (req, res) => {
 
     const savedQuestion = await question.save();
 
+    // Update class to include the new question
+    await Class.findByIdAndUpdate(
+      classId,
+      { $push: { questions: savedQuestion._id } },
+      { new: true }
+    );
+
     res.status(201).json({
       success: true,
       message: 'Question created successfully',
@@ -84,6 +92,7 @@ exports.createQuestion = async (req, res) => {
     });
   }
 };
+
 
 exports.getQuestions = async (req, res) => {
   try {

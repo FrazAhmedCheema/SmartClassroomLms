@@ -36,7 +36,7 @@ router.delete('/:submissionId',
 );
 
 // Add route for unsubmission
-router.delete('/:assignmentId/unsubmit', 
+router.delete('/student/:assignmentId/unsubmit', 
   authorizeStudent, 
   submissionController.unsubmitAssignment
 );

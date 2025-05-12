@@ -6,6 +6,7 @@ import {
   fetchPeopleStart, fetchPeopleSuccess, fetchPeopleFailure,
   fetchDiscussionsStart, fetchDiscussionsSuccess, fetchDiscussionsFailure,
   updateDiscussions,
+  setCurrentClass // Add this import
 } from '../slices/classSlice';
 
 // Create axios instance with default config
@@ -17,11 +18,14 @@ const api = axios.create({
   }
 });
 
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-const isCacheValid = (lastFetched) => {
-  if (!lastFetched) return false;
-  return Date.now() - lastFetched < CACHE_DURATION;
+// Update cache validation to check both time and classId
+const isCacheValid = (cache, currentClassId) => {
+  if (!cache?.lastFetched || !cache?.classId) return false;
+  const isTimeValid = Date.now() - cache.lastFetched < CACHE_DURATION;
+  const isClassValid = cache.classId === currentClassId;
+  return isTimeValid && isClassValid;
 };
 
 export const fetchBasicInfo = (classId) => async (dispatch, getState) => {
@@ -30,25 +34,25 @@ export const fetchBasicInfo = (classId) => async (dispatch, getState) => {
     return;
   }
 
+  // First dispatch setCurrentClass action
+  dispatch(setCurrentClass(classId));
+
   const { basicInfo } = getState().class;
-  if (basicInfo.data && isCacheValid(basicInfo.lastFetched)) {
+  if (basicInfo.data && isCacheValid(basicInfo, classId)) {
     console.log('Using cached basic info data');
-    return; // Use cached data
+    return;
   }
 
   dispatch(fetchBasicInfoStart());
   try {
-    console.log('Fetching basic info from API for class ID:', classId);
     const response = await api.get(`/class/${classId}/basic`);
-    console.log('API response for basic info:', response.data);
-
     if (response.data.success) {
-      dispatch(fetchBasicInfoSuccess(response.data.class));
-    } else {
-      throw new Error(response.data.message || 'Failed to fetch class info');
+      dispatch(fetchBasicInfoSuccess({
+        data: response.data.class,
+        classId
+      }));
     }
   } catch (error) {
-    console.error('Error fetching class info:', error);
     dispatch(fetchBasicInfoFailure(error.message));
   }
 };
@@ -123,20 +127,14 @@ export const deleteTopicAction = (topicId) => async (dispatch) => {
 };
 
 // Classwork-related actions
-export const fetchClasswork = (classId, topicId = null) => async (dispatch, getState) => {
-  if (!classId) return;
+export const fetchClasswork = (classId) => async (dispatch, getState) => {
+  const state = getState();
   
-  console.log('fetchClasswork called with classId:', classId);
-  
-  const { classwork } = getState().class;
-  // Force refresh if we're explicitly fetching with topicId
-  const useCache = classwork.data && isCacheValid(classwork.lastFetched) && !topicId;
-  
-  if (useCache) {
-    console.log('Using cached classwork data');
+  // Validate cache for this specific class
+  if (isCacheValid(state.class.classwork, classId)) {
     return;
   }
-  
+
   dispatch(fetchClassworkStart());
   try {
     console.log('Fetching classwork items...');
@@ -176,7 +174,10 @@ export const fetchClasswork = (classId, topicId = null) => async (dispatch, getS
     );
     
     console.log('Combined classwork items:', allClasswork);
-    dispatch(fetchClassworkSuccess(allClasswork));
+    dispatch(fetchClassworkSuccess({
+      data: allClasswork,
+      classId
+    }));
   } catch (error) {
     console.error('Error fetching classwork:', error);
     dispatch(fetchClassworkFailure(error.message));
@@ -459,4 +460,13 @@ export const getPollResults = async (questionId) => {
     console.error('Error fetching poll results:', error);
     return { success: false, error: error.message };
   }
+};
+
+export const clearCache = (classId) => (dispatch) => {
+  // Reset state but keep current classId
+  dispatch(resetClassState({ keepClassId: true }));
+  // Refetch data for current class
+  dispatch(fetchBasicInfo(classId));
+  dispatch(fetchClasswork(classId));
+  // ...other fetch actions
 };

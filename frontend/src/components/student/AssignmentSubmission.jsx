@@ -100,24 +100,35 @@ const AssignmentSubmission = ({ assignment }) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Add this new function
+  const removeSubmittedFile = (index) => {
+    setSubmittedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async () => {
-    if (files.length === 0) {
+    if (files.length === 0 && submittedFiles.length === 0) {
       setError('Please add at least one file to submit');
       return;
     }
-
+  
     if (!studentId) {
       setError('Student ID not found. Please log in again.');
       return;
     }
-
+  
     try {
       setError(null);
       const formData = new FormData();
+      
+      // Add new files
       files.forEach(file => formData.append('files', file));
+      
+      // Add existing files data
+      formData.append('existingFiles', JSON.stringify(submittedFiles));
+      
       if (privateComment) formData.append('privateComment', privateComment);
-      formData.append('studentId', studentId); // Add studentId to form data
-
+      formData.append('studentId', studentId);
+  
       const response = await axios.post(
         `http://localhost:8080/submission/${assignment._id}/submit`,
         formData,
@@ -126,11 +137,13 @@ const AssignmentSubmission = ({ assignment }) => {
           headers: { 'Content-Type': 'multipart/form-data' }
         }
       );
+      
       if (response.data.success) {
-        setSubmittedFiles(response.data.submission.files || []);
+        // Update submitted files with both existing and new files
+        setSubmittedFiles(response.data.submission.files);
         setFiles([]);
         setSuccessMessage('Assignment submitted successfully!');
-        setIsSubmitted(true); // Mark as submitted
+        setIsSubmitted(true);
         setIsEditable(false);
       } else {
         throw new Error(response.data.message || 'Failed to submit assignment');
@@ -144,15 +157,13 @@ const AssignmentSubmission = ({ assignment }) => {
   const handleUnsubmit = async () => {
     try {
       const response = await axios.delete(
-        `http://localhost:8080/submission/${assignment._id}/unsubmit`,
+        `http://localhost:8080/submission/student/${assignment._id}/unsubmit`,
         { withCredentials: true }
       );
       if (response.data.success) {
-        setSubmittedFiles([]);
-        setFiles([]);
-        setIsSubmitted(false); // Mark as not submitted
+        setIsSubmitted(false);
         setIsEditable(true);
-        setSuccessMessage('Submission has been unsubmitted.');
+        setSuccessMessage('Submission has been unsubmitted. You can now modify your files.');
       } else {
         throw new Error(response.data.message || 'Failed to unsubmit assignment');
       }
@@ -195,43 +206,49 @@ const AssignmentSubmission = ({ assignment }) => {
         <h3 className="text-lg font-semibold text-gray-900">Your work</h3>
       </div>
 
-      {/* Submitted Files */}
-      {isSubmitted && !isEditable && (
+      {/* Submitted Files Section */}
+      {(isSubmitted || submittedFiles.length > 0) && (
         <div className="mt-4">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Submitted files</h4>
+          <h4 className="text-sm font-medium text-gray-700 mb-2">
+            {isSubmitted ? 'Submitted files' : 'Attached files'}
+          </h4>
           <div className="space-y-2">
             {submittedFiles.map((file, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100"
-              >
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
                 <div className="flex items-center space-x-2 truncate">
                   <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
                     <FileText className="w-4 h-4 text-blue-500" />
                   </div>
-                  <a
-                    href={file.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline truncate"
-                  >
+                  <a href={file.url} target="_blank" rel="noopener noreferrer" 
+                     className="text-sm text-blue-600 hover:underline truncate">
                     {file.fileName}
                   </a>
                 </div>
+                {!isSubmitted && (
+                  <button 
+                    onClick={() => removeSubmittedFile(index)}
+                    className="p-1.5 hover:bg-gray-200 rounded-full flex-shrink-0 transition-colors ml-2"
+                    title="Remove file"
+                  >
+                    <X className="w-4 h-4 text-gray-500" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
-          <button
-            onClick={handleUnsubmit}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            Unsubmit
-          </button>
+          {isSubmitted && (
+            <button
+              onClick={handleUnsubmit}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Unsubmit
+            </button>
+          )}
         </div>
       )}
 
-      {/* Upload Area */}
-      {!isSubmitted && (
+      {/* Upload Area - Show when not submitted or in edit mode */}
+      {(!isSubmitted || isEditable) && (
         <>
           <div
             onDragOver={handleDragOver}
@@ -276,7 +293,7 @@ const AssignmentSubmission = ({ assignment }) => {
                 exit={{ opacity: 0, height: 0 }}
                 className="mt-5"
               >
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Attached files ({files.length})</h4>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">New files ({files.length})</h4>
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                   {files.map((file, index) => (
                     <motion.div
@@ -316,14 +333,14 @@ const AssignmentSubmission = ({ assignment }) => {
           <div className="mt-5 flex justify-end">
             <button
               onClick={handleSubmit}
-              disabled={files.length === 0}
+              disabled={files.length === 0 && submittedFiles.length === 0}
               className={`px-6 py-2.5 rounded-lg text-white text-sm font-medium transition-all
-                ${files.length === 0
+                ${files.length === 0 && submittedFiles.length === 0
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700 shadow hover:shadow-md'
                 }`}
             >
-              Turn in
+              {isEditable ? 'Resubmit' : 'Turn in'}
             </button>
           </div>
         </>

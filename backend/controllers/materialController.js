@@ -1,4 +1,5 @@
 const Material = require('../models/Material');
+const Class = require('../models/Class'); // Add this import
 const { uploadFile, deleteFile } = require('../utils/s3Service');
 
 exports.createMaterial = async (req, res) => {
@@ -33,6 +34,13 @@ exports.createMaterial = async (req, res) => {
     });
 
     const savedMaterial = await material.save();
+
+    // Update class to include the new material
+    await Class.findByIdAndUpdate(
+      classId,
+      { $push: { materials: savedMaterial._id } },
+      { new: true }
+    );
 
     res.status(201).json({
       success: true,

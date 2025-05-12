@@ -1,5 +1,7 @@
 const Assignment = require('../models/Assignment');
+const Submission = require('../models/Submission');
 const { uploadFile, deleteFile } = require('../utils/s3Service');
+const Class = require('../models/Class'); // Add this import
 
 exports.createAssignment = async (req, res) => {
   try {
@@ -39,6 +41,13 @@ exports.createAssignment = async (req, res) => {
     });
 
     const savedAssignment = await assignment.save();
+
+    // Update class to include the new assignment
+    await Class.findByIdAndUpdate(
+      classId,
+      { $push: { assignments: savedAssignment._id } },
+      { new: true }
+    );
 
     res.status(201).json({
       success: true,
@@ -106,7 +115,9 @@ exports.getAssignment = async (req, res) => {
 
 exports.deleteAssignment = async (req, res) => {
   try {
-    const assignment = await Assignment.findById(req.params.id);
+    const { id } = req.params;
+    const assignment = await Assignment.findById(id);
+
     if (!assignment) {
       return res.status(404).json({
         success: false,
@@ -114,26 +125,52 @@ exports.deleteAssignment = async (req, res) => {
       });
     }
 
-    // Delete attachments from S3 if they exist
+    // 1. Delete assignment attachments from AWS
     if (assignment.attachments && assignment.attachments.length > 0) {
       for (const attachment of assignment.attachments) {
         try {
           await deleteFile(attachment.key);
+          console.log(`Deleted assignment attachment: ${attachment.fileName}`);
         } catch (error) {
-          console.error('Error deleting file from S3:', error);
-          // Continue with deletion even if S3 deletion fails
+          console.error(`Error deleting assignment attachment: ${attachment.fileName}`, error);
         }
       }
     }
 
-    await Assignment.findByIdAndDelete(req.params.id);
+    // 2. Get and delete submissions directly using the studentSubmissions array
+    const submissions = await Submission.find({
+      _id: { $in: assignment.studentSubmissions }
+    });
+
+    for (const submission of submissions) {
+      // Delete submission files from S3
+      if (submission.files && submission.files.length > 0) {
+        for (const file of submission.files) {
+          try {
+            await deleteFile(file.key);
+            console.log(`Deleted submission file: ${file.fileName}`);
+          } catch (error) {
+            console.error(`Error deleting submission file: ${file.fileName}`, error);
+          }
+        }
+      }
+    }
+
+    // 3. Delete all submissions in one operation
+    await Submission.deleteMany({
+      _id: { $in: assignment.studentSubmissions }
+    });
+
+    // 4. Finally delete the assignment
+    await Assignment.findByIdAndDelete(id);
 
     res.status(200).json({
       success: true,
-      message: 'Assignment deleted successfully'
+      message: 'Assignment and all related data deleted successfully'
     });
+
   } catch (error) {
-    console.error('Error deleting assignment:', error);
+    console.error('Error in deleteAssignment:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete assignment',

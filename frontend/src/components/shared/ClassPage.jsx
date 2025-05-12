@@ -23,30 +23,22 @@ const ClassPage = ({ defaultTab = 'stream' }) => {
   const { isAuthenticated: isStudent } = useSelector(state => state.student);
   const userRole = isTeacher ? 'Teacher' : isStudent ? 'Student' : null;
 
-  // Load basic data once
-  useEffect(() => {
-    if (id && !basicData) {
-      console.log("Fetching basic class info for class ID:", id);
-      dispatch(fetchBasicInfo(id));
-    }
-  }, [id, dispatch, basicData]);
-
-  // Pre-fetch other tab data when component mounts
+  // Load basic data once and handle class switching
   useEffect(() => {
     if (id) {
-      const state = store.getState().class;
-      console.log("Current Redux state for class:", state);
+      console.log("Fetching basic class info for class ID:", id);
+      // This will now properly set current class ID first
+      dispatch(fetchBasicInfo(id));
 
+      // Rest of the data fetching
+      const state = store.getState().class;
       if (!state.people.data) {
-        console.log("Fetching people data for class ID:", id);
         dispatch(fetchPeople(id));
       }
       if (!state.classwork.data) {
-        console.log("Fetching classwork data for class ID:", id);
         dispatch(fetchClasswork(id));
       }
       if (!state.discussions.data) {
-        console.log("Fetching discussions data for class ID:", id);
         dispatch(fetchDiscussions(id));
       }
     }
