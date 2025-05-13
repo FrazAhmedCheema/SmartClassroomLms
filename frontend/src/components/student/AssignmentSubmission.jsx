@@ -13,6 +13,8 @@ const AssignmentSubmission = ({ assignment }) => {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [isEditable, setIsEditable] = useState(false);
+  const [grade, setGrade] = useState(null);
+  const [feedback, setFeedback] = useState('');
   const fileInputRef = useRef(null);
 
   // Get studentId from Redux state
@@ -44,6 +46,9 @@ const AssignmentSubmission = ({ assignment }) => {
           setPrivateComment(response.data.submission.privateComment || '');
           setIsSubmitted(true);
           setIsEditable(false);
+          // Add state for grade and feedback
+          setGrade(response.data.submission.grade);
+          setFeedback(response.data.submission.feedback);
         } else {
           
           console.log('No submission found for this assignment');
@@ -206,6 +211,24 @@ const AssignmentSubmission = ({ assignment }) => {
         <h3 className="text-lg font-semibold text-gray-900">Your work</h3>
       </div>
 
+      {/* Grade Display Section - Only show if graded */}
+      {grade !== null && (
+        <div className="mb-6 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h5 className="text-lg font-semibold text-gray-900">Grade</h5>
+              <p className="text-3xl font-bold text-blue-600">{grade}/100</p>
+            </div>
+            {feedback && (
+              <div className="flex-1 ml-6">
+                <h5 className="text-sm font-semibold text-gray-900">Teacher's Feedback</h5>
+                <p className="text-gray-700 mt-1">{feedback}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Submitted Files Section */}
       {(isSubmitted || submittedFiles.length > 0) && (
         <div className="mt-4">
@@ -239,7 +262,11 @@ const AssignmentSubmission = ({ assignment }) => {
           {isSubmitted && (
             <button
               onClick={handleUnsubmit}
-              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              disabled={grade !== null}
+              className={`mt-4 px-4 py-2 rounded-lg text-white
+                ${grade !== null 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-red-600 hover:bg-red-700'}`}
             >
               Unsubmit
             </button>
