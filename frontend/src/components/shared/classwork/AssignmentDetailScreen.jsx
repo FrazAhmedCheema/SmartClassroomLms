@@ -162,11 +162,7 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
           </div>
         )}
 
-        {/* Additional Content */}
-        <div className="mt-6">
-          <h2 className="text-lg font-medium text-gray-900">Additional Features</h2>
-          <p className="text-gray-500 mt-2">You can add more features here later.</p>
-        </div>
+        
 
         {/* Add AssignmentSubmission component for students */}
         {!isTeacher && (
