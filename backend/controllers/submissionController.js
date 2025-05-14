@@ -156,15 +156,15 @@ exports.getStudentSubmission = async (req, res) => {
         files: submission.files,
         privateComment: submission.privateComment,
         submittedAt: submission.submittedAt,
-        status: submission.status
+        status: submission.status,
+        grade: submission.grade, // Add grade
+        feedback: submission.feedback // Add feedback
       }
     });
   } catch (error) {
     console.error('Error fetching student submission:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching submission',
-      error: error.message
     });
   }
 };
