@@ -41,6 +41,20 @@ router.delete('/student/:assignmentId/unsubmit',
   submissionController.unsubmitAssignment
 );
 
+// Routes for quiz submissions
+router.post('/quiz/:quizId/submit', authorizeStudent, upload.array('files', 10), submissionController.submitQuiz);
+router.get('/quiz/:quizId/student', authorizeStudent, submissionController.getStudentQuizSubmission);
+router.delete('/quiz/:quizId/unsubmit', authorizeStudent, submissionController.unsubmitQuiz);
+
+// New route for private comments on quizzes
+router.post('/quiz/:quizId/comment',
+  authorizeTeacherOrStudent,
+  submissionController.addOrUpdateQuizPrivateComment
+);
+
+// Fetch all submissions for a quiz
+router.get('/all/quiz/:quizId', authorizeTeacher, submissionController.getAllQuizSubmissions);
+
 // Routes for teachers
 router.get('/all/:assignmentId', 
   authorizeTeacher,

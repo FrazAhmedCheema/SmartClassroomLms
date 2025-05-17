@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 
-const AssignmentSubmission = ({ assignment }) => {
+const AssignmentSubmission = ({ assignment, quiz, submissionType = 'assignment' }) => {
   const [files, setFiles] = useState([]);
   const [submittedFiles, setSubmittedFiles] = useState([]);
   const [privateComment, setPrivateComment] = useState('');
@@ -17,56 +17,37 @@ const AssignmentSubmission = ({ assignment }) => {
   const [feedback, setFeedback] = useState('');
   const fileInputRef = useRef(null);
 
-  // Get studentId from Redux state
   const studentId = useSelector(state => state.student.studentId);
+  const item = submissionType === 'quiz' ? quiz : assignment;
 
-  // Fetch existing submission on load
   useEffect(() => {
     const fetchSubmission = async () => {
       try {
-        console.log('Fetching submission with:', { assignmentId: assignment._id, studentId });
-        
-        // Only proceed if we have both assignmentId and studentId
-        if (!assignment._id || !studentId) {
-          console.log('Missing required IDs:', { assignmentId: assignment._id, studentId });
-          return;
-        }
+        if (!item?._id || !studentId) return;
 
-        const response = await axios.get(
-          `http://localhost:8080/submission/student/${assignment._id}`,
-          { 
-            withCredentials: true,
-            params: { studentId } // Add studentId as query parameter
-          }
-        );
-        
+        const endpoint = submissionType === 'quiz'
+          ? `/submission/quiz/${item._id}/student`
+          : `/submission/student/${item._id}`;
+
+        const response = await axios.get(`http://localhost:8080${endpoint}`, { withCredentials: true });
+
         if (response.data.success && response.data.submission) {
-          console.log('Found submission:', response.data.submission);
           setSubmittedFiles(response.data.submission.files || []);
           setPrivateComment(response.data.submission.privateComment || '');
           setIsSubmitted(true);
           setIsEditable(false);
-          // Add state for grade and feedback
           setGrade(response.data.submission.grade);
           setFeedback(response.data.submission.feedback);
-        } else {
-          
-          console.log('No submission found for this assignment');
-          setIsSubmitted(false);
         }
       } catch (error) {
-        if (error.response?.status === 404) {
-          console.log('No submission found for this assignment');
-          setIsSubmitted(false);
-        } else {
-          console.error('Error fetching submission:', error);
+        if (error.response?.status !== 404) {
           setError('Failed to fetch submission');
         }
       }
     };
-    
+
     fetchSubmission();
-  }, [assignment._id, studentId]);
+  }, [item?._id, studentId, submissionType]);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -133,9 +114,13 @@ const AssignmentSubmission = ({ assignment }) => {
       
       if (privateComment) formData.append('privateComment', privateComment);
       formData.append('studentId', studentId);
+
+      const endpoint = submissionType === 'quiz'
+        ? `/submission/quiz/${quiz._id}/submit`
+        : `/submission/${assignment._id}/submit`;
   
       const response = await axios.post(
-        `http://localhost:8080/submission/${assignment._id}/submit`,
+        `http://localhost:8080${endpoint}`,
         formData,
         {
           withCredentials: true,
@@ -147,7 +132,7 @@ const AssignmentSubmission = ({ assignment }) => {
         // Update submitted files with both existing and new files
         setSubmittedFiles(response.data.submission.files);
         setFiles([]);
-        setSuccessMessage('Assignment submitted successfully!');
+        setSuccessMessage(`${submissionType} submitted successfully!`);
         setIsSubmitted(true);
         setIsEditable(false);
       } else {
@@ -180,11 +165,16 @@ const AssignmentSubmission = ({ assignment }) => {
 
   const handleSaveComment = async () => {
     try {
+      const endpoint = submissionType === 'quiz'
+        ? `/submission/quiz/${quiz._id}/comment`
+        : `/submission/${assignment._id}/comment`;
+
       const response = await axios.post(
-        `http://localhost:8080/submission/${assignment._id}/comment`,
+        `http://localhost:8080${endpoint}`,
         { privateComment },
         { withCredentials: true }
       );
+
       if (response.data.success) {
         setSuccessMessage('Private comment saved successfully!');
         setTimeout(() => setSuccessMessage(null), 3000);

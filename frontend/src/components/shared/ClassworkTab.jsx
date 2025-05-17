@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, CheckCircle, MessageCircle, File, Plus, MoreVertical, Edit, Trash2 } from 'lucide-react';
@@ -259,15 +261,13 @@ const ClassworkTab = ({ classId, userRole }) => {
           
           {isTeacher && (
             <div className="relative ml-2">
-              <button
+              <MoreVertical 
+                className="w-5 h-5 text-gray-500 cursor-pointer" 
                 onClick={(e) => {
                   e.stopPropagation();
                   setActiveDropdown(activeDropdown === classwork._id ? null : classwork._id);
                 }}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <MoreVertical className="w-5 h-5 text-gray-500" />
-              </button>
+              />
 
               {activeDropdown === classwork._id && (
                 <div 
@@ -276,6 +276,7 @@ const ClassworkTab = ({ classId, userRole }) => {
                 >
                   <button
                     onClick={(e) => handleOptionClick(e, 'edit')}
+                    style={{backgroundColor: 'white'}}
                     className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                   >
                     <Edit className="w-4 h-4" />
@@ -283,6 +284,7 @@ const ClassworkTab = ({ classId, userRole }) => {
                   </button>
                   <button
                     onClick={(e) => handleOptionClick(e, 'delete')}
+                    style={{backgroundColor: 'white'}}
                     className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                   >
                     <Trash2 className="w-4 h-4" />

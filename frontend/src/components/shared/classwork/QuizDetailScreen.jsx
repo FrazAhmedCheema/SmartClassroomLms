@@ -4,6 +4,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { FileText, Calendar, Clock, User, Paperclip, X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import AssignmentSubmission from '../../student/AssignmentSubmission';
+import SubmissionsList from '../../teacher/SubmissionsList';
 
 const QuizDetailScreen = () => {
   const { id } = useParams();
@@ -123,6 +125,21 @@ const QuizDetailScreen = () => {
               ))}
             </ul>
           </div>
+        )}
+
+        {/* Teacher View: Submissions List */}
+        {isTeacher && (
+          <div className="mt-8">
+            <SubmissionsList
+              assignment={quiz} // Pass quiz as assignment prop
+              classId={quiz.classId}
+              submissionType="quiz" // Specify submission type
+            />
+          </div>
+        )}
+
+        {!isTeacher && (
+          <AssignmentSubmission quiz={quiz} submissionType="quiz" />
         )}
       </div>
 
