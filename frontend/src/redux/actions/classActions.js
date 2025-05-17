@@ -6,6 +6,7 @@ import {
   fetchPeopleStart, fetchPeopleSuccess, fetchPeopleFailure,
   fetchDiscussionsStart, fetchDiscussionsSuccess, fetchDiscussionsFailure,
   updateDiscussions,
+  setCurrentClass // Add this import
 } from '../slices/classSlice';
 
 // Create axios instance with default config
@@ -17,11 +18,14 @@ const api = axios.create({
   }
 });
 
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-const isCacheValid = (lastFetched) => {
-  if (!lastFetched) return false;
-  return Date.now() - lastFetched < CACHE_DURATION;
+// Update cache validation to check both time and classId
+const isCacheValid = (cache, currentClassId) => {
+  if (!cache?.lastFetched || !cache?.classId) return false;
+  const isTimeValid = Date.now() - cache.lastFetched < CACHE_DURATION;
+  const isClassValid = cache.classId === currentClassId;
+  return isTimeValid && isClassValid;
 };
 
 export const fetchBasicInfo = (classId) => async (dispatch, getState) => {
@@ -30,21 +34,25 @@ export const fetchBasicInfo = (classId) => async (dispatch, getState) => {
     return;
   }
 
+  // First dispatch setCurrentClass action
+  dispatch(setCurrentClass(classId));
+
   const { basicInfo } = getState().class;
-  if (basicInfo.data && isCacheValid(basicInfo.lastFetched)) {
-    return; // Use cached data
+  if (basicInfo.data && isCacheValid(basicInfo, classId)) {
+    console.log('Using cached basic info data');
+    return;
   }
 
   dispatch(fetchBasicInfoStart());
   try {
     const response = await api.get(`/class/${classId}/basic`);
     if (response.data.success) {
-      dispatch(fetchBasicInfoSuccess(response.data.class));
-    } else {
-      throw new Error(response.data.message || 'Failed to fetch class info');
+      dispatch(fetchBasicInfoSuccess({
+        data: response.data.class,
+        classId
+      }));
     }
   } catch (error) {
-    console.error('Error fetching class info:', error);
     dispatch(fetchBasicInfoFailure(error.message));
   }
 };
@@ -119,27 +127,59 @@ export const deleteTopicAction = (topicId) => async (dispatch) => {
 };
 
 // Classwork-related actions
-export const fetchClasswork = (classId, topicId = null) => async (dispatch, getState) => {
-  if (!classId) return;
+export const fetchClasswork = (classId) => async (dispatch, getState) => {
+  const state = getState();
   
-  const { classwork } = getState().class;
-  const useCache = classwork.data && isCacheValid(classwork.lastFetched) && !topicId;
-  
-  if (useCache) {
+  // Validate cache for this specific class
+  if (isCacheValid(state.class.classwork, classId)) {
     return;
   }
-  
+
   dispatch(fetchClassworkStart());
   try {
-    const response = await api.get(`/assignment/${classId}`);
+    console.log('Fetching classwork items...');
+    const [assignmentsResponse, quizzesResponse, materialsResponse, questionsResponse] = await Promise.all([
+      api.get(`/assignment/${classId}`),
+      api.get(`/quiz/${classId}`),
+      api.get(`/material/${classId}`),
+      api.get(`/question/${classId}`) // Add this line to fetch questions
+    ]);
     
-    if (response.data.success) {
-      dispatch(fetchClassworkSuccess(response.data.assignments));
-    } else {
-      throw new Error(response.data.message || 'Failed to fetch assignments');
-    }
+    console.log('Assignments response:', assignmentsResponse.data);
+    console.log('Quizzes response:', quizzesResponse.data);
+    console.log('Materials response:', materialsResponse.data);
+    console.log('Questions response:', questionsResponse.data);
+    
+    // Process all responses
+    const assignments = assignmentsResponse.data.success ? 
+      assignmentsResponse.data.assignments.map(a => ({...a, type: 'assignment'})) : [];
+    
+    const quizzes = quizzesResponse.data.success ? 
+      quizzesResponse.data.quizzes.map(q => ({...q, type: 'quiz'})) : [];
+    
+    const materials = materialsResponse.data.success ? 
+      materialsResponse.data.materials.map(m => ({...m, type: 'material'})) : [];
+    
+    // Process questions properly
+    const questions = questionsResponse.data.success ? 
+      questionsResponse.data.questions.map(q => ({...q, type: 'question'})) : [];
+    
+    console.log('Processed assignments:', assignments.length);
+    console.log('Processed quizzes:', quizzes.length);
+    console.log('Processed materials:', materials.length);
+    console.log('Processed questions:', questions.length);
+    
+    const allClasswork = [...assignments, ...quizzes, ...materials, ...questions].sort((a, b) => 
+      new Date(b.createdAt) - new Date(a.createdAt)
+    );
+    
+    console.log('Combined classwork items:', allClasswork);
+    dispatch(fetchClassworkSuccess({
+      data: allClasswork,
+      classId
+    }));
   } catch (error) {
-    console.error('Error fetching assignments:', error);
+    console.error('Error fetching classwork:', error);
     dispatch(fetchClassworkFailure(error.message));
   }
 };
@@ -162,54 +202,40 @@ export const getClassworkItem = async (classworkId) => {
   }
 };
 
-export const createClassworkItem = (classId, formData, files) => async (dispatch) => {
+export const createClassworkItem = (classId, formData) => async (dispatch) => {
   try {
-    // Create FormData for both assignments and quizzes
-    const payload = {
-      title: formData.title,
-      instructions: formData.instructions || '',
-      // payload.type should be 'assignment' or 'quiz'
-      type: formData.type || 'assignment',
-      points: formData.points,
-      dueDate: formData.dueDate,
-      createdBy: formData.createdBy,
-      topicId: formData.topicId
-    };
+    let endpoint;
 
-    const data = new FormData();
-    
-    // Add form fields
-    Object.entries(payload).forEach(([key, value]) => {
-      if (value !== null && value !== undefined) {
-        data.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
-      }
-    });
-    
-    // Add files if any
-    if (files?.length > 0) {
-      files.forEach(file => {
-        data.append('files', file);
-      });
+    // Determine the endpoint based on the type
+    const type = formData.get('type');
+    if (type === 'quiz') {
+      endpoint = `/quiz/${classId}/create-quiz`;
+    } else if (type === 'material') {
+      endpoint = `/material/${classId}/create-material`; // Call the material creation endpoint
+    } else if (type === 'question') {
+      endpoint = `/question/${classId}/create-question`; // New endpoint for questions
+    } else {
+      endpoint = `/assignment/${classId}/create-assignment`;
     }
+
+    console.log(`Creating ${type} with endpoint: ${endpoint}`);
     
-    // Determine endpoint based on type: quiz or assignment
-    const endpoint = payload.type === 'quiz'
-      ? `/quiz/${classId}/create-quiz`
-      : `/assignment/${classId}/create-assignment`;
-    
-    const response = await api.post(endpoint, data, {
+    const response = await api.post(endpoint, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    
+
     if (response.data.success) {
-      // Use quiz key if available; fallback to assignment
-      dispatch(addClasswork(response.data.quiz || response.data.assignment));
-      return { success: true, assignment: response.data.quiz || response.data.assignment };
+      const resultData = response.data.quiz || response.data.assignment || 
+                         response.data.material || response.data.question;
+      
+      console.log(`Successfully created ${type}:`, resultData);
+      dispatch(addClasswork(resultData));
+      return { success: true, classwork: resultData };
     } else {
       throw new Error(response.data.message || 'Failed to create classwork item');
     }
   } catch (error) {
-    console.error('Error creating assignment:', error);
+    console.error('Error creating classwork item:', error);
     return { success: false, error: error.response?.data?.message || error.message };
   }
 };
@@ -343,3 +369,104 @@ export const fetchDiscussions = (classId) => async (dispatch, getState) => {
 };
 
 export { updateDiscussions };
+
+export const deleteAssignment = (assignmentId) => async (dispatch) => {
+  try {
+    const response = await api.delete(`/assignment/${assignmentId}`);
+    if (response.data.success) {
+      dispatch(removeClasswork(assignmentId)); // Update Redux state immediately
+      return { success: true };
+    }
+    throw new Error(response.data.message || 'Failed to delete assignment');
+  } catch (error) {
+    console.error('Error deleting assignment:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const fetchMaterials = (classId) => async (dispatch) => {
+  try {
+    const response = await api.get(`/material/${classId}`);
+    if (response.data.success) {
+      return response.data.materials;
+    } else {
+      throw new Error(response.data.message || 'Failed to fetch materials');
+    }
+  } catch (error) {
+    console.error('Error fetching materials:', error);
+    return [];
+  }
+};
+
+export const deleteMaterial = (materialId) => async (dispatch) => {
+  try {
+    const response = await api.delete(`/material/item/${materialId}`); // Call the correct endpoint
+    if (response.data.success) {
+      dispatch(removeClasswork(materialId)); // Update Redux state immediately
+      return { success: true };
+    }
+    throw new Error(response.data.message || 'Failed to delete material');
+  } catch (error) {
+    console.error('Error deleting material:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Add delete question action
+export const deleteQuestion = (questionId) => async (dispatch) => {
+  try {
+    const response = await api.delete(`/question/item/${questionId}`);
+    if (response.data.success) {
+      dispatch(removeClasswork(questionId)); // Update Redux state immediately
+      return { success: true };
+    }
+    throw new Error(response.data.message || 'Failed to delete question');
+  } catch (error) {
+    console.error('Error deleting question:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const submitPollVote = (questionId, response) => async (dispatch) => {
+  try {
+    const apiResponse = await api.post(`/question/item/${questionId}/vote`, { response });
+    if (apiResponse.data.success) {
+      // Fetch updated question data to refresh the UI
+      const questionResponse = await api.get(`/question/item/${questionId}`);
+      if (questionResponse.data.success) {
+        dispatch(updateClasswork(questionResponse.data.question));
+      }
+      return { success: true };
+    }
+    throw new Error(apiResponse.data.message);
+  } catch (error) {
+    console.error('Error submitting poll vote:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getPollResults = async (questionId) => {
+  try {
+    const response = await api.get(`/question/item/${questionId}/results`);
+    if (response.data.success) {
+      return {
+        success: true,
+        results: response.data.results,
+        totalVotes: response.data.totalVotes
+      };
+    }
+    throw new Error(response.data.message);
+  } catch (error) {
+    console.error('Error fetching poll results:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const clearCache = (classId) => (dispatch) => {
+  // Reset state but keep current classId
+  dispatch(resetClassState({ keepClassId: true }));
+  // Refetch data for current class
+  dispatch(fetchBasicInfo(classId));
+  dispatch(fetchClasswork(classId));
+  // ...other fetch actions
+};

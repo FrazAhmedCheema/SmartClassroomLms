@@ -24,8 +24,10 @@ import PrivateRoute from './components/PrivateRoute';
 import StudentLogin from './screens/student/StudentLogin';
 import AdminNavbar from './components/admin/AdminNavbar';
 import ClassPage from './components/shared/ClassPage';
-import AssignmentDetailScreen from './screens/teacher/AssignmentDetailScreen';
-import QuizDetailScreen from './components/shared/classwork/quiz/QuizDetailScreen';
+import AssignmentDetailScreen from './components/shared/classwork/AssignmentDetailScreen';
+import QuizDetailScreen from './components/shared/classwork/QuizDetailScreen';
+import MaterialDetailScreen from './components/shared/classwork/MaterialDetailScreen';
+import QuestionDetailScreen from './components/shared/classwork/QuestionDetailScreen';
 
 const AdminLayout = () => {
   return (
@@ -139,6 +141,8 @@ const AppRoutes = () => {
         <Route path="/discussions/:id" element={<ClassPage defaultTab="discussion" />} />
         <Route path="/assignment/:id" element={<AssignmentDetailScreen />} />
         <Route path="/quiz/:id" element={<QuizDetailScreen />} />
+        <Route path="/material/:id" element={<MaterialDetailScreen />} />
+        <Route path="/question/:id" element={<QuestionDetailScreen />} />
       </Route>
 
       {/* Fallback */}

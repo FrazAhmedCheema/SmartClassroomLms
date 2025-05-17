@@ -1,4 +1,5 @@
 const Quiz = require('../models/Quiz');
+const { uploadFile } = require('../utils/s3Service');
 
 exports.getQuizzes = async (req, res) => {
   try {
@@ -35,21 +36,52 @@ exports.createQuiz = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
+    // Create attachment array from uploaded files
+    let attachments = [];
+    if (req.files && req.files.length > 0) {
+      try {
+        for (const file of req.files) {
+          const key = `quizzes/${classId}/${Date.now()}-${file.originalname}`;
+          const uploadResult = await uploadFile(file, key);
+
+          attachments.push({
+            fileName: file.originalname,
+            fileType: file.mimetype,
+            key: key,
+            url: uploadResult.Location
+          });
+        }
+      } catch (error) {
+        console.error('Error uploading files:', error);
+        // Continue without attachments if upload fails
+      }
+    }
+
     const quiz = new Quiz({
       title,
       instructions: instructions || '',
       classId,
-      points: points || 0,
+      points: Number(points) || 0,
       dueDate: dueDate || null,
       createdBy,
       questions: questions || [],
+      attachments
     });
 
     const savedQuiz = await quiz.save();
-    res.status(201).json({ success: true, message: 'Quiz created successfully', quiz: savedQuiz });
+
+    res.status(201).json({
+      success: true,
+      message: 'Quiz created successfully',
+      quiz: savedQuiz
+    });
   } catch (error) {
     console.error('Error creating quiz:', error);
-    res.status(500).json({ success: false, message: 'Failed to create quiz', error: error.message });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create quiz',
+      error: error.message
+    });
   }
 };
 

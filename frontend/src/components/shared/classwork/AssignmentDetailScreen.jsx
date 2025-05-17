@@ -1,15 +1,29 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { FileText, Calendar, Clock, User, Paperclip, X } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { FileText, Calendar, Clock, User, Paperclip, X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import AssignmentSubmission from '../../student/AssignmentSubmission';
+import axios from 'axios';
+import SubmissionsList from '../../teacher/SubmissionsList';
 
-const AssignmentDetailScreen = () => {
+const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitting: propIsSubmitting, isTeacher: propIsTeacher }) => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  
+  // Use props if available, otherwise use Redux
   const assignments = useSelector((state) => state.class.classwork.data);
-  const assignment = assignments.find((a) => a._id === id);
+  const teacherAuth = useSelector((state) => state.teacher);
+  const studentAuth = useSelector((state) => state.student);
+  const studentId = useSelector(state => state.student.studentId);
+  
+  // Determine if we're using props or Redux data
+  const assignment = propAssignment || (id && assignments.find((a) => a._id === id));
+  const isTeacher = propIsTeacher !== undefined ? propIsTeacher : teacherAuth.isAuthenticated;
   const [previewAttachment, setPreviewAttachment] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!assignment) {
     return (
@@ -54,6 +68,50 @@ const AssignmentDetailScreen = () => {
     }
   };
 
+  const handleSubmitAssignment = async (files, privateComment) => {
+    try {
+      console.log('AssignmentDetailScreen handleSubmitAssignment called');
+      console.log('Student ID:', studentId);
+      setIsSubmitting(true);
+
+      if (!studentId) {
+        throw new Error('Student ID not found. Please log in again.');
+      }
+
+      const formData = new FormData();
+      files.forEach(file => formData.append('files', file));
+      if (privateComment) formData.append('privateComment', privateComment);
+      formData.append('studentId', studentId); // Add studentId to formData
+
+      const response = await axios.post(
+        `http://localhost:8080/submission/${assignment._id}/submit`,
+        formData,
+        {
+          withCredentials: true,
+          headers: { 'Content-Type': 'multipart/form-data' }
+        }
+      );
+
+      if (response.data.success) {
+        setIsSubmitting(false);
+        return response.data;
+      }
+      throw new Error(response.data.message || 'Failed to submit assignment');
+    } catch (error) {
+      console.error('Error in assignment submission:', error);
+      setIsSubmitting(false);
+      throw error;
+    }
+  };
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      window.history.back();
+    }
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -71,6 +129,12 @@ const AssignmentDetailScreen = () => {
               </p>
             </div>
           </div>
+          <button
+            onClick={handleClose}
+            className="p-2 hover:bg-blue-700 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Instructions */}
@@ -98,11 +162,26 @@ const AssignmentDetailScreen = () => {
           </div>
         )}
 
-        {/* Additional Content */}
-        <div className="mt-6">
-          <h2 className="text-lg font-medium text-gray-900">Additional Features</h2>
-          <p className="text-gray-500 mt-2">You can add more features here later.</p>
-        </div>
+        
+
+        {/* Add AssignmentSubmission component for students */}
+        {!isTeacher && (
+          <AssignmentSubmission
+            assignment={assignment}
+            onSubmit={handleSubmitAssignment} // Pass handleSubmitAssignment to AssignmentSubmission
+            isSubmitting={propIsSubmitting || isSubmitting}
+          />
+        )}
+
+        {/* Add SubmissionsList component for teachers */}
+        {isTeacher && (
+          <div className="mt-8">
+            <SubmissionsList 
+              assignment={assignment} 
+              classId={assignment.classId} // Pass the classId
+            />
+          </div>
+        )}
       </div>
 
       {/* Preview Attachment Modal */}

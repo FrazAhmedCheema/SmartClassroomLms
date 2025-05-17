@@ -1,14 +1,17 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
+  currentClassId: null, // Add this to track current class
   basicInfo: {
     data: null,
+    classId: null,  // Add classId to each section
     loading: false,
     error: null,
     lastFetched: null
   },
   classwork: {
-    data: [], // Change from null to empty array
+    data: [],
+    classId: null,  // Add classId to each section
     loading: false,
     error: null,
     lastFetched: null
@@ -37,16 +40,36 @@ const classSlice = createSlice({
   name: 'class',
   initialState,
   reducers: {
+    setCurrentClass: (state, action) => {
+      // If the class ID is different, reset the state
+      if (state.currentClassId !== action.payload) {
+        const newClassId = action.payload;
+        Object.keys(state).forEach(key => {
+          if (key === 'currentClassId') {
+            state[key] = newClassId;
+          } else if (typeof state[key] === 'object') {
+            state[key] = {
+              ...initialState[key],
+              classId: newClassId
+            };
+          }
+        });
+      }
+    },
+
     // Basic Info
     fetchBasicInfoStart: (state) => {
       state.basicInfo.loading = true;
       state.basicInfo.error = null;
     },
     fetchBasicInfoSuccess: (state, action) => {
-      state.basicInfo.loading = false;
-      state.basicInfo.data = action.payload;
-      state.basicInfo.error = null;
-      state.basicInfo.lastFetched = Date.now();
+      state.basicInfo = {
+        data: action.payload.data,
+        classId: action.payload.classId,
+        loading: false,
+        error: null,
+        lastFetched: Date.now()
+      };
     },
     fetchBasicInfoFailure: (state, action) => {
       state.basicInfo.loading = false;
@@ -59,10 +82,15 @@ const classSlice = createSlice({
       state.classwork.error = null;
     },
     fetchClassworkSuccess: (state, action) => {
-      state.classwork.loading = false;
-      state.classwork.data = action.payload;
-      state.classwork.error = null;
-      state.classwork.lastFetched = Date.now();
+      console.log('fetchClassworkSuccess called with payload:', action.payload);
+      state.classwork = {
+        data: action.payload.data,
+        classId: action.payload.classId,
+        loading: false,
+        error: null,
+        lastFetched: Date.now()
+      };
+      console.log('Updated classwork state:', state.classwork);
     },
     fetchClassworkFailure: (state, action) => {
       state.classwork.loading = false;
@@ -85,12 +113,8 @@ const classSlice = createSlice({
       }
     },
     removeClasswork: (state, action) => {
-      if (state.classwork.data) {
-        state.classwork.data = state.classwork.data.filter(item => 
-          item._id !== action.payload
-        );
-        state.classwork.lastFetched = Date.now();
-      }
+      state.classwork.data = state.classwork.data.filter(item => item._id !== action.payload);
+      state.classwork.lastFetched = Date.now(); // Update the timestamp to reflect the change
     },
 
     // Topics
@@ -172,17 +196,28 @@ const classSlice = createSlice({
       state.discussions.data = action.payload;
       state.discussions.lastFetched = Date.now();
     },
+
+    // Modify reset action to handle classId
+    resetClassState: (state, action) => {
+      if (action.payload?.keepClassId) {
+        const currentClassId = state.currentClassId;
+        return { ...initialState, currentClassId };
+      }
+      return initialState;
+    },
   }
 });
 
 export const {
+  setCurrentClass,  // Make sure this is exported
   fetchBasicInfoStart, fetchBasicInfoSuccess, fetchBasicInfoFailure,
   fetchClassworkStart, fetchClassworkSuccess, fetchClassworkFailure, addClasswork, updateClasswork, removeClasswork,
   fetchTopicsStart, fetchTopicsSuccess, fetchTopicsFailure, addTopic, updateTopic, removeTopic,
   fetchPeopleStart, fetchPeopleSuccess, fetchPeopleFailure,
   fetchDiscussionsStart, fetchDiscussionsSuccess, fetchDiscussionsFailure,
   clearDiscussionsData,
-  updateDiscussions
+  updateDiscussions,
+  resetClassState // Export the reset action
 } = classSlice.actions;
 
 export default classSlice.reducer;

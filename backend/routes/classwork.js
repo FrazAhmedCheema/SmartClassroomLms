@@ -11,10 +11,9 @@ const classworkController = require('../controllers/classworkController');
 const topicController = require('../controllers/topicController');
 
 // Authentication middleware - use whatever auth middleware is available
-const authMiddleware = require('../middleware/auth').authorizeTeacher;
+const { authorizeTeacher,authorizeTeacherOrStudent } = require('../middleware/auth');
 
 // Apply auth middleware to all routes
-router.use(authMiddleware);
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -37,20 +36,20 @@ const upload = multer({
 });
 
 // Topic routes
-router.post('/topics', createTopic);
-router.get('/topics/:classId', topicController.getTopics);
-router.put('/topics/:topicId', topicController.updateTopic);
-router.delete('/topics/:topicId', topicController.deleteTopic);
+router.post('/topics', authorizeTeacher,createTopic);
+router.get('/topics/:classId',authorizeTeacherOrStudent, topicController.getTopics);
+router.put('/topics/:topicId', authorizeTeacher,topicController.updateTopic);
+router.delete('/topics/:topicId',authorizeTeacher ,topicController.deleteTopic);
 
 // Classwork routes
-router.post('/:classId', upload.array('files', 10), classworkController.createClasswork);
-router.get('/:classId', classworkController.getClassworks);
-router.get('/item/:classworkId', classworkController.getClasswork);
-router.put('/item/:classworkId', upload.array('files', 10), classworkController.updateClasswork);
-router.delete('/item/:classworkId', classworkController.deleteClasswork);
-router.delete('/item/:classworkId/attachment/:attachmentId', classworkController.removeAttachment);
+router.post('/:classId',authorizeTeacher, upload.array('files', 10), classworkController.createClasswork);
+router.get('/:classId', authorizeTeacherOrStudent,classworkController.getClassworks);
+router.get('/item/:classworkId', authorizeTeacherOrStudent,classworkController.getClasswork);
+router.put('/item/:classworkId',authorizeTeacher ,upload.array('files', 10), classworkController.updateClasswork);
+router.delete('/item/:classworkId', authorizeTeacher,classworkController.deleteClasswork);
+router.delete('/item/:classworkId/attachment/:attachmentId',authorizeTeacher, classworkController.removeAttachment);
 
 // Assignment routes
-router.post('/:classId/create-assignment', upload.array('files', 10), classworkController.createAssignment);
+router.post('/:classId/create-assignment', authorizeTeacher,upload.array('files', 10), classworkController.createAssignment);
 
 module.exports = router;

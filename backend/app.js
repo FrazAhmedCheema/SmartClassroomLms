@@ -17,6 +17,9 @@ const classRoutes = require('./routes/class');
 const classworkRoutes = require('./routes/classwork'); // Add classwork routes
 const assignmentRoutes = require('./routes/assignment');
 const quizRoutes = require('./routes/quiz'); // Import new quiz routes
+const materialRoutes = require('./routes/material'); // Import new material routes
+const questionRoutes = require('./routes/question'); // Import new question routes
+const submissionRoutes = require('./routes/submission'); // Ensure submission routes are imported
 
 const app = express();
 const server = http.createServer(app);
@@ -91,6 +94,9 @@ app.use('/discussions', discussionRoutes);
 app.use('/classwork', classworkRoutes); // Add classwork routes
 app.use('/assignment', assignmentRoutes);
 app.use('/quiz', quizRoutes); // Mount new quiz routes
+app.use('/material', materialRoutes); // Mount new material routes
+app.use('/question', questionRoutes); // Add question routes
+app.use('/submission', submissionRoutes); // Ensure submission routes are registered
 
 connectDB();
 module.exports = { app, server, io, notifyAdmins };

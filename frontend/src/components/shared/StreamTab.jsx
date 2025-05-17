@@ -147,9 +147,10 @@ const StreamTab = ({ classData = defaultClassData, userRole }) => {
   // Fetch announcements when class data changes
   useEffect(() => {
     if (classData?._id) {
+      console.log("Fetching announcements for class ID:", classData._id);
       fetchAnnouncements(classData._id, setIsLoading, setAnnouncements);
-    } else if (classData?.announcements?.length > 0) {
-      setAnnouncements(classData.announcements);
+    } else {
+      console.warn("Class data is missing or incomplete:", classData);
       setIsLoading(false);
     }
   }, [classData]);
@@ -255,54 +256,86 @@ const StreamTab = ({ classData = defaultClassData, userRole }) => {
       transition={{ duration: 0.5 }}
       className="py-6"
     >
-      {/* Class banner with improved glass effect */}
-      <ClassBanner 
-        safeClassData={safeClassData} 
-        isTeacher={isTeacher} 
-        actualTeacherName={actualTeacherName} 
-      />
-      
-      {/* Announcement form - always visible for teachers */}
-      {isTeacher && (
-        <div className="bg-white rounded-xl p-6 mb-8 shadow-sm">
-          <CreateAnnouncementForm
-            onSubmit={handleCreateAnnouncementWrapper}
-            isLoading={isLoading}
-          />
-        </div>
-      )}
-      
-      {/* Loading state */}
-      {isLoading && (
-        <div className="flex justify-center py-8">
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      )}
-      
-      {/* Announcements list with professional design */}
-      <div className="space-y-6">
-        {!isLoading && announcements.length === 0 && (
-          <div className="bg-white rounded-xl p-8 text-center">
-            <p className="text-gray-500">No announcements yet. Be the first to post!</p>
-          </div>
-        )}
-        
-        {announcements.map((post, index) => (
-          <AnnouncementCard
-            key={post._id || `announcement-${index}`}
-            post={post}
-            index={index}
-            isTeacher={isTeacher}
-            getAuthorInitial={(post) => getAuthorInitial(post, isTeacher, actualTeacherName)}
-            getAuthorName={(post) => getAuthorName(post, isTeacher, actualTeacherName)}
-            commentInputs={commentInputs}
-            setCommentInputs={setCommentInputs}
-            handleCommentSubmit={handleCommentSubmitWrapper}
-            handleDeleteComment={handleDeleteCommentWrapper}
-            handleDeleteAnnouncement={handleDeleteAnnouncementWrapper}
-            isCommentAuthor={isCommentAuthorWrapper}
-          />
-        ))}
+      <div>
+        {(() => {
+          try {
+            // Main rendering logic
+            return (
+              <>
+                {/* Show warning if class data is missing */}
+                {!classData?._id && (
+                  <div className="bg-yellow-100 text-yellow-700 p-4 rounded-lg text-center">
+                    <AlertCircle className="inline-block mr-2" />
+                    <span>Class data is unavailable. Please try again later.</span>
+                  </div>
+                )}
+
+                {/* Class banner */}
+                {classData?._id && (
+                  <ClassBanner
+                    safeClassData={safeClassData}
+                    isTeacher={isTeacher}
+                    actualTeacherName={actualTeacherName}
+                  />
+                )}
+
+                {/* Announcement form */}
+                {isTeacher && classData?._id && (
+                  <div className="bg-white rounded-xl p-6 mb-8 shadow-sm">
+                    <CreateAnnouncementForm
+                      onSubmit={handleCreateAnnouncementWrapper}
+                      isLoading={isLoading}
+                    />
+                  </div>
+                )}
+
+                {/* Loading state */}
+                {isLoading && (
+                  <div className="flex justify-center py-8">
+                    <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+
+                {/* Announcements list */}
+                <div className="space-y-6">
+                  {!isLoading && announcements.length === 0 && (
+                    <div className="bg-white rounded-xl p-8 text-center">
+                      <p className="text-gray-500">No announcements yet. Be the first to post!</p>
+                    </div>
+                  )}
+
+                  {announcements.map((post, index) => (
+                    <AnnouncementCard
+                      key={post._id || `announcement-${index}`}
+                      post={post}
+                      index={index}
+                      isTeacher={isTeacher}
+                      getAuthorInitial={(post) =>
+                        getAuthorInitial(post, isTeacher, actualTeacherName)
+                      }
+                      getAuthorName={(post) =>
+                        getAuthorName(post, isTeacher, actualTeacherName)
+                      }
+                      commentInputs={commentInputs}
+                      setCommentInputs={setCommentInputs}
+                      handleCommentSubmit={handleCommentSubmitWrapper}
+                      handleDeleteComment={handleDeleteCommentWrapper}
+                      handleDeleteAnnouncement={handleDeleteAnnouncementWrapper}
+                      isCommentAuthor={isCommentAuthorWrapper}
+                    />
+                  ))}
+                </div>
+              </>
+            );
+          } catch (error) {
+            console.error('Error rendering StreamTab:', error);
+            return (
+              <div className="text-red-500 text-center">
+                <p>Something went wrong while rendering the StreamTab.</p>
+              </div>
+            );
+          }
+        })()}
       </div>
       {/* Add a style block for animations */}
       <style jsx>{`

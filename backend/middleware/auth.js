@@ -104,22 +104,22 @@ const authorizeTeacher = (req, res, next) => {
 };
 
 // Student authorization middleware
-const authorizeStudent = (req, res, next) => {
-    const token = req.cookies.studentToken;
-    if (!token) {
-        console.warn('No student token found in cookies');
-        return res.status(401).json({ message: 'No token, authorization denied' });
-    }
+exports.authorizeStudent = (req, res, next) => {
+  const token = req.cookies.studentToken;
+  if (!token) {
+    console.warn('No student token found in cookies');
+    return res.status(401).json({ message: 'No token, authorization denied' });
+  }
 
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('Decoded student token:', decoded);
-        req.user = decoded;
-        next();
-    } catch (err) {
-        console.error('Student token verification failed:', err.message);
-        res.status(401).json({ message: 'Token is not valid' });
-    }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    console.log('Student authorized:', decoded);
+    next();
+  } catch (err) {
+    console.error('Student token verification failed:', err.message);
+    res.status(401).json({ message: 'Token is not valid' });
+  }
 };
 
 const authorizeTeacherOrStudent = (req, res, next) => {
@@ -164,7 +164,8 @@ exports.auth = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = {
             id: decoded.id,
-            role: decoded.role
+            role: decoded.role,
+            name: decoded.name // Add name to the user object
         };
         next();
     } catch (error) {
@@ -177,6 +178,6 @@ module.exports = {
     authorizeAdmin,
     authorizeSubAdmin,
     authorizeTeacher,
-    authorizeStudent,
+    authorizeStudent: exports.authorizeStudent,
     authorizeTeacherOrStudent
 };

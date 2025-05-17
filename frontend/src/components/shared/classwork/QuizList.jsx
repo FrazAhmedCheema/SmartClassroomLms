@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 const QuizList = ({ quizzes }) => {
   const navigate = useNavigate();
+console.log('QuizList component rendered with quizzes:', quizzes);
 
   const formatDueDate = (date) => {
     if (!date) return 'No due date';

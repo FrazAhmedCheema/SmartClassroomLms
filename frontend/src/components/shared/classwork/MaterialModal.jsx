@@ -3,6 +3,22 @@ import { motion } from 'framer-motion';
 import { File, Download, X } from 'lucide-react';
 
 const MaterialModal = ({ material, onClose }) => {
+  const handleCreateMaterial = async () => {
+    const formData = new FormData();
+    formData.append('type', 'material'); // Ensure type is sent as 'material'
+    formData.append('title', material.title);
+    formData.append('description', material.description || ''); // Ensure description is sent
+
+    if (material.attachments) {
+      material.attachments.forEach((attachment) => {
+        formData.append('attachments', attachment);
+      });
+    }
+
+    // Call the createClassworkItem action
+    // Dispatch logic here...
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -26,7 +42,7 @@ const MaterialModal = ({ material, onClose }) => {
 
         {/* Modal Content */}
         <div className="p-6">
-          <p>{material.description || 'No description provided.'}</p>
+          <p className="text-gray-700">{material.description || 'No description provided.'}</p>
           {material.attachments?.map((attachment, index) => (
             <div key={index} className="mt-4 flex items-center">
               <File size={16} className="mr-2" />
@@ -37,6 +53,10 @@ const MaterialModal = ({ material, onClose }) => {
             </div>
           ))}
         </div>
+
+        <button onClick={handleCreateMaterial} className="bg-blue-600 text-white px-4 py-2 rounded">
+          Create Material
+        </button>
       </motion.div>
     </motion.div>
   );

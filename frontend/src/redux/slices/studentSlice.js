@@ -85,6 +85,7 @@ const studentSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = true;
         state.studentId = action.payload.studentId; // Ensure studentId is set
+        state.name = action.payload.name; // Add name to state
         state.role = 'student'; // Set role on auth success
         state.error = null;
       })
