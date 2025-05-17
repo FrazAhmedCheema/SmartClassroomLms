@@ -23,7 +23,16 @@ const SubmissionSchema = new mongoose.Schema({
   assignmentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Assignment',
-    required: true
+    required: function () {
+      return !this.quizId; // Either assignmentId or quizId must be present
+    }
+  },
+  quizId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Quiz',
+    required: function () {
+      return !this.assignmentId; // Either quizId or assignmentId must be present
+    }
   },
   studentId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -56,9 +65,9 @@ const SubmissionSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   }
-}, { timestamps: true }); // Add timestamps for better tracking
+}, { timestamps: true });
 
-// Compound index to ensure a student can only have one submission per assignment
-SubmissionSchema.index({ assignmentId: 1, studentId: 1 }, { unique: true });
+// Compound index to ensure a student can only have one submission per assignment or quiz
+SubmissionSchema.index({ assignmentId: 1, quizId: 1, studentId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Submission', SubmissionSchema);

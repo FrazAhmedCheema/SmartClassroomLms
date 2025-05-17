@@ -1,6 +1,7 @@
 const Submission = require('../models/Submission');
 const Assignment = require('../models/Assignment');
 const { uploadFile, deleteFile } = require('../utils/s3Service');
+const Quiz = require('../models/Quiz'); // Add this import
 
 exports.submitAssignment = async (req, res) => {
   try {
@@ -350,6 +351,230 @@ exports.unsubmitAssignment = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to unsubmit assignment',
+      error: error.message
+    });
+  }
+};
+
+exports.submitQuiz = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const { privateComment, existingFiles } = req.body;
+    const studentId = req.user.id;
+
+    const existingFilesArray = existingFiles ? JSON.parse(existingFiles) : [];
+    let newSubmissionFiles = [];
+
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const key = `submissions/quiz/${quizId}/${studentId}/${Date.now()}-${file.originalname}`;
+        const uploadResult = await uploadFile(file, key);
+
+        newSubmissionFiles.push({
+          fileName: file.originalname,
+          fileType: file.mimetype,
+          key: key,
+          url: uploadResult.Location
+        });
+      }
+    }
+
+    const allFiles = [...existingFilesArray, ...newSubmissionFiles];
+    const submissionData = {
+      quizId, // Ensure quizId is correctly set
+      studentId,
+      files: allFiles,
+      privateComment: privateComment || '',
+      submittedAt: Date.now(),
+      status: 'submitted'
+    };
+
+    const savedSubmission = await Submission.findOneAndUpdate(
+      { quizId, studentId },
+      submissionData,
+      { new: true, upsert: true, runValidators: true } // Ensure validators are run
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Quiz submitted successfully',
+      submission: savedSubmission
+    });
+  } catch (error) {
+    console.error('Error submitting quiz:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit quiz',
+      error: error.message
+    });
+  }
+};
+
+exports.getStudentQuizSubmission = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const studentId = req.user.id;
+
+    const submission = await Submission.findOne({ quizId, studentId });
+
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: 'No submission found for this quiz'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      submission
+    });
+  } catch (error) {
+    console.error('Error fetching quiz submission:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch quiz submission',
+      error: error.message
+    });
+  }
+};
+
+exports.unsubmitQuiz = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const studentId = req.user.id;
+
+    const submission = await Submission.findOne({ quizId, studentId });
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: 'Submission not found'
+      });
+    }
+
+    if (submission.files && submission.files.length > 0) {
+      for (const file of submission.files) {
+        await deleteFile(file.key);
+      }
+    }
+
+    await Submission.findOneAndDelete({ quizId, studentId });
+
+    res.status(200).json({
+      success: true,
+      message: 'Quiz unsubmitted successfully'
+    });
+  } catch (error) {
+    console.error('Error unsubmitting quiz:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to unsubmit quiz',
+      error: error.message
+    });
+  }
+};
+
+exports.addOrUpdateQuizPrivateComment = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const { privateComment } = req.body;
+    const studentId = req.user.id;
+
+    console.log(`Adding private comment for quiz: ${quizId}, student: ${studentId}`);
+    
+    if (!privateComment && privateComment !== '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Private comment is required'
+      });
+    }
+
+    // Find existing submission or create a new one
+    let submission = await Submission.findOne({ quizId, studentId });
+    
+    if (submission) {
+      console.log(`Updating private comment for existing submission: ${submission._id}`);
+      submission.privateComment = privateComment;
+      await submission.save();
+    } else {
+      console.log('Creating new submission with only private comment');
+      submission = new Submission({
+        quizId,
+        studentId,
+        privateComment,
+        files: [],
+        status: 'submitted'
+      });
+      await submission.save();
+    }
+
+    console.log('Private comment saved successfully');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Private comment updated successfully',
+      submission
+    });
+  } catch (error) {
+    console.error('Error updating private comment for quiz:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update private comment',
+      error: error.message
+    });
+  }
+};
+
+exports.getAllQuizSubmissions = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+
+    const quiz = await Quiz.findById(quizId).populate({
+      path: 'classId',
+      select: 'students',
+      populate: {
+        path: 'students',
+        select: 'name email profilePicture'
+      }
+    });
+
+    if (!quiz) {
+      return res.status(404).json({
+        success: false,
+        message: 'Quiz not found'
+      });
+    }
+
+    const submissions = await Submission.find({ quizId })
+      .populate('studentId', 'name email profilePicture');
+
+    const submissionMap = submissions.reduce((acc, submission) => {
+      acc[submission.studentId._id.toString()] = submission;
+      return acc;
+    }, {});
+
+    const allStudentSubmissions = quiz.classId.students.map(student => {
+      const submission = submissionMap[student._id.toString()];
+      return {
+        student: {
+          _id: student._id,
+          name: student.name,
+          email: student.email,
+          profilePicture: student.profilePicture
+        },
+        submission: submission || null,
+        status: submission ? submission.status : 'missing'
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      submissions: allStudentSubmissions
+    });
+  } catch (error) {
+    console.error('Error fetching quiz submissions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch quiz submissions',
       error: error.message
     });
   }
