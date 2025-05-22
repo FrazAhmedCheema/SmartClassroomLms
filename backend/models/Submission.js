@@ -23,16 +23,12 @@ const SubmissionSchema = new mongoose.Schema({
   assignmentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Assignment',
-    required: function () {
-      return !this.quizId; // Either assignmentId or quizId must be present
-    }
+    default: null
   },
   quizId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Quiz',
-    required: function () {
-      return !this.assignmentId; // Either quizId or assignmentId must be present
-    }
+    default: null
   },
   studentId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -67,7 +63,34 @@ const SubmissionSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Compound index to ensure a student can only have one submission per assignment or quiz
-SubmissionSchema.index({ assignmentId: 1, quizId: 1, studentId: 1 }, { unique: true });
+// Clear existing indexes first
+// mongoose.connection.once('open', async () => {
+//   try {
+//     await mongoose.connection.collections.submissions.dropIndexes();
+//   } catch (error) {
+//     console.log('No indexes to drop');
+//   }
+// });
 
-module.exports = mongoose.model('Submission', SubmissionSchema);
+// // Create a compound index with partial filter expressions
+// SubmissionSchema.index(
+//   { studentId: 1, quizId: 1 },
+//   { 
+//     unique: true,
+//     sparse: true,
+//     partialFilterExpression: { quizId: { $exists: true, $ne: null } }
+//   }
+// );
+
+// SubmissionSchema.index(
+//   { studentId: 1, assignmentId: 1 },
+//   { 
+//     unique: true,
+//     sparse: true,
+//     partialFilterExpression: { assignmentId: { $exists: true, $ne: null } }
+//   }
+// );
+
+const Submission = mongoose.model('Submission', SubmissionSchema);
+
+module.exports = Submission;
