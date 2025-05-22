@@ -21,6 +21,11 @@ const QuizSchema = new mongoose.Schema({
     options: [String],
     correctAnswer: { type: String }
   }],
+  category: {
+    type: String,
+    enum: ['general', 'java', 'c++', 'python', 'mern'],
+    default: 'general'
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

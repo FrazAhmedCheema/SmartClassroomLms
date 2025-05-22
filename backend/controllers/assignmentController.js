@@ -6,7 +6,7 @@ const Class = require('../models/Class'); // Add this import
 exports.createAssignment = async (req, res) => {
   try {
     const { classId } = req.params;
-    let { title, instructions, points, dueDate, topicId, createdBy } = req.body;
+    let { title, instructions, points, dueDate, topicId, createdBy, category } = req.body;
 
     // Create attachment array from uploaded files
     let attachments = [];
@@ -37,6 +37,7 @@ exports.createAssignment = async (req, res) => {
       points: Number(points) || 0,
       dueDate: dueDate || null,
       createdBy,
+      category: category || 'general',
       attachments
     });
 

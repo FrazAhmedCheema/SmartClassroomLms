@@ -1,9 +1,6 @@
-
-
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, X, Download, Send, User, CheckCircle, ArrowLeft } from 'lucide-react';
+import { FileText, X, Download, Send, User, CheckCircle, ArrowLeft, Play, Code } from 'lucide-react';
 import axios from 'axios';
 
 const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGraded }) => {
@@ -80,13 +77,31 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
     document.body.removeChild(a);
   };
 
+  // Add new handlers for code actions
+  const handleViewCode = () => {
+    // TODO: Implement code viewing logic
+    console.log('View code clicked');
+  };
+
+  const handleRunCode = () => {
+    // TODO: Implement code running logic
+    console.log('Run code clicked');
+  };
+
+  // Helper function to check if assignment is a programming assignment
+  const isProgrammingAssignment = () => {
+    const programmingCategories = ['java', 'c++', 'python', 'mern'];
+    return programmingCategories.includes(assignment.category);
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Back Button */}
       <div className="mb-6">
         <button 
           onClick={onBack}
-          className="flex items-center text-gray-700 hover:text-gray-900 font-medium bg-white px-4 py-2 rounded-lg border border-gray-200 hover:border-gray-300 transition-all shadow-xs hover:shadow-sm"
+          style={{color: "#1b68b3",}}
+          className="flex items-center text-gray-700  font-medium bg-white px-4 py-2 rounded-lg border border-gray-200"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
           Back to submissions
@@ -177,12 +192,12 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                       className="ml-2 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
                       title="Download file"
                     >
-                      <Download className="w-4 h-4" />
+                      <Download className="w-4 h-4"  style={{color:"white"}}/>
                     </button>
                   </div>
                 ))}
               </div>
-              
+
               {/* Student's Comment */}
               {submission.privateComment && (
                 <div className="mt-6">
@@ -190,6 +205,32 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                   <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
                     <p className="text-gray-600 text-sm">{submission.privateComment}</p>
                   </div>
+                </div>
+              )}
+
+              {/* Programming Assignment Actions - Moved here */}
+              {isProgrammingAssignment() && submission && (
+                <div className="mt-6 pt-6 border-t border-gray-100">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <button
+                      onClick={handleViewCode}
+                      style={{backgroundColor: "#1b68b3"}}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm hover:shadow-md"
+                    >
+                      <Code className="w-5 h-5" />
+                      <span className="font-medium">View Code</span>
+                    </button>
+                    <button
+                      onClick={handleRunCode}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm hover:shadow-md"
+                    >
+                      <Play className="w-5 h-5" />
+                      <span className="font-medium">Run Code</span>
+                    </button>
+                  </div>
+                  <p className="mt-3 text-sm text-gray-500 text-center">
+                    Assignment Category: <span className="font-medium capitalize">{assignment.category}</span>
+                  </p>
                 </div>
               )}
             </div>
@@ -254,6 +295,7 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                   <button
                     type="submit"
                     disabled={loading}
+                    style={{backgroundColor: "#1b68b3"}}
                     className={`w-full flex items-center justify-center px-4 py-2.5 rounded-lg text-white text-sm font-medium transition-all ${
                       loading 
                         ? 'bg-blue-400 cursor-not-allowed' 

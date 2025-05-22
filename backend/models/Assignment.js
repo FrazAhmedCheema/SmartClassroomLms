@@ -61,6 +61,11 @@ const AssignmentSchema = new mongoose.Schema({
       ref: 'Submission' // Reference to the Submission model
     }
   ],
+  category: {
+    type: String,
+    enum: ['general', 'java', 'c++', 'python', 'mern'],
+    default: 'general'
+  },
   createdAt: {
     type: Date,
     default: Date.now
