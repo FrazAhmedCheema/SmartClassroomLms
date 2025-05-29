@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { FileText, Calendar, Clock, User, Paperclip, X, Trash2 } from 'lucide-react';
+import { FileText, Calendar, Clock, User, Paperclip, X, Trash2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import AssignmentSubmission from '../../student/AssignmentSubmission';
@@ -63,6 +63,19 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
           frameBorder="0"
         />
       );
+    } else if (file.fileType === 'application/zip' || file.fileType === 'application/x-rar-compressed') {
+      return (
+        <div className="text-center">
+          <p className="text-gray-700">Preview not available for compressed files.</p>
+          <a
+            href={file.url}
+            download={file.fileName}
+            className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+          >
+            Download {file.fileName}
+          </a>
+        </div>
+      );
     } else {
       return <p className="text-gray-700">Preview not available for this file type.</p>;
     }
@@ -112,6 +125,24 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
     }
   };
 
+  const handlePreviewClose = () => {
+    setPreviewAttachment(null);
+  };
+
+  // Modify the download button click handler
+  const handleDownload = (e, fileUrl, fileName) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Create a temporary anchor element
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -151,11 +182,29 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
               {assignment.attachments.map((file, index) => (
                 <div
                   key={index}
-                  onClick={() => setPreviewAttachment(file)}
-                  className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer border border-gray-200"
+                  
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
                 >
-                  <Paperclip className="w-5 h-5 text-gray-400 mr-2" />
-                  <span className="text-sm text-gray-700">{file.fileName}</span>
+                  <div
+                    onClick={() => setPreviewAttachment(file)}
+                    
+                    className="flex items-center cursor-pointer"
+                  >
+                    
+                    <Paperclip className="w-5 h-5 text-gray-400 mr-2" />
+                    <span className="text-sm text-gray-700" >{file.fileName}</span>
+                  </div>
+                  <a
+                                        style={{backgroundColor: "#1b68b3"}}
+
+                    href={file.url}
+                    download={file.fileName}
+                    className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all"
+                    title="Download"
+                    onClick={(e) => handleDownload(e, file.url, file.fileName)}
+                  >
+                    <Download className="w-5 h-5" />
+                  </a>
                 </div>
               ))}
             </div>
@@ -202,7 +251,7 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
               style={{ height: '90vh' }}  // Force 90% viewport height
             >
               <button
-                onClick={() => setPreviewAttachment(null)}
+                onClick={handlePreviewClose}
                 className="absolute top-4 right-4 p-2 bg-gray-200 rounded-full hover:bg-gray-300"
               >
                 <X className="w-5 h-5 text-gray-700" />
