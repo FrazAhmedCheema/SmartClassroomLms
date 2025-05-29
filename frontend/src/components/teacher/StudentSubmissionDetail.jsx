@@ -11,6 +11,7 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
+  const [codeOutput, setCodeOutput] = useState(null);
 
   const handleGrade = async (e) => {
     e.preventDefault();
@@ -125,6 +126,9 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
 
   const handleRunCode = async () => {
     try {
+      setError(null);
+      setCodeOutput(null);
+      
       if (!submission || !submission.files || submission.files.length === 0) {
         setError('No files available to execute');
         return;
@@ -141,7 +145,12 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
       );
 
       if (response.data.success) {
-        console.log('Code execution result:', response.data.result);
+        setCodeOutput({
+          stdout: response.data.result.stdout,
+          stderr: response.data.result.stderr,
+          language: response.data.result.language,
+          executionTime: response.data.result.executionTime
+        });
       }
     } catch (error) {
       console.error('Error executing code:', error);
@@ -285,6 +294,29 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                     <p className="mt-3 text-sm text-gray-500 text-center">
                       Assignment Category: <span className="font-medium capitalize">{assignment.category}</span>
                     </p>
+                  </div>
+                )}
+
+                {codeOutput && (
+                  <div className="mt-4 bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-gray-400 text-sm">
+                        Execution Time: {codeOutput.executionTime}
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-blue-500/20 text-blue-400">
+                        {codeOutput.language}
+                      </span>
+                    </div>
+                    <div className="font-mono text-sm">
+                      <pre className="text-green-400 whitespace-pre-wrap">
+                        {codeOutput.stdout}
+                      </pre>
+                      {codeOutput.stderr && (
+                        <pre className="text-red-400 whitespace-pre-wrap mt-2">
+                          {codeOutput.stderr}
+                        </pre>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
