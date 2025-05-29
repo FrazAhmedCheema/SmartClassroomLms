@@ -81,25 +81,40 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
   const handleViewCode = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
       if (!submission?.files) {
         setError('No files available to view');
         return;
       }
 
-      // Find zip file in submission
       const zipFile = submission.files.find(file => 
         file.fileType === 'application/zip' || 
         file.fileType === 'application/x-zip-compressed'
       );
 
       if (!zipFile) {
-        setError('No zip file found in submission. Please ensure code is submitted as a zip file.');
+        setError('No zip file found in submission');
         return;
       }
 
-      // Open the URL in VS Code
-      window.open(`vscode://file${zipFile.url}`);
-      
+      const response = await axios.post(
+        'http://localhost:8080/code-view/prepare',
+        { fileUrl: zipFile.url },
+        { withCredentials: true }
+      );
+
+      if (response.data.success && response.data.localPath) {
+        // Remove any existing protocol prefix
+        const cleanPath = response.data.localPath.replace(/^file:\/\//, '');
+        
+        // Ensure the path starts with a forward slash
+        const vscodeUrl = `vscode://file/${cleanPath.startsWith('/') ? cleanPath.slice(1) : cleanPath}`;
+        
+        window.location.href = vscodeUrl;
+      } else {
+        throw new Error('Failed to prepare code for viewing');
+      }
     } catch (error) {
       console.error('Error viewing code:', error);
       setError(error.response?.data?.message || 'Failed to open code in VS Code');
