@@ -52,9 +52,21 @@ Response format:
       const fileExtensions = files.map(f => f.name.split('.').pop().toLowerCase());
       const isCpp = fileExtensions.includes('cpp') || fileExtensions.includes('cc');
       const isJava = fileExtensions.includes('java');
+      const isPython = fileExtensions.includes('py');
 
-      analysis.fileType = isCpp ? 'cpp' : isJava ? 'java' : 'unknown';
-      analysis.baseImage = isCpp ? 'gcc:latest' : 'openjdk:8';
+      // Set file type and base image
+      if (isCpp) {
+        analysis.fileType = 'cpp';
+        analysis.baseImage = 'gcc:latest';
+      } else if (isJava) {
+        analysis.fileType = 'java';
+        analysis.baseImage = 'openjdk:8';
+      } else if (isPython) {
+        analysis.fileType = 'python';
+        analysis.baseImage = 'python:3.9-slim';
+      } else {
+        analysis.fileType = 'unknown';
+      }
       
       return analysis;
     } catch (error) {
@@ -94,35 +106,48 @@ Response format:
 
         // Generate Dockerfile based on file type
         let dockerfile;
-        if (analysis.fileType === 'cpp') {
-          const mainFile = analysis.mainFile.replace('.cpp', '');
-          dockerfile = `FROM ${analysis.baseImage}
+        switch (analysis.fileType) {
+          case 'cpp':
+            const cppMain = analysis.mainFile.replace('.cpp', '');
+            dockerfile = `FROM ${analysis.baseImage}
 WORKDIR /app
 RUN mkdir -p bin
 COPY *.cpp *.h .
-RUN g++ -o bin/${mainFile} *.cpp
-CMD ["./bin/${mainFile}"]`;
-        } else {
-          // Existing Java Dockerfile generation code
-          const mainFile = files.find(f => f.name === analysis.mainFile);
-          const packageMatch = mainFile?.content.match(/package\s+([\w.]+);/);
-          const hasPackage = !!packageMatch;
-          
-          dockerfile = hasPackage ? 
-            `FROM ${analysis.baseImage}
+RUN g++ -o bin/${cppMain} *.cpp
+CMD ["./bin/${cppMain}"]`;
+            break;
+
+          case 'python':
+            dockerfile = `FROM ${analysis.baseImage}
+WORKDIR /app
+COPY *.py .
+CMD ["python", "${analysis.mainFile}"]`;
+            break;
+
+          case 'java':
+            const mainFile = files.find(f => f.name === analysis.mainFile);
+            const packageMatch = mainFile?.content.match(/package\s+([\w.]+);/);
+            const hasPackage = !!packageMatch;
+            
+            dockerfile = hasPackage ? 
+              `FROM ${analysis.baseImage}
 WORKDIR /app
 RUN mkdir -p src/com/example bin
 COPY *.java src/com/example/
 RUN javac -d bin src/com/example/*.java
 ENV CLASSPATH=/app/bin
 CMD ["java", "com.example.${analysis.mainFile.replace('.java', '')}"]` :
-            `FROM ${analysis.baseImage}
+              `FROM ${analysis.baseImage}
 WORKDIR /app
 RUN mkdir -p bin
 COPY *.java .
 RUN javac -d bin *.java
 ENV CLASSPATH=/app/bin
 CMD ["java", "-cp", "bin", "${analysis.mainFile.replace('.java', '')}"]`;
+            break;
+
+          default:
+            throw new Error('Unsupported file type');
         }
 
         await fs.writeFile(path.join(tempDir, 'Dockerfile'), dockerfile);
