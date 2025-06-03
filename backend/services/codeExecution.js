@@ -46,7 +46,17 @@ Response format:
     });
 
     try {
-      return JSON.parse(response.choices[0].message.content);
+      const analysis = JSON.parse(response.choices[0].message.content);
+      
+      // Determine language and file type
+      const fileExtensions = files.map(f => f.name.split('.').pop().toLowerCase());
+      const isCpp = fileExtensions.includes('cpp') || fileExtensions.includes('cc');
+      const isJava = fileExtensions.includes('java');
+
+      analysis.fileType = isCpp ? 'cpp' : isJava ? 'java' : 'unknown';
+      analysis.baseImage = isCpp ? 'gcc:latest' : 'openjdk:8';
+      
+      return analysis;
     } catch (error) {
       throw new Error('Failed to parse GPT response for code analysis');
     }
@@ -82,27 +92,38 @@ Response format:
         analysis = await this.analyzeCode(files);
         console.log('Code analysis:', analysis);
 
-        // Extract package name from Java file
-        const mainFile = files.find(f => f.name === analysis.mainFile);
-        const packageMatch = mainFile?.content.match(/package\s+([\w.]+);/);
-        const hasPackage = !!packageMatch;
-        
-        // Generate Dockerfile based on package presence
-        const dockerfile = hasPackage ? 
-          `FROM ${analysis.baseImage}
+        // Generate Dockerfile based on file type
+        let dockerfile;
+        if (analysis.fileType === 'cpp') {
+          const mainFile = analysis.mainFile.replace('.cpp', '');
+          dockerfile = `FROM ${analysis.baseImage}
+WORKDIR /app
+RUN mkdir -p bin
+COPY *.cpp *.h .
+RUN g++ -o bin/${mainFile} *.cpp
+CMD ["./bin/${mainFile}"]`;
+        } else {
+          // Existing Java Dockerfile generation code
+          const mainFile = files.find(f => f.name === analysis.mainFile);
+          const packageMatch = mainFile?.content.match(/package\s+([\w.]+);/);
+          const hasPackage = !!packageMatch;
+          
+          dockerfile = hasPackage ? 
+            `FROM ${analysis.baseImage}
 WORKDIR /app
 RUN mkdir -p src/com/example bin
 COPY *.java src/com/example/
 RUN javac -d bin src/com/example/*.java
 ENV CLASSPATH=/app/bin
 CMD ["java", "com.example.${analysis.mainFile.replace('.java', '')}"]` :
-          `FROM ${analysis.baseImage}
+            `FROM ${analysis.baseImage}
 WORKDIR /app
 RUN mkdir -p bin
 COPY *.java .
 RUN javac -d bin *.java
 ENV CLASSPATH=/app/bin
 CMD ["java", "-cp", "bin", "${analysis.mainFile.replace('.java', '')}"]`;
+        }
 
         await fs.writeFile(path.join(tempDir, 'Dockerfile'), dockerfile);
         console.log('Generated Dockerfile:', dockerfile);
