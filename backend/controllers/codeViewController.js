@@ -48,10 +48,11 @@ exports.prepareCodeForVSCode = async (req, res) => {
     // Format path for VS Code
     let formattedPath;
     if (process.platform === 'win32') {
-      // For Windows, ensure correct format with drive letter
-      formattedPath = tempDir.split(path.sep).join('/');
+      // Convert Windows-style paths to VS Code-compatible format
+      formattedPath = tempDir.split(path.sep).join('/'); // Replace backslashes with forward slashes
       if (formattedPath.match(/^[A-Z]:/)) {
-        formattedPath = formattedPath.charAt(0).toLowerCase() + formattedPath.slice(1);
+        // Add a leading slash for drive letters (e.g., "C:/path" -> "/c:/path")
+        formattedPath = '/' + formattedPath.charAt(0).toLowerCase() + formattedPath.slice(1);
       }
     } else {
       // For Unix-like systems

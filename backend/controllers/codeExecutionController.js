@@ -28,6 +28,14 @@ exports.executeCode = async (req, res) => {
 
     const result = await codeExecutionService.executeCode(zipFile.url, language);
 
+    if (result.error) {
+      return res.status(500).json({
+        success: false,
+        message: result.stderr || 'Code execution failed',
+        error: result.stderr
+      });
+    }
+
     res.status(200).json({
       success: true,
       result
