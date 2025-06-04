@@ -362,14 +362,26 @@ exports.submitQuiz = async (req, res) => {
     const { privateComment, existingFiles } = req.body;
     const studentId = req.user.id;
 
+    // Verify quiz exists
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return res.status(404).json({
+        success: false,
+        message: 'Quiz not found'
+      });
+    }
+
+    // Delete any existing quiz submission
+    await Submission.deleteOne({ quizId, studentId });
+
     const existingFilesArray = existingFiles ? JSON.parse(existingFiles) : [];
     let newSubmissionFiles = [];
 
+    // Handle file uploads
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
         const key = `submissions/quiz/${quizId}/${studentId}/${Date.now()}-${file.originalname}`;
         const uploadResult = await uploadFile(file, key);
-
         newSubmissionFiles.push({
           fileName: file.originalname,
           fileType: file.mimetype,
@@ -380,20 +392,18 @@ exports.submitQuiz = async (req, res) => {
     }
 
     const allFiles = [...existingFilesArray, ...newSubmissionFiles];
-    const submissionData = {
-      quizId, // Ensure quizId is correctly set
+
+    // Create new submission document
+    const submission = new Submission({
+      quizId,
       studentId,
       files: allFiles,
       privateComment: privateComment || '',
       submittedAt: Date.now(),
       status: 'submitted'
-    };
+    });
 
-    const savedSubmission = await Submission.findOneAndUpdate(
-      { quizId, studentId },
-      submissionData,
-      { new: true, upsert: true, runValidators: true } // Ensure validators are run
-    );
+    const savedSubmission = await submission.save();
 
     res.status(200).json({
       success: true,

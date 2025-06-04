@@ -9,6 +9,7 @@
     "serve": "vite preview"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@reduxjs/toolkit": "^2.6.0",
     "autoprefixer": "^10.2.6",
     "axios": "^1.7.9",

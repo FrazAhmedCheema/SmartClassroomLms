@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, CheckCircle, MessageCircle, File, Plus, MoreVertical, Edit, Trash2 } from 'lucide-react';
@@ -228,6 +226,24 @@ const ClassworkTab = ({ classId, userRole }) => {
     return questions;
   }, [classworks]);
 
+  // Add this useEffect after other state declarations
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (activeDropdown) {
+        // Close dropdown when clicking outside
+        setActiveDropdown(null);
+      }
+    };
+
+    // Add event listener to window
+    window.addEventListener('click', handleClickOutside);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('click', handleClickOutside);
+    };
+  }, [activeDropdown]);
+
   // Add logging to ClassworkItem
   const ClassworkItem = ({ classwork, onClick }) => {
     console.log('Rendering ClassworkItem:', classwork);
@@ -265,6 +281,7 @@ const ClassworkTab = ({ classId, userRole }) => {
                 className="w-5 h-5 text-gray-500 cursor-pointer" 
                 onClick={(e) => {
                   e.stopPropagation();
+                  e.nativeEvent.stopImmediatePropagation(); // Prevent window click event
                   setActiveDropdown(activeDropdown === classwork._id ? null : classwork._id);
                 }}
               />
@@ -272,7 +289,10 @@ const ClassworkTab = ({ classId, userRole }) => {
               {activeDropdown === classwork._id && (
                 <div 
                   className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1 min-w-[120px]"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.nativeEvent.stopImmediatePropagation(); // Prevent window click event
+                  }}
                 >
                   <button
                     onClick={(e) => handleOptionClick(e, 'edit')}

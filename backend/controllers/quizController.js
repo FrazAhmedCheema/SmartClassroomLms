@@ -30,7 +30,7 @@ exports.getQuiz = async (req, res) => {
 exports.createQuiz = async (req, res) => {
   try {
     const { classId } = req.params;
-    const { title, instructions, points, dueDate, createdBy, questions } = req.body;
+    const { title, instructions, points, dueDate, createdBy, questions, category } = req.body;
 
     if (!title || !classId || !createdBy) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
@@ -65,6 +65,7 @@ exports.createQuiz = async (req, res) => {
       dueDate: dueDate || null,
       createdBy,
       questions: questions || [],
+      category: category || 'general',
       attachments
     });
 

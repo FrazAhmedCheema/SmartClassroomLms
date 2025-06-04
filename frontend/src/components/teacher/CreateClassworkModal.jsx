@@ -19,7 +19,8 @@ const CreateClassworkModal = ({ isOpen, onClose, option, classData }) => {
     questionText: '',
     options: ['', ''],
     correctAnswer: '',
-    allowMultipleAnswers: false
+    allowMultipleAnswers: false,
+    category: 'general'
   });
   const [errors, setErrors] = useState({});
 
@@ -54,7 +55,8 @@ const CreateClassworkModal = ({ isOpen, onClose, option, classData }) => {
       description: formData.instructions?.trim() || '',
       type: option.id,
       points: Number(formData.points) || 0,
-      createdBy: teacherId
+      createdBy: teacherId,
+      category: formData.category // Add this line
     };
 
     if (option.id === 'question') {
@@ -84,15 +86,7 @@ const CreateClassworkModal = ({ isOpen, onClose, option, classData }) => {
     const formDataPayload = new FormData();
     Object.entries(payload).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
-        if (Array.isArray(value)) {
-          value.forEach((item, index) => {
-            formDataPayload.append(`${key}[${index}]`, item);
-          });
-        } else if (typeof value === 'object' && value !== null) {
-          formDataPayload.append(key, JSON.stringify(value));
-        } else {
-          formDataPayload.append(key, value);
-        }
+        formDataPayload.append(key, value); // This will now include category
       }
     });
 
@@ -185,6 +179,14 @@ const CreateClassworkModal = ({ isOpen, onClose, option, classData }) => {
     return false;
   };
 
+  const categoryOptions = [
+    { value: 'general', label: 'General' },
+    { value: 'java', label: 'Java' },
+    { value: 'c++', label: 'C++' },
+    { value: 'python', label: 'Python' },
+    { value: 'mern', label: 'MERN Stack' }
+  ];
+
   const getFormFields = () => {
     const commonFields = (
       <>
@@ -215,6 +217,21 @@ const CreateClassworkModal = ({ isOpen, onClose, option, classData }) => {
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 transition-all"
             placeholder="Add instructions for students..."
           />
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">Category</label>
+          <select
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+          >
+            {categoryOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="space-y-1">

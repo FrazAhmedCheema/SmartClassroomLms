@@ -20,6 +20,8 @@ const quizRoutes = require('./routes/quiz'); // Import new quiz routes
 const materialRoutes = require('./routes/material'); // Import new material routes
 const questionRoutes = require('./routes/question'); // Import new question routes
 const submissionRoutes = require('./routes/submission'); // Ensure submission routes are imported
+const codeExecutionRoutes = require('./routes/codeExecution'); // Add this line
+const codeViewRoutes = require('./routes/codeView'); // Import new code view routes
 
 const app = express();
 const server = http.createServer(app);
@@ -97,6 +99,8 @@ app.use('/quiz', quizRoutes); // Mount new quiz routes
 app.use('/material', materialRoutes); // Mount new material routes
 app.use('/question', questionRoutes); // Add question routes
 app.use('/submission', submissionRoutes); // Ensure submission routes are registered
+app.use('/code', codeExecutionRoutes); // Add the new route
+app.use('/code-view', codeViewRoutes); // Add the new route
 
 connectDB();
 module.exports = { app, server, io, notifyAdmins };
