@@ -41,8 +41,12 @@ router.delete('/student/:assignmentId/unsubmit',
   submissionController.unsubmitAssignment
 );
 
-// Routes for quiz submissions
-router.post('/quiz/:quizId/submit', authorizeStudent, upload.array('files', 10), submissionController.submitQuiz);
+// Quiz submission routes - ensure these are present and in the correct order
+router.post('/quiz/:quizId/submit', 
+  authorizeStudent, 
+  upload.array('files', 10), 
+  submissionController.submitQuiz
+);
 router.get('/quiz/:quizId/student', authorizeStudent, submissionController.getStudentQuizSubmission);
 router.delete('/quiz/:quizId/unsubmit', authorizeStudent, submissionController.unsubmitQuiz);
 
