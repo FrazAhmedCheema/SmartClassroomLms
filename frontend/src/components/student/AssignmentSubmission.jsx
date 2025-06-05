@@ -25,11 +25,15 @@ const AssignmentSubmission = ({ assignment, quiz, submissionType = 'assignment' 
       try {
         if (!item?._id || !studentId) return;
 
+        // Update endpoint construction
         const endpoint = submissionType === 'quiz'
           ? `/submission/quiz/${item._id}/student`
           : `/submission/student/${item._id}`;
 
-        const response = await axios.get(`http://localhost:8080${endpoint}`, { withCredentials: true });
+        const response = await axios.get(
+          `http://localhost:8080${endpoint}`,
+          { withCredentials: true }
+        );
 
         if (response.data.success && response.data.submission) {
           setSubmittedFiles(response.data.submission.files || []);
@@ -105,18 +109,12 @@ const AssignmentSubmission = ({ assignment, quiz, submissionType = 'assignment' 
     try {
       setError(null);
       const formData = new FormData();
-            // Add new files
-
       files.forEach(file => formData.append('files', file));
-            // Add existing files data
-     
-      formData.append('existingFiles', JSON.stringify(submittedFiles));
-      
       if (privateComment) formData.append('privateComment', privateComment);
-      formData.append('studentId', studentId);
 
+      // Update endpoint to use the correct path
       const endpoint = submissionType === 'quiz'
-        ? `/submission/quiz/${quiz._id}/submit`
+        ? `/submission/quiz/${quiz._id}/submit`  // Changed from quiz-submission to submission/quiz
         : `/submission/${assignment._id}/submit`;
   
       const response = await axios.post(
@@ -146,20 +144,26 @@ const AssignmentSubmission = ({ assignment, quiz, submissionType = 'assignment' 
 
   const handleUnsubmit = async () => {
     try {
+      // Use the correct endpoint based on submissionType
+      const endpoint = submissionType === 'quiz'
+        ? `/submission/quiz/${quiz._id}/unsubmit`
+        : `/submission/student/${assignment._id}/unsubmit`;
+
       const response = await axios.delete(
-        `http://localhost:8080/submission/student/${assignment._id}/unsubmit`,
+        `http://localhost:8080${endpoint}`,
         { withCredentials: true }
       );
+
       if (response.data.success) {
         setIsSubmitted(false);
         setIsEditable(true);
-        setSuccessMessage('Submission has been unsubmitted. You can now modify your files.');
+        setSuccessMessage(`${submissionType} has been unsubmitted. You can now modify your files.`);
       } else {
-        throw new Error(response.data.message || 'Failed to unsubmit assignment');
+        throw new Error(response.data.message || `Failed to unsubmit ${submissionType}`);
       }
     } catch (err) {
-      console.error('Error in unsubmission:', err);
-      setError(err.message || 'Failed to unsubmit assignment');
+      console.error(`Error in unsubmission:`, err);
+      setError(err.message || `Failed to unsubmit ${submissionType}`);
     }
   };
 

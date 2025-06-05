@@ -359,51 +359,52 @@ exports.unsubmitAssignment = async (req, res) => {
 exports.submitQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
-    const { privateComment, existingFiles } = req.body;
     const studentId = req.user.id;
 
-    // Verify quiz exists
-    const quiz = await Quiz.findById(quizId);
-    if (!quiz) {
-      return res.status(404).json({
-        success: false,
-        message: 'Quiz not found'
-      });
-    }
+    // First try to find existing submission
+    const existingSubmission = await Submission.findOne({ 
+      quizId, 
+      studentId,
+      assignmentId: null 
+    });
 
-    // Delete any existing quiz submission
-    await Submission.deleteOne({ quizId, studentId });
+    let submissionData = {
+      quizId,
+      studentId,
+      assignmentId: null, // Explicitly set to null
+      files: [],
+      privateComment: req.body.privateComment || '',
+      submittedAt: Date.now(),
+      status: 'submitted'
+    };
 
-    const existingFilesArray = existingFiles ? JSON.parse(existingFiles) : [];
-    let newSubmissionFiles = [];
-
-    // Handle file uploads
+    // Handle file uploads if present
     if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
+      const newSubmissionFiles = await Promise.all(req.files.map(async (file) => {
         const key = `submissions/quiz/${quizId}/${studentId}/${Date.now()}-${file.originalname}`;
         const uploadResult = await uploadFile(file, key);
-        newSubmissionFiles.push({
+        return {
           fileName: file.originalname,
           fileType: file.mimetype,
           key: key,
           url: uploadResult.Location
-        });
-      }
+        };
+      }));
+      submissionData.files = newSubmissionFiles;
     }
 
-    const allFiles = [...existingFilesArray, ...newSubmissionFiles];
-
-    // Create new submission document
-    const submission = new Submission({
-      quizId,
-      studentId,
-      files: allFiles,
-      privateComment: privateComment || '',
-      submittedAt: Date.now(),
-      status: 'submitted'
-    });
-
-    const savedSubmission = await submission.save();
+    let savedSubmission;
+    if (existingSubmission) {
+      // Update existing submission
+      savedSubmission = await Submission.findOneAndUpdate(
+        { _id: existingSubmission._id },
+        submissionData,
+        { new: true }
+      );
+    } else {
+      // Create new submission
+      savedSubmission = await Submission.create(submissionData);
+    }
 
     res.status(200).json({
       success: true,

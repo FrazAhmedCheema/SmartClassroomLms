@@ -18,60 +18,55 @@ const openai = new OpenAI(process.env.OPENAI_API_KEY);
 
 class CodeExecutionService {
   async analyzeCode(files) {
+    if (!files || files.length === 0) {
+      throw new Error('No files found to analyze');
+    }
+
     const codeContent = files.map(f => `File: ${f.name}\nContent:\n${f.content}`).join('\n\n');
     
-    const prompt = `Analyze the following code files and provide:
-1. The main file or entry point (e.g., the file containing the main method or function).
-2. The required build/compile commands.
-3. The run command to execute the code.
-4. The appropriate Docker base image to use.
-5. Any additional setup commands required.
+    const prompt = `Analyze these code files and provide information in this exact format:
+{
+  "mainFile": "name of the main file that should be executed first",
+  "fileType": "language type (cpp, java, python)",
+  "executionOrder": ["file1.ext", "file2.ext"],
+  "buildCommand": "build command if needed",
+  "runCommand": "command to run the code",
+  "outputFormat": {
+    "title": "descriptive title of what the code does",
+    "type": "output type (numeric, text, mixed)"
+  }
+}
 
 Code files:
-${codeContent}
-
-Response format:
-{
-  "mainFile": "main file name",
-  "buildCommand": "build/compile command",
-  "runCommand": "run command",
-  "baseImage": "docker base image",
-  "setupCommands": ["list of setup commands"]
-}`;
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3
-    });
+${codeContent}`;
 
     try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3
+      });
+
       const analysis = JSON.parse(response.choices[0].message.content);
       
-      // Determine language and file type
-      const fileExtensions = files.map(f => f.name.split('.').pop().toLowerCase());
-      const isCpp = fileExtensions.includes('cpp') || fileExtensions.includes('cc');
-      const isJava = fileExtensions.includes('java');
-      const isPython = fileExtensions.includes('py');
-
-      // Set file type and base image
-      if (isCpp) {
-        analysis.fileType = 'cpp';
-        analysis.baseImage = 'gcc:latest';
-      } else if (isJava) {
-        analysis.fileType = 'java';
-        analysis.baseImage = 'openjdk:8';
-      } else if (isPython) {
-        analysis.fileType = 'python';
-        analysis.baseImage = 'python:3.9-slim';
-      } else {
-        analysis.fileType = 'unknown';
-      }
+      // Add file type based on main file extension
+      const mainExt = analysis.mainFile.split('.').pop().toLowerCase();
+      analysis.baseImage = this.getBaseImage(mainExt);
       
       return analysis;
     } catch (error) {
-      throw new Error('Failed to parse GPT response for code analysis');
+      console.error('GPT Analysis error:', error);
+      throw new Error('Failed to analyze code files');
     }
+  }
+
+  getBaseImage(extension) {
+    const imageMap = {
+      'cpp': 'gcc:latest',
+      'java': 'openjdk:8',
+      'py': 'python:3.9-slim'
+    };
+    return imageMap[extension] || 'gcc:latest';
   }
 
   async executeCode(fileUrl) {
@@ -104,52 +99,7 @@ Response format:
         analysis = await this.analyzeCode(files);
         console.log('Code analysis:', analysis);
 
-        // Generate Dockerfile based on file type
-        let dockerfile;
-        switch (analysis.fileType) {
-          case 'cpp':
-            const cppMain = analysis.mainFile.replace('.cpp', '');
-            dockerfile = `FROM ${analysis.baseImage}
-WORKDIR /app
-RUN mkdir -p bin
-COPY *.cpp *.h .
-RUN g++ -o bin/${cppMain} *.cpp
-CMD ["./bin/${cppMain}"]`;
-            break;
-
-          case 'python':
-            dockerfile = `FROM ${analysis.baseImage}
-WORKDIR /app
-COPY *.py .
-CMD ["python", "${analysis.mainFile}"]`;
-            break;
-
-          case 'java':
-            const mainFile = files.find(f => f.name === analysis.mainFile);
-            const packageMatch = mainFile?.content.match(/package\s+([\w.]+);/);
-            const hasPackage = !!packageMatch;
-            
-            dockerfile = hasPackage ? 
-              `FROM ${analysis.baseImage}
-WORKDIR /app
-RUN mkdir -p src/com/example bin
-COPY *.java src/com/example/
-RUN javac -d bin src/com/example/*.java
-ENV CLASSPATH=/app/bin
-CMD ["java", "com.example.${analysis.mainFile.replace('.java', '')}"]` :
-              `FROM ${analysis.baseImage}
-WORKDIR /app
-RUN mkdir -p bin
-COPY *.java .
-RUN javac -d bin *.java
-ENV CLASSPATH=/app/bin
-CMD ["java", "-cp", "bin", "${analysis.mainFile.replace('.java', '')}"]`;
-            break;
-
-          default:
-            throw new Error('Unsupported file type');
-        }
-
+        let dockerfile = this.generateDockerfile(analysis, files);
         await fs.writeFile(path.join(tempDir, 'Dockerfile'), dockerfile);
         console.log('Generated Dockerfile:', dockerfile);
 
@@ -273,12 +223,20 @@ CMD ["java", "-cp", "bin", "${analysis.mainFile.replace('.java', '')}"]`;
 
         console.log('Container output:', output);
 
+        // Format output using GPT
+        const formattedOutput = await this.formatWithGPT(
+          output.stdout,
+          analysis.outputFormat.title,
+          analysis.outputFormat.type
+        );
+
+        // Return formatted results
         return {
-          stdout: output.stdout || 'No output',
+          title: analysis.outputFormat.title,
+          stdout: formattedOutput,
           stderr: output.stderr || '',
           executionTime: '1s',
-          exitCode: output.exitCode,
-          analysis
+          language: analysis.fileType
         };
 
       } catch (analysisError) {
@@ -328,17 +286,17 @@ CMD ["java", "-cp", "bin", "${analysis.mainFile.replace('.java', '')}"]`;
     }
   } // Close executeCode method
 
-  async readFiles(dir) {
-    const files = [];
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      if (entry.isFile()) {
-        files.push({ name: entry.name, content: await fs.readFile(path.join(dir, entry.name), 'utf8') });
-      }
-    }
-
-    return files;
+  readFiles(dir) {
+    return fs.readdir(dir, { withFileTypes: true })
+      .then(entries => 
+        Promise.all(entries
+          .filter(entry => entry.isFile())
+          .map(entry => 
+            fs.readFile(path.join(dir, entry.name), 'utf8')
+              .then(content => ({ name: entry.name, content }))
+          )
+        )
+      );
   }
 
   async parseContainerOutput(logStream) {
@@ -361,12 +319,138 @@ CMD ["java", "-cp", "bin", "${analysis.mainFile.replace('.java', '')}"]`;
   }
 
   // New helper method to get context files
-  async getContextFiles(dir) {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-    return ['Dockerfile', ...entries
-      .filter(entry => entry.isFile() && entry.name !== 'Dockerfile')
-      .map(entry => entry.name)
-    ];
+  getContextFiles(dir) {
+    return fs.readdir(dir, { withFileTypes: true })
+      .then(entries => 
+        ['Dockerfile', ...entries
+          .filter(entry => entry.isFile() && entry.name !== 'Dockerfile')
+          .map(entry => entry.name)
+        ]
+      );
+  }
+
+  generateDockerfile(analysis, files) {
+    const setupCommands = [];
+    let dockerfile = '';
+
+    switch (analysis.fileType) {
+      case 'cpp':
+        const cppFiles = analysis.executionOrder.map(file => file.replace('.cpp', ''));
+        dockerfile = `FROM ${analysis.baseImage}
+WORKDIR /app
+COPY . .
+${cppFiles.map(file => `RUN g++ -o bin/${file} ${file}.cpp`).join('\n')}
+CMD ["sh", "-c", "${cppFiles.map(file => `echo '=== Output from ${file}.cpp ===' && ./bin/${file}`).join(' && ')}"]`;
+        break;
+
+      case 'python':
+        dockerfile = `FROM ${analysis.baseImage}
+WORKDIR /app
+COPY . .
+CMD ["sh", "-c", "${analysis.executionOrder.map(file => `echo '=== Output from ${file} ===' && python ${file}`).join(' && ')}"]`;
+        break;
+
+      case 'java':
+        dockerfile = `FROM ${analysis.baseImage}
+WORKDIR /app
+COPY . .
+RUN javac ${analysis.executionOrder.join(' ')}
+CMD sh -c '${analysis.executionOrder.map(file => {
+          const className = file.replace('.java', '');
+          return `echo "=== Output from ${file} ===" && java ${className}`;
+        }).join(' && ')}'`;
+        break;
+
+      default:
+        throw new Error('Unsupported file type');
+    }
+
+    return dockerfile;
+  }
+
+  formatOutput(stdout, type) {
+    if (!stdout) return 'No output';
+    
+    // Split by file outputs
+    const outputs = stdout.split(/===\s*Output from[^=]*===/).filter(Boolean);
+    
+    if (outputs.length === 0) return stdout.trim();
+
+    // Format each output section
+    return outputs.map(output => {
+      const formattedOutput = output.trim();
+      switch (type) {
+        case 'numeric':
+          return formattedOutput.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+            .join(',');
+        case 'text':
+          return formattedOutput;
+        case 'mixed':
+          return formattedOutput.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+            .join('\n');
+        default:
+          return formattedOutput;
+      }
+    }).join('\n\n');
+  }
+
+  async captureOutput(container) {
+    return new Promise((resolve, reject) => {
+      let stdout = '';
+      let stderr = '';
+
+      container.logs({
+        stdout: true,
+        stderr: true,
+        follow: true,
+        timestamps: false
+      })
+      .on('data', chunk => {
+        const output = chunk.toString('utf8');
+        if (output.startsWith('\x01')) {
+          stdout += output.slice(1);
+        } else if (output.startsWith('\x02')) {
+          stderr += output.slice(1);
+        }
+      })
+      .on('end', () => resolve({ stdout, stderr }))
+      .on('error', reject);
+    });
+  }
+
+  async formatWithGPT(stdout, title, type) {
+    try {
+      const prompt = `Format this program output in a clear, readable way:
+Raw output: ${stdout}
+Title: ${title}
+Type: ${type}
+
+Format it with section headers and proper spacing. For example:
+
+Array Addition Example:
+45, 64, 767, 87, 9
+
+Sorting Results:
+Bubble Sort: [1, 2, 3, 4, 5]
+Quick Sort: [1, 2, 3, 4, 5]
+
+Make sure numbers are properly comma-separated and use clear section headers.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3
+      });
+
+      return response.choices[0].message.content.trim();
+    } catch (error) {
+      console.error('Error formatting output with GPT:', error);
+      return stdout; // Return original output if formatting fails
+    }
   }
 }
 
