@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, X, Download, Send, User, CheckCircle, ArrowLeft, Play, Code } from 'lucide-react';
+import { FileText, X, Download, Send, User, CheckCircle, ArrowLeft, Play, Code, AlertTriangle, Info } from 'lucide-react'; // Added AlertTriangle, Info
 import axios from 'axios';
-import MonacoEditor from '@monaco-editor/react';
 
 const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGraded }) => {
   const [grade, setGrade] = useState(submission?.grade || '');
   const [feedback, setFeedback] = useState(submission?.feedback || '');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false); // For grading
+  const [runCodeLoading, setRunCodeLoading] = useState(false); // For running code
+  const [error, setError] = useState(null); // General error for the component
   const [success, setSuccess] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
-  const [codeOutput, setCodeOutput] = useState(null);
+  const [codeExecutionResult, setCodeExecutionResult] = useState(null); // Stores the new result structure
 
   const handleGrade = async (e) => {
     e.preventDefault();
@@ -81,7 +81,7 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
 
   const handleViewCode = async () => {
     try {
-      setLoading(true);
+      setLoading(true); // Re-use general loading for simplicity, or use a specific one
       setError(null);
       
       if (!submission?.files) {
@@ -106,12 +106,8 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
       );
 
       if (response.data.success && response.data.localPath) {
-        // Remove any existing protocol prefix
         const cleanPath = response.data.localPath.replace(/^file:\/\//, '');
-        
-        // Ensure the path starts with a forward slash
         const vscodeUrl = `vscode://file/${cleanPath.startsWith('/') ? cleanPath.slice(1) : cleanPath}`;
-        
         window.location.href = vscodeUrl;
       } else {
         throw new Error('Failed to prepare code for viewing');
@@ -125,42 +121,50 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
   };
 
   const handleRunCode = async () => {
-    try {
-      setError(null);
-      setCodeOutput(null);
-      
-      if (!submission || !submission.files || submission.files.length === 0) {
-        setError('No files available to execute');
-        return;
-      }
+    setRunCodeLoading(true);
+    setError(null);
+    setCodeExecutionResult(null);
+    
+    if (!submission || !submission.files || submission.files.length === 0) {
+      setError('No files available to execute');
+      setRunCodeLoading(false);
+      return;
+    }
 
+    try {
       const response = await axios.post(
         `http://localhost:8080/code/execute`,
         {
-          files: submission.files,
-          language: assignment.category,
+          files: submission.files, // Server will find the zip
+          language: assignment.category, // Hint for backend, though it re-analyzes
           submissionId: submission._id
         },
         { withCredentials: true }
       );
 
       if (response.data.success) {
-        setCodeOutput({
-          stdout: response.data.result.stdout,
-          stderr: response.data.result.stderr,
-          language: response.data.result.language,
-          executionTime: response.data.result.executionTime
-        });
+        setCodeExecutionResult(response.data.result); // { language, fileResults, error? }
+      } else {
+        // Handle cases where success is false but it's not a network error
+        setError(response.data.message || 'Code execution request failed.');
+        if(response.data.errorDetails) {
+            setCodeExecutionResult({ error: response.data.errorDetails }); // Store general error
+        }
       }
-    } catch (error) {
-      console.error('Error executing code:', error);
-      setError(error.response?.data?.message || 'Failed to execute code');
+    } catch (err) {
+      console.error('Error executing code:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to execute code due to a network or server error.');
+      if(err.response?.data?.errorDetails) {
+        setCodeExecutionResult({ error: err.response.data.errorDetails });
+      }
+    } finally {
+      setRunCodeLoading(false);
     }
   };
 
   const isProgrammingAssignment = () => {
-    const programmingCategories = ['java', 'c++', 'python', 'mern'];
-    return programmingCategories.includes(assignment.category);
+    const programmingCategories = ['java', 'c++', 'python', 'mern']; // MERN might need special handling not covered here
+    return programmingCategories.includes(assignment.category.toLowerCase());
   };
 
   return (
@@ -277,18 +281,24 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                     <div className="flex flex-col sm:flex-row gap-4">
                       <button
                         onClick={handleViewCode}
+                        disabled={loading}
                         style={{backgroundColor: "#1b68b3"}}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm hover:shadow-md"
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
                       >
                         <Code className="w-5 h-5" />
                         <span className="font-medium">View Code</span>
                       </button>
                       <button
                         onClick={handleRunCode}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm hover:shadow-md"
+                        disabled={runCodeLoading}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
                       >
-                        <Play className="w-5 h-5" />
-                        <span className="font-medium">Run Code</span>
+                        {runCodeLoading ? (
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        ) : (
+                            <Play className="w-5 h-5" />
+                        )}
+                        <span className="font-medium">{runCodeLoading ? 'Running...' : 'Run Code'}</span>
                       </button>
                     </div>
                     <p className="mt-3 text-sm text-gray-500 text-center">
@@ -297,70 +307,124 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                   </div>
                 )}
 
-                {codeOutput && (
-                  <div className="mt-4 bg-gray-900 rounded-lg p-4 overflow-x-auto">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-gray-400 text-sm">
-                        Execution Time: {codeOutput.executionTime}
-                      </span>
-                      <span className="text-xs px-2 py-1 rounded-full bg-blue-500/20 text-blue-400">
-                        {codeOutput.language}
-                      </span>
-                    </div>
-                    <div className="font-mono text-sm">
-                      <pre className="text-green-400 whitespace-pre-wrap">
-                        {codeOutput.stdout}
-                      </pre>
-                      {codeOutput.stderr && (
-                        <div className="mt-4 space-y-6">
-                          {(() => {
-                            try {
-                              const errorAnalysis = JSON.parse(codeOutput.stderr);
-                              return (
-                                <>
-                                  <div className="space-y-3 bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-                                    <div className="text-red-400">
-                                      <span className="font-semibold">Error: </span>
-                                      {errorAnalysis.explanation}
-                                    </div>
-                                    <div className="text-yellow-400">
-                                      <span className="font-semibold">Location: </span>
-                                      {errorAnalysis.location}
-                                    </div>
-                                    <div className="text-blue-400">
-                                      <span className="font-semibold">Solution: </span>
-                                      {errorAnalysis.solution}
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Raw Compiler Output */}
-                                  <div className="mt-4">
-                                    <div className="text-gray-400 text-xs uppercase tracking-wider font-semibold mb-2">
-                                      Compiler Output:
-                                    </div>
-                                    <pre className="text-red-400 whitespace-pre-wrap bg-gray-800/50 p-4 rounded-lg border border-gray-700 font-mono text-sm">
-                                      {errorAnalysis.rawErrors}
-                                    </pre>
-                                  </div>
-                                </>
-                              );
-                            } catch {
-                              return (
-                                <pre className="text-red-400 whitespace-pre-wrap">
-                                  {codeOutput.stderr}
-                                </pre>
-                              );
-                            }
-                          })()}
-                        </div>
+                {/* Display Code Execution Results */}
+                {codeExecutionResult && (
+                  <div className="mt-6 bg-gray-900 rounded-lg p-6 overflow-x-auto">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-lg font-semibold text-gray-200">Execution Results</h4>
+                      {codeExecutionResult.language && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-blue-500/30 text-blue-300 capitalize">
+                          {codeExecutionResult.language}
+                        </span>
                       )}
                     </div>
+
+                    {/* General Error Display */}
+                    {codeExecutionResult.error && (
+                      <div className="mb-4 p-4 bg-red-900/50 border border-red-700 rounded-lg text-red-300">
+                        <div className="flex items-center mb-2">
+                          <AlertTriangle className="w-5 h-5 mr-2 text-red-400"/>
+                          <strong className="font-semibold">Overall Execution Failed:</strong>
+                        </div>
+                        <p className="text-sm mb-1">{codeExecutionResult.error.message}</p>
+                        {codeExecutionResult.error.aiAnalysis && typeof codeExecutionResult.error.aiAnalysis.explanation === 'string' && (
+                           <div className="mt-2 text-xs p-3 bg-red-800/60 rounded">
+                             <p><strong>AI Analysis:</strong> {codeExecutionResult.error.aiAnalysis.explanation}</p>
+                           </div>
+                        )}
+                        {codeExecutionResult.error.rawBuildOutput && (
+                            <details className="mt-2 text-xs">
+                                <summary className="cursor-pointer hover:underline">Show Raw Build Output</summary>
+                                <pre className="mt-1 p-2 bg-black/30 rounded whitespace-pre-wrap break-all">
+                                    {codeExecutionResult.error.rawBuildOutput}
+                                </pre>
+                            </details>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Per-File Results */}
+                    {codeExecutionResult.fileResults && codeExecutionResult.fileResults.map((fileRes, index) => (
+                      <div key={index} className="mb-6 p-4 bg-gray-800/70 rounded-lg border border-gray-700">
+                        <h5 className="text-md font-semibold text-gray-300 mb-2 border-b border-gray-700 pb-2">
+                          File: <span className="font-mono">{fileRes.fileName}</span>
+                        </h5>
+                        
+                        {/* Status Badge */}
+                        <div className="mb-3">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full
+                            ${fileRes.status === 'success' ? 'bg-green-500/30 text-green-300' : ''}
+                            ${fileRes.status === 'compile_error' ? 'bg-red-500/30 text-red-300' : ''}
+                            ${fileRes.status === 'runtime_error' ? 'bg-yellow-500/30 text-yellow-300' : ''}
+                            ${fileRes.status === 'not_run_due_to_compile_error' ? 'bg-gray-500/30 text-gray-400' : ''}
+                            ${['script_error', 'unknown', 'unknown_error'].includes(fileRes.status) ? 'bg-purple-500/30 text-purple-300' : ''}
+                          `}>
+                            Status: {fileRes.status.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+
+                        {/* Successful Output */}
+                        {fileRes.status === 'success' && fileRes.stdout && (
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">Output:</p>
+                            <pre className="text-green-300 whitespace-pre-wrap p-3 bg-black/30 rounded font-mono text-sm">{fileRes.stdout}</pre>
+                          </div>
+                        )}
+
+                        {/* Compile Error Analysis */}
+                        {fileRes.status === 'compile_error' && fileRes.compileErrorAnalysis && (
+                          <div className="space-y-2 text-sm">
+                            <div className="text-red-400"><strong>Explanation:</strong> {fileRes.compileErrorAnalysis.explanation}</div>
+                            <div className="text-yellow-400"><strong>Location:</strong> {fileRes.compileErrorAnalysis.location}</div>
+                            <div className="text-blue-400"><strong>Solution:</strong> {fileRes.compileErrorAnalysis.solution}</div>
+                            {fileRes.compileErrorAnalysis.rawErrors && (
+                              <details className="mt-2 text-xs">
+                                <summary className="cursor-pointer hover:underline text-gray-400">Show Raw Compiler Errors</summary>
+                                <pre className="mt-1 p-2 bg-black/30 rounded whitespace-pre-wrap break-all text-red-400">
+                                  {fileRes.compileErrorAnalysis.rawErrors}
+                                </pre>
+                              </details>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Runtime Error */}
+                        {fileRes.status === 'runtime_error' && (
+                          <div className="text-sm">
+                            {fileRes.stdout && (
+                              <div className="mb-2">
+                                <p className="text-xs text-gray-400 mb-1">Standard Output (if any):</p>
+                                <pre className="text-gray-300 whitespace-pre-wrap p-3 bg-black/30 rounded font-mono text-sm">{fileRes.stdout}</pre>
+                              </div>
+                            )}
+                            <p className="text-xs text-gray-400 mb-1">Runtime Error:</p>
+                            <pre className="text-yellow-300 whitespace-pre-wrap p-3 bg-black/30 rounded font-mono text-sm">{fileRes.stderr}</pre>
+                          </div>
+                        )}
+                        
+                        {/* Other Statuses */}
+                        {['not_run_due_to_compile_error', 'script_error', 'unknown', 'unknown_error'].includes(fileRes.status) && (
+                            <div className="p-3 bg-gray-700/50 rounded text-gray-400 text-sm">
+                                <Info size={16} className="inline mr-2"/>
+                                {fileRes.stderr || `This file was marked as: ${fileRes.status.replace(/_/g, ' ')}.`}
+                            </div>
+                        )}
+
+                      </div>
+                    ))}
                   </div>
+                )}
+                 {error && !codeExecutionResult?.error && ( // Display general Axios/network error if not already handled by codeExecutionResult.error
+                    <div className="mt-4 p-3 bg-red-900/50 text-red-300 rounded-lg border border-red-700">
+                        <AlertTriangle size={18} className="inline mr-2" />
+                        <strong>Error:</strong> {error}
+                    </div>
                 )}
               </div>
             )}
           </div>
 
+          {/* Grading Column */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 sticky top-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Grade Submission</h3>
@@ -408,7 +472,7 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                     />
                   </div>
 
-                  {error && (
+                  {error && !codeExecutionResult?.error && ( // Display grading error if not a code execution general error
                     <div className="p-3 text-sm bg-red-50 text-red-700 rounded-lg border border-red-100">
                       {error}
                     </div>
