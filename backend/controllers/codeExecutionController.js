@@ -28,17 +28,34 @@ exports.executeCode = async (req, res) => {
 
     const result = await codeExecutionService.executeCode(zipFile.url, language);
 
-    if (result.error) {
-      return res.status(500).json({
-        success: false,
-        message: result.stderr || 'Code execution failed',
-        error: result.stderr
-      });
+    // If there's an error but we have analyzed it
+    if (result.error && result.stderr) {
+      try {
+        // Check if stderr is a JSON string (analyzed error)
+        const errorAnalysis = JSON.parse(result.stderr);
+        return res.status(200).json({
+          success: true,
+          result: {
+            ...result,
+            buildLogs: result.buildLogs  // Ensure buildLogs are passed through
+          }
+        });
+      } catch {
+        // If stderr is not JSON, return as error
+        return res.status(500).json({
+          success: false,
+          message: result.stderr,
+          error: result.stderr
+        });
+      }
     }
 
     res.status(200).json({
       success: true,
-      result
+      result: {
+        ...result,
+        buildLogs: result.buildLogs  // Ensure buildLogs are passed through
+      }
     });
 
   } catch (error) {

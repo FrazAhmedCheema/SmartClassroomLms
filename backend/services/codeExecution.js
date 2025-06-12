@@ -74,6 +74,7 @@ ${codeContent}`;
     const containerName = `code-exec-${Date.now()}`;
     let container = null;
     let containerCreated = false;
+    let buildOutput = [];
     let analysis = null;
 
     try {
@@ -116,8 +117,8 @@ ${codeContent}`;
           forcerm: true 
         });
 
-        // Wait for build to complete and collect all output
-        const buildOutput = await new Promise((resolve, reject) => {
+        // Collect build output
+        buildOutput = await new Promise((resolve, reject) => {
           let output = [];
           buildStream.on('data', data => {
             const lines = data.toString().split('\n').filter(Boolean);
@@ -125,12 +126,10 @@ ${codeContent}`;
           });
           
           docker.modem.followProgress(buildStream, 
-            (err, res) => err ? reject(err) : resolve({ result: res, output }),
+            (err, res) => err ? reject(err) : resolve(output),
             (event) => console.log('Build event:', event?.stream?.trim() || event)
           );
         });
-
-        console.log('Build output:', buildOutput.output);
 
         // Verify image exists with retries
         const maxRetries = 3;
@@ -246,14 +245,20 @@ ${codeContent}`;
 
     } catch (error) {
       console.error('Error during code execution:', error);
+      
+      // Analyze build errors if available
+      const errorAnalysis = await this.parseAndAnalyzeBuildError(buildOutput);
+      
       return {
         stdout: '',
-        stderr: 'Build/Execution error: ' + error.message,
+        stderr: errorAnalysis ? JSON.stringify({
+          ...errorAnalysis,
+          rawErrors: errorAnalysis.rawErrors
+        }) : 'Build/Execution error occurred',
         executionTime: '0s',
         error: true,
-        buildLogs: error.buildOutput || []
+        language: analysis?.fileType || 'unknown'
       };
-
     } finally {
       // Enhanced cleanup logic
       if (containerCreated) {
@@ -450,6 +455,75 @@ Make sure numbers are properly comma-separated and use clear section headers.`;
     } catch (error) {
       console.error('Error formatting output with GPT:', error);
       return stdout; // Return original output if formatting fails
+    }
+  }
+
+  async analyzeError(error, language) {
+    try {
+      const prompt = `As a coding expert, analyze this ${language} error and explain it in simple terms. 
+      Provide: 
+      1. A clear explanation of what's wrong
+      2. The specific location of the error
+      3. How to fix it
+
+      Error message:
+      ${error}
+
+      Format the response as JSON:
+      {
+        "explanation": "simple explanation of the error",
+        "location": "where the error occurs",
+        "solution": "how to fix it",
+        "type": "syntax|runtime|build"
+      }`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3
+      });
+
+      return JSON.parse(response.choices[0].message.content);
+    } catch (error) {
+      console.error('Error analyzing with GPT:', error);
+      return null;
+    }
+  }
+
+  async parseAndAnalyzeBuildError(buildOutput) {
+    try {
+      // Extract raw error messages
+      const rawErrors = buildOutput
+        .map(log => {
+          try {
+            const parsed = JSON.parse(log);
+            if (parsed.stream && parsed.stream.includes('error')) {
+              return parsed.stream
+                .replace(/\u001b\[\d+m/g, '') // Remove ANSI color codes
+                .replace(/\\n/g, '\n')        // Convert escaped newlines
+                .replace(/\\"/g, '"')         // Convert escaped quotes
+                .trim();
+            }
+            return null;
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean)
+        .join('\n');
+
+      if (!rawErrors) return null;
+
+      // Create complete error message with raw errors
+      const completeError = {
+        rawErrors,
+        ...(await this.analyzeError(rawErrors, 'java'))
+      };
+
+      return completeError;
+    } catch (error) {
+      console.error('Error parsing build output:', error);
+      return null;
     }
   }
 }

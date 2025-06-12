@@ -312,9 +312,47 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                         {codeOutput.stdout}
                       </pre>
                       {codeOutput.stderr && (
-                        <pre className="text-red-400 whitespace-pre-wrap mt-2">
-                          {codeOutput.stderr}
-                        </pre>
+                        <div className="mt-4 space-y-6">
+                          {(() => {
+                            try {
+                              const errorAnalysis = JSON.parse(codeOutput.stderr);
+                              return (
+                                <>
+                                  <div className="space-y-3 bg-gray-800/50 p-4 rounded-lg border border-gray-700">
+                                    <div className="text-red-400">
+                                      <span className="font-semibold">Error: </span>
+                                      {errorAnalysis.explanation}
+                                    </div>
+                                    <div className="text-yellow-400">
+                                      <span className="font-semibold">Location: </span>
+                                      {errorAnalysis.location}
+                                    </div>
+                                    <div className="text-blue-400">
+                                      <span className="font-semibold">Solution: </span>
+                                      {errorAnalysis.solution}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Raw Compiler Output */}
+                                  <div className="mt-4">
+                                    <div className="text-gray-400 text-xs uppercase tracking-wider font-semibold mb-2">
+                                      Compiler Output:
+                                    </div>
+                                    <pre className="text-red-400 whitespace-pre-wrap bg-gray-800/50 p-4 rounded-lg border border-gray-700 font-mono text-sm">
+                                      {errorAnalysis.rawErrors}
+                                    </pre>
+                                  </div>
+                                </>
+                              );
+                            } catch {
+                              return (
+                                <pre className="text-red-400 whitespace-pre-wrap">
+                                  {codeOutput.stderr}
+                                </pre>
+                              );
+                            }
+                          })()}
+                        </div>
                       )}
                     </div>
                   </div>
