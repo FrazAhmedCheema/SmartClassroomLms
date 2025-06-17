@@ -46,3 +46,77 @@ exports.executeCode = async (req, res) => {
     });
   }
 };
+
+exports.executeInteractiveCode = async (req, res) => {
+  try {
+    const { fileUrl, submissionId } = req.body; 
+
+    if (!fileUrl) { // submissionId is good for context but fileUrl is essential
+      return res.status(400).json({ success: false, message: 'Missing required field: fileUrl' });
+    }
+    
+    // The service will download and process the zip from fileUrl
+    const result = await codeExecutionService.executeInteractiveCode(fileUrl);
+    // result should contain { containerId, language }
+    res.status(200).json({ success: true, ...result });
+
+  } catch (error) {
+    console.error('Error in executeInteractiveCode controller:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to start interactive code session.',
+      // error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
+exports.stopInteractiveContainer = async (req, res) => {
+  try {
+    const { containerId } = req.params;
+    if (!containerId) {
+      return res.status(400).json({ success: false, message: 'Missing containerId parameter.' });
+    }
+    const result = await codeExecutionService.stopInteractiveContainer(containerId);
+    res.status(200).json(result); // result is { success, message }
+  } catch (error) {
+    console.error(`Controller error stopping container ${req.params.containerId}:`, error);
+    res.status(500).json({ success: false, message: 'Failed to stop container due to server error.', error: error.message });
+  }
+};
+
+exports.getInteractiveContainerStatus = async (req, res) => {
+  try {
+    const { containerId } = req.params;
+    if (!containerId) {
+      return res.status(400).json({ success: false, message: 'Missing containerId parameter.' });
+    }
+    const result = await codeExecutionService.getInteractiveContainerStatus(containerId);
+    if (result.status === 'not_found') {
+        return res.status(404).json({ success: false, ...result });
+    }
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    console.error(`Controller error getting status for container ${req.params.containerId}:`, error);
+    res.status(500).json({ success: false, message: 'Failed to get container status due to server error.', error: error.message });
+  }
+};
+
+exports.analyzeTerminalOutput = async (req, res) => {
+  try {
+    const { terminalLog, languageHint } = req.body;
+    if (!terminalLog) {
+      return res.status(400).json({ success: false, message: 'Missing terminalLog field.' });
+    }
+
+    const result = await codeExecutionService.analyzeTerminalOutputAndStructure(terminalLog, languageHint || 'unknown');
+    // result should be { structuredSummary: [...] }
+    res.status(200).json({ success: true, analysis: result.structuredSummary });
+
+  } catch (error) {
+    console.error('Error in analyzeTerminalOutput controller:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to analyze terminal output.',
+    });
+  }
+};
