@@ -6,7 +6,7 @@ import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 // import { WebLinksAddon } from 'xterm-addon-web-links'; // Optional: for clickable links in terminal
 import 'xterm/css/xterm.css';
-import ExecutionSummary from './ExecutionSummary'; // Import the new component
+import ExecutionSummary from './ExecutionSummary'; 
 
 
 const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGraded }) => {
@@ -20,6 +20,7 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
   const [codeExecutionResult, setCodeExecutionResult] = useState(null);
   const [executionSummary, setExecutionSummary] = useState(null); // New state for structured summary
   const [summaryLoading, setSummaryLoading] = useState(false); // Loading state for summary generation
+  const [currentProcessMessage, setCurrentProcessMessage] = useState(''); // New state for process messages
 
   // State for interactive terminal
   const [interactiveSession, setInteractiveSession] = useState({
@@ -114,9 +115,10 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
   // Connect WebSocket for interactive session
   const connectWebSocket = (containerId) => {
     if (websocketRef.current) {
-      console.log('[WebSocket] Connect: Closing existing WebSocket connection.'); // Added log
+      console.log('[WebSocket] Connect: Closing existing WebSocket connection.'); 
       websocketRef.current.close();
     }
+    setCurrentProcessMessage("Connecting to interactive session...");
     
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${wsProtocol}//localhost:8080/ws/code-execution/${containerId}`;
@@ -128,6 +130,9 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
     ws.onopen = () => {
       console.log('[WebSocket] Event: onopen - Connection established.');
       setInteractiveSession(prev => ({ ...prev, isConnected: true, isLoading: false }));
+      setCurrentProcessMessage("Session connected. Auto-executing initial commands...");
+      setTimeout(() => setCurrentProcessMessage("Ready for input or get summary."), 3000); // Clear message after a bit
+
       if (xtermInstanceRef.current) {
         xtermInstanceRef.current.focus();
         xtermInstanceRef.current.writeln('\r\n\x1b[32m[INFO] WebSocket connected. Waiting for shell prompt...\x1b[0m\r\n');
@@ -191,12 +196,14 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
 
     ws.onerror = (error) => {
       console.error('[WebSocket] Event: onerror - Error:', error);
+      setCurrentProcessMessage(`WebSocket error. Check console. ${error.message}`);
       xtermInstanceRef.current?.writeln(`\r\n\x1b[31mWebSocket error. Check console.\x1b[0m\r\n`);
       setInteractiveSession(prev => ({ ...prev, isConnected: false, isLoading: false }));
     };
 
     ws.onclose = (event) => {
       console.log(`[WebSocket] Event: onclose - Code: ${event.code}, Reason: ${event.reason}, WasClean: ${event.wasClean}`);
+      setCurrentProcessMessage("Interactive session disconnected.");
       if (xtermInstanceRef.current) {
         xtermInstanceRef.current.writeln(`\r\n\x1b[33mWebSocket disconnected: ${event.reason || (event.wasClean ? 'Clean close' : 'Connection lost')}\x1b[0m\r\n`);
       }
@@ -209,30 +216,31 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
       console.log('[RunInteractive] Aborted: isLoading or isRunning is true.');
       return;
     }
-    setExecutionSummary(null); // Clear previous summary
-    console.log('[RunInteractive] Starting interactive session process...');
-    // Set isRunning to true to trigger rendering of the terminal container div.
-    // The actual terminal initialization will happen in a useEffect hook.
-    setInteractiveSession(prev => ({ ...prev, isLoading: true, isRunning: true, containerId: null, isConnected: false }));
+    setExecutionSummary(null); 
+    setCodeExecutionResult(null);
     setError(null);
-    setCodeExecutionResult(null); // Clear non-interactive results
+    setCurrentProcessMessage("Preparing interactive session..."); 
+    
+    setInteractiveSession(prev => ({ ...prev, isLoading: true, isRunning: true, containerId: null, isConnected: false, language: null }));
+    
 
     if (!submission?.files?.length) {
       setError('No files available to execute.');
+      setCurrentProcessMessage("");
       setInteractiveSession(prev => ({ ...prev, isLoading: false, isRunning: false }));
       return;
     }
     const zipFile = submission.files.find(f => f.fileType === 'application/zip' || f.fileType === 'application/x-zip-compressed');
     if (!zipFile) {
       setError('No zip file found in submission for interactive execution.');
+      setCurrentProcessMessage("");
       setInteractiveSession(prev => ({ ...prev, isLoading: false, isRunning: false }));
       console.error('[RunInteractive] No zip file found.');
       return;
     }
 
-    // API call to start the session
     try {
-      console.log('[RunInteractive] Sending request to /code/execute-interactive...');
+      setCurrentProcessMessage("Requesting session from server...");
       const response = await axios.post(
         `http://localhost:8080/code/execute-interactive`,
         { fileUrl: zipFile.url, submissionId: submission._id },
@@ -241,18 +249,13 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
 
       if (response.data.success && response.data.containerId) {
         console.log(`[RunInteractive] Success from backend. Container ID: ${response.data.containerId}, Language: ${response.data.language}`);
-        // Update session state with containerId and language.
-        // isLoading will be set to false by WebSocket onopen.
-        // isConnected will be set to true by WebSocket onopen.
+        setCurrentProcessMessage("Session created by server. Initializing terminal window...");
         setInteractiveSession(prev => ({
-          ...prev, // Keep isRunning: true, isLoading: true (until ws connects)
+          ...prev, 
           containerId: response.data.containerId,
           language: response.data.language,
+          // isLoading is true, isConnected is false, isRunning is true
         }));
-        // connectWebSocket will be called by the useEffect that initializes the terminal,
-        // or we can call it here if terminal init is quick.
-        // For clarity, let's ensure terminal is ready first.
-        // The useEffect for terminal init will now also handle connectWebSocket.
       } else {
         console.error('[RunInteractive] Backend call failed or did not return containerId. Response:', response.data);
         throw new Error(response.data.message || 'Failed to start interactive session on server.');
@@ -261,24 +264,44 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
       console.error('[RunInteractive] Error during API call or setup:', err);
       const errorMsg = err.response?.data?.message || err.message || 'Failed to start interactive session.';
       setError(errorMsg); 
-      // If xtermInstanceRef exists, write error. Otherwise, it will be handled by general error display.
+      setCurrentProcessMessage(`Error: ${errorMsg}`);
       xtermInstanceRef.current?.writeln(`\r\n\x1b[31mError starting session: ${errorMsg}\x1b[0m\r\n`);
       setInteractiveSession(prev => ({ ...prev, isLoading: false, isRunning: false, containerId: null }));
     }
   };
   
   const handleStopInteractiveCode = async () => {
-    const currentContainerId = interactiveSession.containerId; // Capture for use after state change
+    const currentContainerId = interactiveSession.containerId; 
+    if (!currentContainerId && !interactiveSession.isRunning) { // If no container and not even in a running state (e.g. summary shown and cleared)
+        console.warn("[StopInteractive] No active session or containerId to stop.");
+        setInteractiveSession({ containerId: null, language: null, isRunning: false, isLoading: false, isConnected: false });
+        setExecutionSummary(null);
+        setCurrentProcessMessage("");
+        return;
+    }
+    
+    // If only summary is shown and user clicks "Stop Session" (which was "Get Summary & Stop")
+    // and container is already stopped (containerId is null from previous stop)
+    if (!currentContainerId && executionSummary) {
+        console.log("[StopInteractive] Clearing summary and resetting UI.");
+        setExecutionSummary(null);
+        setInteractiveSession({ containerId: null, language: null, isRunning: false, isLoading: false, isConnected: false });
+        setCurrentProcessMessage("");
+        disposeTerminal(); // Clean up the terminal instance if it exists
+        return;
+    }
+    
     if (!currentContainerId) {
-        console.warn("[StopInteractive] No containerId to stop.");
-        // Reset relevant states if needed, though full reset is below
-        setInteractiveSession(prev => ({ ...prev, isLoading: false, isRunning: false, isConnected: false }));
+        console.warn("[StopInteractive] No containerId to stop, but session might be in an intermediate state. Resetting.");
+        setInteractiveSession(prev => ({ ...prev, isLoading: false, isRunning: false, isConnected: false, containerId: null }));
+        setCurrentProcessMessage("Session was not fully active. Resetting.");
         return;
     }
 
 
-    setInteractiveSession(prev => ({ ...prev, isLoading: true })); // Indicate stopping process
-    xtermInstanceRef.current?.writeln('\r\n\x1b[33mStopping interactive session...\x1b[0m\r\n');
+    setSummaryLoading(true); // Use summaryLoading for the button's visual state
+    setCurrentProcessMessage("Stopping session and generating execution summary...");
+    xtermInstanceRef.current?.writeln('\r\n\x1b[33mStopping interactive session & preparing summary...\x1b[0m\r\n');
     
     if (websocketRef.current) {
       websocketRef.current.close();
@@ -317,35 +340,45 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
           if (analysisResponse.data.success && analysisResponse.data.analysis) {
             setExecutionSummary(analysisResponse.data.analysis);
             console.log('[StopInteractive] Execution summary received:', analysisResponse.data.analysis);
+            setCurrentProcessMessage("Execution summary generated.");
           } else {
             console.error('[StopInteractive] Failed to get execution summary:', analysisResponse.data.message);
             setExecutionSummary([{ fileName: "Summary Error", description: "Could not generate execution summary.", output: "", errors: [{type: "Analysis Error", message: analysisResponse.data.message || "Unknown error during analysis."}], status: "Error" }]);
+            setCurrentProcessMessage(`Failed to generate summary: ${analysisResponse.data.message || "Unknown error"}`);
           }
         } catch (analysisError) {
           console.error('[StopInteractive] Error fetching execution summary:', analysisError);
           setExecutionSummary([{ fileName: "Summary Error", description: "Failed to fetch execution summary.", output: "", errors: [{type: "Fetch Error", message: analysisError.message}], status: "Error" }]);
+          setCurrentProcessMessage(`Error fetching summary: ${analysisError.message}`);
         } finally {
           setSummaryLoading(false);
         }
+      } else {
+         setSummaryLoading(false); // Ensure summaryLoading is false if no log content
+         setCurrentProcessMessage("Session stopped. No terminal content to summarize.");
       }
 
     } catch (err) {
       console.error('[StopInteractive] Error stopping interactive session via API:', err);
       const errorMsg = err.response?.data?.message || err.message || 'Failed to stop session on server.';
       setError(prev => prev ? `${prev}\n${errorMsg}`: errorMsg);
+      setCurrentProcessMessage(`Error stopping session: ${errorMsg}`);
       xtermInstanceRef.current?.writeln(`\r\n\x1b[31mError stopping session: ${errorMsg}\x1b[0m\r\n`);
+      setSummaryLoading(false); // Ensure loading is stopped on error
     } finally {
-      // Reset session state but keep isRunning true if summary is loading/shown
-      // The terminal div itself will be hidden once summary is shown or if isRunning is set to false
       setInteractiveSession(prev => ({ 
         ...prev,
-        containerId: null, // Clear container ID
-        // language: null, // Keep language for summary context if needed
+        containerId: null, 
         isLoading: false, 
         isConnected: false,
-        // isRunning will be controlled by whether summary is shown or user explicitly closes it
+        // isRunning remains true if summary is to be shown, otherwise it's handled by summary clear
       }));
-      console.log("[StopInteractive] Session state partially reset, awaiting summary or further action.");
+      // If no summary was generated and no terminal log, we might want to set isRunning to false.
+      if (!terminalLogContent.trim() && !executionSummary) {
+          setInteractiveSession(prev => ({...prev, isRunning: false}));
+      }
+      console.log("[StopInteractive] Session stop process finished.");
+      // Message will be updated by summary success/failure or cleared if summary is displayed.
     }
   };
 
@@ -548,14 +581,18 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
     setRunCodeLoading(true);
     setError(null);
     setCodeExecutionResult(null);
+    setExecutionSummary(null); // Clear any existing summary
+    setCurrentProcessMessage("Executing code in batch mode...");
     
     if (!submission || !submission.files || submission.files.length === 0) {
       setError('No files available to execute');
+      setCurrentProcessMessage("");
       setRunCodeLoading(false);
       return;
     }
 
     try {
+      setCurrentProcessMessage("Sending code to server for batch execution...");
       const response = await axios.post(
         `http://localhost:8080/code/execute`,
         {
@@ -567,13 +604,17 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
       );
 
       if (response.data.success) {
-        setCodeExecutionResult(response.data.result); // { language, fileResults, error? }
+        setCodeExecutionResult(response.data.result); 
+        setCurrentProcessMessage("Batch execution finished. Results below.");
+        // Optionally, generate summary for batch mode too
+        // const batchLog = constructLogFromResult(response.data.result);
+        // if (batchLog) { /* call analyze-output */ }
       } else {
-        // Handle cases where success is false but it's not a network error
         setError(response.data.message || 'Code execution request failed.');
         if(response.data.errorDetails) {
-            setCodeExecutionResult({ error: response.data.errorDetails }); // Store general error
+            setCodeExecutionResult({ error: response.data.errorDetails }); 
         }
+        setCurrentProcessMessage(`Batch execution failed: ${response.data.message || 'Unknown error'}`);
       }
     } catch (err) {
       console.error('Error executing code:', err);
@@ -581,8 +622,10 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
       if(err.response?.data?.errorDetails) {
         setCodeExecutionResult({ error: err.response.data.errorDetails });
       }
+      setCurrentProcessMessage(`Error during batch execution: ${err.message || 'Network/Server error'}`);
     } finally {
       setRunCodeLoading(false);
+      // setTimeout(() => setCurrentProcessMessage(""), 5000); // Clear message after a while
     }
   };
 
@@ -706,7 +749,7 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                     <div className="flex flex-col sm:flex-row gap-4">
                       <button
                         onClick={handleViewCode}
-                        disabled={loading || interactiveSession.isLoading}
+                        disabled={loading || interactiveSession.isLoading || summaryLoading || runCodeLoading}
                         style={{backgroundColor: "#1b68b3"}}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
                       >
@@ -714,39 +757,71 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                         <span className="font-medium">View Code</span>
                       </button>
                       
-                      {!interactiveSession.isRunning && !interactiveSession.containerId ? (
-                        <button
-                          onClick={handleRunCodeInteractive}
-                          disabled={runCodeLoading || interactiveSession.isLoading}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
-                        >
-                          {interactiveSession.isLoading ? (
+                      {(() => {
+                        if (executionSummary) { // If summary is shown, this button could be "Start New Interactive Session"
+                          return (
+                            <button
+                              onClick={() => {
+                                setExecutionSummary(null);
+                                disposeTerminal(); // Clean up old terminal
+                                setInteractiveSession({ isRunning: false, isLoading: false, isConnected: false, containerId: null, language: null });
+                                setCurrentProcessMessage("");
+                                // Then call handleRunCodeInteractive or let user click "Run Interactively" again
+                                // For simplicity, this just clears and user can click "Run Interactively"
+                              }}
+                              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
+                            >
+                              <TerminalIcon className="w-5 h-5" />
+                              <span className="font-medium">Clear Summary & Reset</span>
+                            </button>
+                          );
+                        } else if (interactiveSession.isRunning && interactiveSession.containerId && interactiveSession.isConnected) {
+                          return ( // Session is active and connected
+                            <button
+                              onClick={handleStopInteractiveCode}
+                              disabled={summaryLoading}
+                              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
+                            >
+                              {summaryLoading ? (
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                              ) : (
+                                <Info className="w-5 h-5" /> 
+                              )}
+                              <span className="font-medium">{summaryLoading ? 'Generating Summary...' : 'Get Summary & Stop Session'}</span>
+                            </button>
+                          );
+                        } else if (interactiveSession.isLoading && interactiveSession.isRunning) { // Starting up
+                          return (
+                            <button
+                              disabled={true}
+                              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg transition-colors shadow-sm hover:shadow-md opacity-50 cursor-not-allowed"
+                            >
                               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                          ) : (
-                              <TerminalIcon className="w-5 h-5" /> // Changed icon
-                          )}
-                          <span className="font-medium">{interactiveSession.isLoading ? 'Starting...' : 'Run Interactively'}</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={handleStopInteractiveCode}
-                          disabled={interactiveSession.isLoading && !interactiveSession.isConnected} // Disable if stopping and not yet confirmed
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
-                        >
-                          {interactiveSession.isLoading && interactiveSession.containerId && !interactiveSession.isConnected ? ( // Loading to stop
-                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                          ) : (
-                             <X className="w-5 h-5" />
-                          )}
-                          <span className="font-medium">
-                            {interactiveSession.isLoading && interactiveSession.containerId && !interactiveSession.isConnected ? 'Stopping...' : 'Stop Session'}
-                          </span>
-                        </button>
-                      )}
+                              <span className="font-medium">Starting Session...</span>
+                            </button>
+                          );
+                        } else { // Default: "Run Interactively"
+                          return (
+                            <button
+                              onClick={handleRunCodeInteractive}
+                              disabled={runCodeLoading || interactiveSession.isLoading}
+                              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
+                            >
+                              <TerminalIcon className="w-5 h-5" />
+                              <span className="font-medium">Run Interactively</span>
+                            </button>
+                          );
+                        }
+                      })()}
                     </div>
+                    {currentProcessMessage && (
+                        <div className="mt-3 p-2 text-sm text-center text-gray-700 bg-gray-100 rounded-md shadow">
+                            {currentProcessMessage}
+                        </div>
+                    )}
                     <p className="mt-3 text-sm text-gray-500 text-center">
                       Assignment Category: <span className="font-medium capitalize">{assignment.category}</span>
-                      {interactiveSession.language && (interactiveSession.isRunning || interactiveSession.containerId) && (
+                      {interactiveSession.language && (interactiveSession.isRunning || interactiveSession.containerId || executionSummary) && (
                         <span className="ml-2 text-xs px-2 py-1 rounded-full bg-blue-500/30 text-blue-300 capitalize">
                           Interactive: {interactiveSession.language} {interactiveSession.isConnected ? '(Connected)' : interactiveSession.isLoading ? '(Connecting...)' : interactiveSession.containerId ? '(Disconnected)' : ''}
                         </span>
@@ -756,7 +831,7 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                 )}
 
                 {/* Interactive Terminal Display Area */}
-                {(interactiveSession.isRunning || interactiveSession.containerId) && !executionSummary && ( // Show terminal if running AND no summary yet
+                {(interactiveSession.isRunning || interactiveSession.containerId) && !executionSummary && ( 
                   <div className="mt-6">
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="text-lg font-semibold text-gray-800">Interactive Terminal</h4>
@@ -789,10 +864,9 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                         summaryData={executionSummary} 
                         onClearSummary={() => {
                             setExecutionSummary(null);
-                            // Optionally, fully reset interactive session state if needed
-                            setInteractiveSession(prev => ({ ...prev, isRunning: false, containerId: null, language: null }));
-                            // Optionally, dispose and re-init terminal if user wants to run again
-                            // disposeTerminal(); 
+                            disposeTerminal(); // Clean up terminal instance
+                            setInteractiveSession({ isRunning: false, isLoading: false, isConnected: false, containerId: null, language: null });
+                            setCurrentProcessMessage(""); 
                         }}
                     />
                 )}
