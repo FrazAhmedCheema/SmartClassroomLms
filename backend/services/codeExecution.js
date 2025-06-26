@@ -26,18 +26,28 @@ class CodeExecutionService {
       throw new Error('No files found to analyze');
     }
     const codeContent = files.map(f => `File: ${f.name}\nContent:\n${f.content}`).join('\n\n');
-    const prompt = `Analyze these code files and provide information in this exact format:
+    const prompt = `Analyze these code files and provide information in this exact JSON format:
 {
-  "mainFile": "name of the main file that should be executed first (if applicable, else pick one)",
-  "fileType": "language type (cpp, java, python)",
-  "executionOrder": ["file1.ext", "file2.ext"],
-  "buildCommand": "build command if needed (e.g., javac *.java or g++ *.cpp -o main)",
-  "runCommand": "command to run the code (e.g., java MainClass or ./main)",
+  "mainFile": "string, name of the main file that should be executed first (if applicable, else pick one)",
+  "fileType": "string, language type (cpp, java, python)",
+  "dependencyInstallCommands": [
+    "string, e.g., pip install -r requirements.txt",
+    "string, e.g., apt-get update && apt-get install -y libboost-all-dev"
+  ],
+  "executionOrder": ["string, e.g., file1.ext", "string, e.g., file2.ext"],
+  "buildCommand": "string, build command if needed (e.g., javac *.java or g++ *.cpp -o main)",
+  "runCommand": "string, command to run the code (e.g., java MainClass or ./main)",
   "outputFormat": {
-    "title": "descriptive title of what the code does",
-    "type": "output type (numeric, text, mixed)"
+    "title": "string, descriptive title of what the code does",
+    "type": "string, output type (numeric, text, mixed)"
   }
 }
+Based on the code, identify any external libraries or packages required for execution.
+- For Python, if a requirements.txt file is present, the command should be 'pip install -r requirements.txt'. Otherwise, provide 'pip install <package>' commands for any imported modules not in the standard library.
+- For C++, provide 'apt-get update && apt-get install -y <library>' commands for common libraries detected from #include headers (e.g., boost, curl).
+- For Java, assume standard JDK. If a build file like pom.xml or build.gradle is present, provide the necessary build tool commands to resolve dependencies.
+If no external dependencies are found, "dependencyInstallCommands" must be an empty array.
+
 Code files:
 ${codeContent}`;
     try {
@@ -108,7 +118,19 @@ echo "---EXEC_END---${file}---EXIT_CODE=$exit_code---"
   }
 
   generateDockerfile(analysis, interactive = false) {
-    let dockerfile = `FROM ${analysis.baseImage}\nWORKDIR /app\nCOPY . .\n`;
+    let dockerfile = `FROM ${analysis.baseImage}\nWORKDIR /app\n`;
+
+    // If python dependencies are in requirements.txt, copy it over first for caching.
+    if (analysis.dependencyInstallCommands?.some(cmd => cmd.includes('requirements.txt'))) {
+      dockerfile += `COPY requirements.txt .\n`;
+    }
+
+    // Add dependency installation step
+    if (analysis.dependencyInstallCommands && analysis.dependencyInstallCommands.length > 0) {
+      dockerfile += `RUN ${analysis.dependencyInstallCommands.join(' && ')}\n`;
+    }
+
+    dockerfile += `COPY . .\n`;
 
     switch (analysis.fileType) {
       case 'cpp':

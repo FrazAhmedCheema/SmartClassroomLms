@@ -1,12 +1,26 @@
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 
-const coverImages = [
-  'https://gstatic.com/classroom/themes/img_code.jpg',
-  'https://gstatic.com/classroom/themes/img_breakfast.jpg',
-  'https://gstatic.com/classroom/themes/img_bookclub.jpg',
-  'https://gstatic.com/classroom/themes/img_reachout.jpg'
-];
+import picture1 from "../../assets/classPicture1.jpg";
+import picture2 from "../../assets/classPicture2.jpg";
+import picture3 from "../../assets/classPicture3.jpg";
+import picture4 from "../../assets/classPicture4.jpg";
+import picture5 from "../../assets/classPicture5.jpg";
+import picture6 from "../../assets/classPicture6.jpg";
+import picture7 from "../../assets/classPicture7.jpg";
+import picture8 from "../../assets/classPicture8.jpg";
+import picture9 from "../../assets/classPicture9.jpg";
 
+const coverImages = [
+  picture1,
+  picture2,
+  picture3,
+  picture4,
+  picture5,
+  picture6,
+  picture7,
+  picture8,
+  picture9
+];
 export const fetchClasses = createAsyncThunk(
   'classes/fetchClasses',
   async (_, { getState, rejectWithValue }) => {
