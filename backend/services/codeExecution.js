@@ -26,43 +26,83 @@ class CodeExecutionService {
       throw new Error('No files found to analyze');
     }
     const codeContent = files.map(f => `File: ${f.name}\nContent:\n${f.content}`).join('\n\n');
-    const prompt = `Analyze these code files and provide information in this exact JSON format:
+    const maxRetries = 3;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`GPT analysis attempt ${attempt}/${maxRetries}`);
+        const response = await openai.chat.completions.create({
+          model: "gpt-4",
+          messages: [
+            { 
+              role: "system", 
+              content: "You are a code analysis assistant. Always respond with valid JSON following the specified format exactly."
+            },
+            { 
+              role: "user", 
+              content: `Analyze these code files and provide information in this exact JSON format:
 {
   "mainFile": "string, name of the main file that should be executed first (if applicable, else pick one)",
   "fileType": "string, language type (cpp, java, python)",
-  "dependencyInstallCommands": [
-    "string, e.g., pip install -r requirements.txt",
-    "string, e.g., apt-get update && apt-get install -y libboost-all-dev"
-  ],
-  "executionOrder": ["string, e.g., file1.ext", "string, e.g., file2.ext"],
-  "buildCommand": "string, build command if needed (e.g., javac *.java or g++ *.cpp -o main)",
-  "runCommand": "string, command to run the code (e.g., java MainClass or ./main)",
+  "dependencyInstallCommands": ["string"],
+  "executionOrder": ["string"],
+  "buildCommand": "string",
+  "runCommand": "string",
   "outputFormat": {
-    "title": "string, descriptive title of what the code does",
-    "type": "string, output type (numeric, text, mixed)"
+    "title": "string",
+    "type": "string"
   }
 }
-Based on the code, identify any external libraries or packages required for execution.
-- For Python, if a requirements.txt file is present, the command should be 'pip install -r requirements.txt'. Otherwise, provide 'pip install <package>' commands for any imported modules not in the standard library.
-- For C++, provide 'apt-get update && apt-get install -y <library>' commands for common libraries detected from #include headers (e.g., boost, curl).
-- For Java, assume standard JDK. If a build file like pom.xml or build.gradle is present, provide the necessary build tool commands to resolve dependencies.
-If no external dependencies are found, "dependencyInstallCommands" must be an empty array.
 
 Code files:
-${codeContent}`;
-    try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.3
-      });
-      const analysis = JSON.parse(response.choices[0].message.content);
-      const mainExt = analysis.mainFile.split('.').pop().toLowerCase();
-      analysis.baseImage = this.getBaseImage(mainExt, analysis.fileType); // Pass fileType too
-      return analysis;
-    } catch (error) {
-      console.error('GPT Analysis error:', error);
-      throw new Error('Failed to analyze code files with GPT');
+${codeContent}`
+            }
+          ],
+          temperature: 0.1 // Lower temperature for more consistent JSON output
+        });
+
+        // Attempt to parse and validate the response
+        const analysisText = response.choices[0].message.content.trim();
+        let analysis;
+        
+        try {
+          analysis = JSON.parse(analysisText);
+        } catch (parseError) {
+          console.error(`JSON parse error on attempt ${attempt}:`, parseError);
+          // Try to extract JSON if it's embedded in other text
+          const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            analysis = JSON.parse(jsonMatch[0]);
+          } else {
+            throw parseError;
+          }
+        }
+
+        // Validate required fields
+        const requiredFields = ['mainFile', 'fileType', 'dependencyInstallCommands', 'executionOrder', 'buildCommand', 'runCommand', 'outputFormat'];
+        const missingFields = requiredFields.filter(field => !(field in analysis));
+        
+        if (missingFields.length > 0) {
+          throw new Error(`Invalid analysis format. Missing fields: ${missingFields.join(', ')}`);
+        }
+
+        const mainExt = analysis.mainFile.split('.').pop().toLowerCase();
+        analysis.baseImage = this.getBaseImage(mainExt, analysis.fileType);
+        return analysis;
+
+      } catch (error) {
+        lastError = error;
+        console.error(`Analysis attempt ${attempt} failed:`, error);
+        
+        if (attempt === maxRetries) {
+          console.error('All analysis attempts failed');
+          throw new Error(`Failed to analyze code files with GPT after ${maxRetries} attempts: ${lastError.message}`);
+        }
+        
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, attempt), 5000)));
+      }
     }
   }
 
