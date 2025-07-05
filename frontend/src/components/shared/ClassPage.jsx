@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
@@ -10,6 +10,8 @@ import PeopleTab from './PeopleTab';
 import DiscussionTab from './DiscussionTab';
 import { AlertCircle } from 'lucide-react';
 import store from '../../redux/store';
+import { selectClasses } from '../../redux/slices/classesSlice';
+import { selectEnrolledClasses } from '../../redux/slices/enrolledClassesSlice';
 
 const ClassPage = ({ defaultTab = 'stream' }) => {
   const { id, assignmentId, topicId } = useParams();
@@ -21,6 +23,29 @@ const ClassPage = ({ defaultTab = 'stream' }) => {
   const { isAuthenticated: isTeacher, token: teacherToken } = useSelector(state => state.teacher);
   const { isAuthenticated: isStudent } = useSelector(state => state.student);
   const userRole = isTeacher ? 'Teacher' : isStudent ? 'Student' : null;
+
+  const teacherClasses = useSelector(selectClasses);
+  const studentClasses = useSelector(selectEnrolledClasses);
+
+  const coverImageFromState = useMemo(() => {
+    if (userRole === 'Teacher') {
+      return teacherClasses.find(c => c._id === id)?.coverImage;
+    }
+    if (userRole === 'Student') {
+      return studentClasses.find(c => c._id === id)?.coverImage;
+    }
+    return null;
+  }, [id, userRole, teacherClasses, studentClasses]);
+
+  const classDataWithCover = useMemo(() => {
+    if (basicData) {
+      return {
+        ...basicData,
+        coverImage: coverImageFromState || basicData.coverImage,
+      };
+    }
+    return basicData;
+  }, [basicData, coverImageFromState]);
 
   const [fetchError, setFetchError] = useState(null);
 
@@ -86,7 +111,7 @@ const ClassPage = ({ defaultTab = 'stream' }) => {
           <div>
             <ClassTabs activeTab={activeTab} setActiveTab={setActiveTab} userRole={userRole} />
             <div className="mt-6">
-              {activeTab === 'stream' && <StreamTab classData={basicData} userRole={userRole} />}
+              {activeTab === 'stream' && <StreamTab classData={classDataWithCover} userRole={userRole} />}
               {activeTab === 'classwork' && <ClassworkTab classId={id} userRole={userRole} assignmentId={assignmentId} />}
               {activeTab === 'people' && <PeopleTab classId={id} userRole={userRole} />}
               {activeTab === 'discussion' && <DiscussionTab classId={id} topicId={topicId} />}
@@ -99,3 +124,4 @@ const ClassPage = ({ defaultTab = 'stream' }) => {
 };
 
 export default ClassPage;
+

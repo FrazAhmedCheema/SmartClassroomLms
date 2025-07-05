@@ -1,5 +1,10 @@
 const mongoose = require('mongoose');
 
+// Drop existing indices before creating new ones
+if (mongoose.connection.models['Submission']) {
+  delete mongoose.connection.models['Submission'];
+}
+
 const submissionFileSchema = new mongoose.Schema({
   fileName: {
     type: String,
@@ -23,12 +28,14 @@ const SubmissionSchema = new mongoose.Schema({
   assignmentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Assignment',
-    default: null
+    default: null,
+    sparse: true
   },
   quizId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Quiz',
-    default: null
+    default: null,
+    sparse: true
   },
   studentId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -63,33 +70,23 @@ const SubmissionSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Clear existing indexes first
-// mongoose.connection.once('open', async () => {
-//   try {
-//     await mongoose.connection.collections.submissions.dropIndexes();
-//   } catch (error) {
-//     console.log('No indexes to drop');
-//   }
-// });
+// Remove old composite index
+SubmissionSchema.index({ assignmentId: 1, studentId: 1 }, { sparse: true });
+SubmissionSchema.index({ quizId: 1, studentId: 1 }, { sparse: true });
 
-// // Create a compound index with partial filter expressions
-// SubmissionSchema.index(
-//   { studentId: 1, quizId: 1 },
-//   { 
-//     unique: true,
-//     sparse: true,
-//     partialFilterExpression: { quizId: { $exists: true, $ne: null } }
-//   }
-// );
-
-// SubmissionSchema.index(
-//   { studentId: 1, assignmentId: 1 },
-//   { 
-//     unique: true,
-//     sparse: true,
-//     partialFilterExpression: { assignmentId: { $exists: true, $ne: null } }
-//   }
-// );
+// Add a compound index with a custom partial filter expression
+SubmissionSchema.index(
+  { studentId: 1, assignmentId: 1, quizId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      $or: [
+        { assignmentId: { $exists: true, $ne: null } },
+        { quizId: { $exists: true, $ne: null } }
+      ]
+    }
+  }
+);
 
 const Submission = mongoose.model('Submission', SubmissionSchema);
 
