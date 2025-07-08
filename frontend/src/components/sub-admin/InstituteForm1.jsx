@@ -9,8 +9,28 @@ const InstituteForm1 = ({ onNext, formData, setFormData }) => {
   const [countries, setCountries] = useState([]);
   const [errors, setErrors] = useState({});
   const [showError, setShowError] = useState(false);
+  const [loadingCountries, setLoadingCountries] = useState(true);
+  const [countryError, setCountryError] = useState(false);
+
+  // Fallback countries in case API fails
+  const fallbackCountries = [
+    { value: 'United States', label: 'United States' },
+    { value: 'United Kingdom', label: 'United Kingdom' },
+    { value: 'Canada', label: 'Canada' },
+    { value: 'Australia', label: 'Australia' },
+    { value: 'Germany', label: 'Germany' },
+    { value: 'France', label: 'France' },
+    { value: 'India', label: 'India' },
+    { value: 'Pakistan', label: 'Pakistan' },
+    { value: 'China', label: 'China' },
+    { value: 'Japan', label: 'Japan' },
+    { value: 'Brazil', label: 'Brazil' },
+    { value: 'Russia', label: 'Russia' },
+    { value: 'South Africa', label: 'South Africa' },
+  ].sort((a, b) => a.label.localeCompare(b.label));
 
   useEffect(() => {
+    setLoadingCountries(true);
     axios.get('https://restcountries.com/v3.1/all')
       .then(response => {
         const countryOptions = response.data
@@ -20,9 +40,15 @@ const InstituteForm1 = ({ onNext, formData, setFormData }) => {
           }))
           .sort((a, b) => a.label.localeCompare(b.label));
         setCountries(countryOptions);
+        setCountryError(false);
       })
       .catch(error => {
         console.error('Error fetching countries:', error);
+        setCountries(fallbackCountries);
+        setCountryError(true);
+      })
+      .finally(() => {
+        setLoadingCountries(false);
       });
   }, []);
 
@@ -183,15 +209,29 @@ const InstituteForm1 = ({ onNext, formData, setFormData }) => {
             <Globe className="h-5 w-5 text-[#1b68b3] mr-2" />
             <label className="block text-lg font-semibold text-gray-700">Region <span className="text-red-500">*</span></label>
           </div>
-          <Select 
-            options={countries} 
-            value={countries.find(option => option.value === formData.region)}
-            onChange={handleSelectChange}
-            styles={customSelectStyles}
-            className="mt-1 text-gray-800"
-            placeholder="Select your region"
-            classNamePrefix="select"
-          />
+          {loadingCountries ? (
+            <div className="w-full px-4 py-3 mt-1 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+              Loading countries...
+            </div>
+          ) : (
+            <>
+              <Select 
+                options={countries.length > 0 ? countries : fallbackCountries} 
+                value={countries.find(option => option.value === formData.region) || null}
+                onChange={handleSelectChange}
+                styles={customSelectStyles}
+                className="mt-1 text-gray-800"
+                placeholder="Select your region"
+                classNamePrefix="select"
+                isSearchable={true}
+              />
+              {countryError && (
+                <p className="text-amber-600 text-sm mt-1">
+                  Using fallback country list. You can still proceed with registration.
+                </p>
+              )}
+            </>
+          )}
           {errors.region && (
             <motion.p 
               initial={{ opacity: 0 }}

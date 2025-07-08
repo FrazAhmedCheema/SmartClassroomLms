@@ -217,7 +217,7 @@ const AssignmentSubmission = ({ assignment, quiz, submissionType = 'assignment' 
               <p className="text-sm font-medium text-gray-600 mb-1">Grade</p>
               <div className="flex items-baseline justify-center">
                 <span className="text-3xl font-bold text-blue-600">{grade}</span>
-                <span className="text-gray-500 ml-1">/100</span>
+                <span className="text-gray-500 ml-1">/{item?.points || 0}</span>
               </div>
             </div>
           </div>

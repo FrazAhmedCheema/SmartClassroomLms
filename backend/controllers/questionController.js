@@ -1,6 +1,7 @@
 const Question = require('../models/Question');
 const { uploadFile, deleteFile } = require('../utils/s3Service');
 const Class = require('../models/Class'); // Import Class model
+const { createClassworkNotifications } = require('../utils/notificationHelper');
 
 exports.createQuestion = async (req, res) => {
   try {
@@ -77,6 +78,28 @@ exports.createQuestion = async (req, res) => {
       { $push: { questions: savedQuestion._id } },
       { new: true }
     );
+
+    // Create notifications for students
+    try {
+      // Get teacher name for notification
+      const classWithTeacher = await Class.findById(classId).populate('teacherId', 'name');
+      const teacherName = classWithTeacher?.teacherId?.name || 'Teacher';
+      
+      await createClassworkNotifications(
+        classId, 
+        'question', 
+        title, 
+        teacherName,
+        {
+          workId: savedQuestion._id,
+          dueDate: dueDate,
+          points: points
+        }
+      );
+    } catch (notificationError) {
+      console.error('Error creating question notifications:', notificationError);
+      // Don't fail the question creation if notifications fail
+    }
 
     res.status(201).json({
       success: true,

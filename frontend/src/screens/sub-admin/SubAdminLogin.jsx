@@ -6,6 +6,7 @@ import logo from '../../assets/logo.png';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginSuccess, loginFail, setLoading } from '../../redux/slices/subAdminAuthSlice';
 import localStorage from 'redux-persist/lib/storage';
+import HomeNavButton from '../../components/shared/HomeNavButton';
 
 const SubAdminLogin = () => {
   const { isAuthenticated, loading } = useSelector(state => state.subAdminAuth);
@@ -149,6 +150,9 @@ const SubAdminLogin = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Home Navigation Button */}
+      <HomeNavButton />
+      
       {/* Background Pattern */}
       <div className="absolute inset-0 z-0 opacity-10">
         <div className="absolute top-0 left-0 w-full h-full bg-blue-500 opacity-20" 

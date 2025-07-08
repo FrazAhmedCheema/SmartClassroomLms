@@ -299,7 +299,7 @@ exports.createAnnouncement = async (req, res) => {
             });
         }
         
-        // Find the class
+        // Find the class with students populated
         const classDoc = await Class.findById(classId);
         if (!classDoc) {
             return res.status(404).json({
@@ -329,6 +329,20 @@ exports.createAnnouncement = async (req, res) => {
             await classDoc.save();
             
             console.log('Class saved with new announcement');
+
+            // Create notifications for all students in the class using notification helper
+            const { createClassworkNotifications } = require('../utils/notificationHelper');
+            const teacherName = newAnnouncement.author.name;
+            
+            await createClassworkNotifications(
+                classId,
+                'announcement',
+                'Announcement',
+                teacherName,
+                {
+                    announcementId: classDoc.announcements[0]._id
+                }
+            );
 
             // Return success response with the full announcement object
             res.status(201).json({

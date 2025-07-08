@@ -1,6 +1,7 @@
 const Material = require('../models/Material');
 const Class = require('../models/Class'); // Add this import
 const { uploadFile, deleteFile } = require('../utils/s3Service');
+const { createClassworkNotifications } = require('../utils/notificationHelper');
 
 exports.createMaterial = async (req, res) => {
   try {
@@ -41,6 +42,26 @@ exports.createMaterial = async (req, res) => {
       { $push: { materials: savedMaterial._id } },
       { new: true }
     );
+
+    // Create notifications for students
+    try {
+      // Get teacher name for notification
+      const classWithTeacher = await Class.findById(classId).populate('teacherId', 'name');
+      const teacherName = classWithTeacher?.teacherId?.name || 'Teacher';
+      
+      await createClassworkNotifications(
+        classId, 
+        'material', 
+        title, 
+        teacherName,
+        {
+          workId: savedMaterial._id
+        }
+      );
+    } catch (notificationError) {
+      console.error('Error creating material notifications:', notificationError);
+      // Don't fail the material creation if notifications fail
+    }
 
     res.status(201).json({
       success: true,

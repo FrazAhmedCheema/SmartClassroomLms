@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const teacherController = require('../controllers/teacher');
+const teacherNotificationController = require('../controllers/teacherNotificationController');
 const { authorizeTeacher } = require('../middleware/auth');
 
 // Route to check authentication status
@@ -14,5 +15,14 @@ router.post('/logout', authorizeTeacher, teacherController.logout);
 
 // Add this new route before module.exports
 router.get('/stats', authorizeTeacher, teacherController.getTeacherStats);
+
+// Notification routes
+router.get('/notifications', authorizeTeacher, teacherNotificationController.getTeacherNotifications);
+router.get('/notifications/unread-count', authorizeTeacher, teacherNotificationController.getUnreadNotificationCount);
+router.patch('/notifications/:notificationId/read', authorizeTeacher, teacherNotificationController.markNotificationAsRead);
+router.patch('/notifications/mark-all-read', authorizeTeacher, teacherNotificationController.markAllNotificationsAsRead);
+router.delete('/notifications/:notificationId', authorizeTeacher, teacherNotificationController.deleteNotification);
+router.post('/notifications/test', authorizeTeacher, teacherNotificationController.createTestNotification);
+router.get('/notifications/discussion-debug', authorizeTeacher, teacherNotificationController.getDiscussionDebugInfo);
 
 module.exports = router;

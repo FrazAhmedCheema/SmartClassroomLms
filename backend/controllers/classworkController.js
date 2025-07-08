@@ -8,6 +8,7 @@ const Topic = require('../models/Topic');
 const fs = require('fs');
 const path = require('path');
 const { getClassFolder, uploadFile } = require('../utils/googleDriveService');
+const { createClassworkNotifications } = require('../utils/notificationHelper');
 
 // Handle file uploads and save to Google Drive
 const uploadFilesToDrive = async (files, classId) => {
@@ -239,6 +240,28 @@ exports.createAssignment = async (req, res) => {
     });
 
     await assignment.save();
+
+    // Create notifications for students
+    try {
+      // Get teacher name for notification
+      const classWithTeacher = await Class.findById(classId).populate('teacherId', 'name');
+      const teacherName = classWithTeacher?.teacherId?.name || 'Teacher';
+      
+      await createClassworkNotifications(
+        classId, 
+        'assignment', 
+        title, 
+        teacherName,
+        {
+          workId: savedClasswork._id,
+          dueDate: dueDate,
+          points: points
+        }
+      );
+    } catch (notificationError) {
+      console.error('Error creating assignment notifications from classworkController:', notificationError);
+      // Don't fail the assignment creation if notifications fail
+    }
 
     // Return response
     res.status(201).json({
