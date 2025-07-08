@@ -462,6 +462,35 @@ export const getPollResults = async (questionId) => {
   }
 };
 
+export const fetchSingleAssignment = (assignmentId) => async (dispatch, getState) => {
+  if (!assignmentId) {
+    console.error('Assignment ID is missing. Cannot fetch assignment.');
+    return null;
+  }
+
+  console.log('Redux action: Fetching assignment with ID:', assignmentId);
+
+  try {
+    const response = await api.get(`/assignment/single/${assignmentId}`);
+    console.log('API response:', response.data);
+    
+    if (response.data.success) {
+      // Return the assignment without automatically adding to Redux
+      // Let the component decide whether to add it to the store
+      const assignment = response.data.assignment;
+      console.log('Assignment fetched successfully:', assignment);
+      return assignment;
+    } else {
+      console.error('Failed to fetch assignment:', response.data.message);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching assignment:', error);
+    console.error('Error details:', error.response?.data);
+    return null;
+  }
+};
+
 export const clearCache = (classId) => (dispatch) => {
   // Reset state but keep current classId
   dispatch(resetClassState({ keepClassId: true }));

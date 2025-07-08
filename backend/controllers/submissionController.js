@@ -39,6 +39,19 @@ exports.submitAssignment = async (req, res) => {
       }
     }
 
+    // Get assignment to check due date
+    const assignment = await Assignment.findById(assignmentId);
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assignment not found'
+      });
+    }
+
+    // Check if submission is late
+    const now = new Date();
+    const isLate = assignment.dueDate && now > new Date(assignment.dueDate);
+
     // Combine existing and new files
     const allFiles = [...existingFilesArray, ...newSubmissionFiles];
 
@@ -49,7 +62,8 @@ exports.submitAssignment = async (req, res) => {
       files: allFiles,
       privateComment: privateComment || '',
       submittedAt: Date.now(),
-      status: 'submitted'
+      status: 'submitted',
+      isLate: isLate
     };
 
     const savedSubmission = await Submission.findOneAndUpdate(
@@ -59,7 +73,6 @@ exports.submitAssignment = async (req, res) => {
     );
 
     // Update assignment's studentSubmissions array if needed
-    const assignment = await Assignment.findById(assignmentId);
     if (!assignment.studentSubmissions.includes(savedSubmission._id)) {
       assignment.studentSubmissions.push(savedSubmission._id);
       await assignment.save();
@@ -411,6 +424,19 @@ exports.submitQuiz = async (req, res) => {
     const { quizId } = req.params;
     const studentId = req.user.id;
 
+    // Get quiz to check due date
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return res.status(404).json({
+        success: false,
+        message: 'Quiz not found'
+      });
+    }
+
+    // Check if submission is late
+    const now = new Date();
+    const isLate = quiz.dueDate && now > new Date(quiz.dueDate);
+
     // First try to find existing submission
     const existingSubmission = await Submission.findOne({ 
       quizId, 
@@ -425,7 +451,8 @@ exports.submitQuiz = async (req, res) => {
       files: [],
       privateComment: req.body.privateComment || '',
       submittedAt: Date.now(),
-      status: 'submitted'
+      status: 'submitted',
+      isLate: isLate
     };
 
     // Handle file uploads if present
