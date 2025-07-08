@@ -328,6 +328,12 @@ const studentController = {
             const studentId = req.user.id;
             console.log('Fetching stats for student:', studentId);
 
+            // Import models
+            const Assignment = require('../models/Assignment');
+            const Quiz = require('../models/Quiz');
+            const Submission = require('../models/Submission');
+            const Discussion = require('../models/Discussion');
+
             // Find student and populate enrolled classes
             const student = await Student.findById(studentId)
                 .populate('enrolledClasses');
@@ -342,14 +348,74 @@ const studentController = {
             // Get enrolled classes count
             const enrolledClasses = student.enrolledClasses ? student.enrolledClasses.length : 0;
 
-            // Return stats with dummy data for other metrics
+            // Get class IDs for the student
+            const classIds = student.enrolledClasses.map(classObj => classObj._id);
+
+            // Get all assignments and quizzes in student's classes
+            const allAssignments = await Assignment.find({ 
+                classId: { $in: classIds } 
+            }).select('_id');
+            
+            const allQuizzes = await Quiz.find({ 
+                classId: { $in: classIds } 
+            }).select('_id');
+
+            // Get all assignment and quiz IDs
+            const assignmentIds = allAssignments.map(a => a._id);
+            const quizIds = allQuizzes.map(q => q._id);
+
+            // Count completed submissions by this student for assignments and quizzes
+            const completedAssignmentSubmissions = await Submission.countDocuments({
+                studentId: studentId,
+                assignmentId: { $in: assignmentIds }
+            });
+
+            const completedQuizSubmissions = await Submission.countDocuments({
+                studentId: studentId,
+                quizId: { $in: quizIds }
+            });
+
+            const totalTasks = assignmentIds.length + quizIds.length;
+            const completedSubmissions = completedAssignmentSubmissions + completedQuizSubmissions;
+
+            // Calculate todos (pending tasks = total tasks - completed submissions)
+            const todos = Math.max(0, totalTasks - completedSubmissions);
+
+            // Debug logging for todo calculation
+            console.log(`Student ${studentId} todo calculation:`, {
+                totalAssignments: assignmentIds.length,
+                totalQuizzes: quizIds.length,
+                totalTasks,
+                completedAssignmentSubmissions,
+                completedQuizSubmissions,
+                completedSubmissions,
+                todos
+            });
+
+            // Count active discussions in student's classes (not terminated)
+            const discussions = await Discussion.countDocuments({
+                classId: { $in: classIds },
+                terminated: false
+            });
+
+            // Calculate recent activity (submissions in last 7 days)
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+            // Count submissions made in the last week
+            const recentActivity = await Submission.countDocuments({
+                studentId: studentId,
+                submittedAt: { $gte: oneWeekAgo }
+            });
+
+            // Return stats with real data
             res.status(200).json({
                 success: true,
                 data: {
                     enrolledClasses,
-                    todos: 0,         // Dummy value for pending tasks
-                    discussions: 0,    // Dummy value for active threads
-                    participation: 0  // Dummy value for weekly engagement (percentage)
+                    todos,
+                    discussions,
+                    recentActivity
                 }
             });
         } catch (error) {

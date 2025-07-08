@@ -15,10 +15,22 @@ const AssignmentSubmission = ({ assignment, quiz, submissionType = 'assignment' 
   const [isEditable, setIsEditable] = useState(false);
   const [grade, setGrade] = useState(null);
   const [feedback, setFeedback] = useState('');
+  const [isLate, setIsLate] = useState(false);
   const fileInputRef = useRef(null);
 
   const studentId = useSelector(state => state.student.studentId);
   const item = submissionType === 'quiz' ? quiz : assignment;
+
+  // Check if assignment is overdue
+  const isOverdue = () => {
+    if (!item?.dueDate) return false;
+    return new Date() > new Date(item.dueDate);
+  };
+
+  // Check if assignment is missing (overdue and not submitted)
+  const isMissing = () => {
+    return isOverdue() && !isSubmitted;
+  };
 
   useEffect(() => {
     const fetchSubmission = async () => {
@@ -42,6 +54,7 @@ const AssignmentSubmission = ({ assignment, quiz, submissionType = 'assignment' 
           setIsEditable(false);
           setGrade(response.data.submission.grade);
           setFeedback(response.data.submission.feedback);
+          setIsLate(response.data.submission.isLate || false);
         }
       } catch (error) {
         if (error.response?.status !== 404) {
@@ -205,7 +218,25 @@ const AssignmentSubmission = ({ assignment, quiz, submissionType = 'assignment' 
             <FileText className="w-6 h-6 text-blue-500" />
           </div>
           <div>
-            <h3 className="text-xl font-semibold text-gray-900">Your work</h3>
+            <div className="flex items-center space-x-2">
+              <h3 className="text-xl font-semibold text-gray-900">Your work</h3>
+              {/* Status Labels */}
+              {isMissing() && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  Missing
+                </span>
+              )}
+              {isSubmitted && isLate && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                  Late submission
+                </span>
+              )}
+              {isSubmitted && !isLate && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  Submitted
+                </span>
+              )}
+            </div>
             <p className="text-sm text-gray-500">Assignment submission</p>
           </div>
         </div>
