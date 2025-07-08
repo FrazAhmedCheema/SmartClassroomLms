@@ -25,7 +25,8 @@ const submissionRoutes = require('./routes/submission'); // Ensure submission ro
 const codeExecutionRoutes = require('./routes/codeExecution'); // Add this line
 const codeViewRoutes = require('./routes/codeView'); // Import new code view routes
 
-const codeExecutionService = require('./services/codeExecution'); // Import service for WebSocket logic
+const codeExecutionService = require('./services/codeExecution');
+const mernExecutionService = require('./services/mernExecution'); // Add this import
 
 const app = express();
 const server = http.createServer(app);
@@ -176,6 +177,41 @@ app.use('/question', questionRoutes); // Add question routes
 app.use('/submission', submissionRoutes); // Ensure submission routes are registered
 app.use('/code', codeExecutionRoutes); // Add the new route
 app.use('/code-view', codeViewRoutes); // Add the new route
+
+// Add cleanup handlers for graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Received SIGINT. Cleaning up...');
+  
+  // Stop all active MERN sessions
+  const activeSessions = Array.from(mernExecutionService.activeMERNSessions?.keys() || []);
+  for (const sessionId of activeSessions) {
+    try {
+      await mernExecutionService.stopMERNSession(sessionId);
+      console.log(`Cleaned up MERN session: ${sessionId}`);
+    } catch (error) {
+      console.error(`Error cleaning up session ${sessionId}:`, error);
+    }
+  }
+  
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('Received SIGTERM. Cleaning up...');
+  
+  // Stop all active MERN sessions
+  const activeSessions = Array.from(mernExecutionService.activeMERNSessions?.keys() || []);
+  for (const sessionId of activeSessions) {
+    try {
+      await mernExecutionService.stopMERNSession(sessionId);
+      console.log(`Cleaned up MERN session: ${sessionId}`);
+    } catch (error) {
+      console.error(`Error cleaning up session ${sessionId}:`, error);
+    }
+  }
+  
+  process.exit(0);
+});
 
 connectDB();
 module.exports = { app, server, io, wss, notifyAdmins }; // Export wss if needed elsewhere

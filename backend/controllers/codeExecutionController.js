@@ -1,5 +1,6 @@
 const axios = require('axios');
 const codeExecutionService = require('../services/codeExecution');
+const mernExecutionService = require('../services/mernExecution');
 
 exports.executeCode = async (req, res) => {
   try {
@@ -118,5 +119,64 @@ exports.analyzeTerminalOutput = async (req, res) => {
       success: false,
       message: error.message || 'Failed to analyze terminal output.',
     });
+  }
+};
+
+exports.executeMERNStack = async (req, res) => {
+  try {
+    const { fileUrl, submissionId } = req.body;
+
+    if (!fileUrl) {
+      return res.status(400).json({ success: false, message: 'Missing required field: fileUrl' });
+    }
+
+    const sessionId = `mern-${submissionId}-${Date.now()}`;
+    const result = await mernExecutionService.executeMERNStack(fileUrl, sessionId);
+
+    res.status(200).json({ success: true, ...result });
+
+  } catch (error) {
+    console.error('Error in executeMERNStack controller:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to start MERN stack execution.',
+    });
+  }
+};
+
+exports.stopMERNSession = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    if (!sessionId) {
+      return res.status(400).json({ success: false, message: 'Missing sessionId parameter.' });
+    }
+
+    const result = await mernExecutionService.stopMERNSession(sessionId);
+    res.status(200).json(result);
+
+  } catch (error) {
+    console.error(`Controller error stopping MERN session ${req.params.sessionId}:`, error);
+    res.status(500).json({ success: false, message: 'Failed to stop MERN session due to server error.', error: error.message });
+  }
+};
+
+exports.getMERNSessionStatus = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    if (!sessionId) {
+      return res.status(400).json({ success: false, message: 'Missing sessionId parameter.' });
+    }
+
+    const result = await mernExecutionService.getMERNSessionStatus(sessionId);
+    
+    if (result.status === 'not_found') {
+      return res.status(404).json({ success: false, ...result });
+    }
+
+    res.status(200).json({ success: true, ...result });
+
+  } catch (error) {
+    console.error(`Controller error getting MERN session status ${req.params.sessionId}:`, error);
+    res.status(500).json({ success: false, message: 'Failed to get MERN session status due to server error.', error: error.message });
   }
 };

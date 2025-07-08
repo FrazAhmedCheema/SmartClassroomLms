@@ -9,7 +9,7 @@ const WebSocket = require('ws'); // Used for type checking WebSocket.OPEN
 
 // Configure Docker
 const docker = new Docker({
-  host: '13.61.185.212',
+  host: '13.60.197.204',
   port: 2375,
   protocol: 'http'
 });
@@ -25,6 +25,22 @@ class CodeExecutionService {
     if (!files || files.length === 0) {
       throw new Error('No files found to analyze');
     }
+    
+    // Check if this is a MERN stack project
+    const hasFrontendDir = files.some(f => f.name.includes('frontend/') || f.name.includes('client/'));
+    const hasBackendDir = files.some(f => f.name.includes('backend/') || f.name.includes('server/'));
+    const hasPackageJson = files.some(f => f.name === 'package.json' || f.name.includes('package.json'));
+    
+    if (hasFrontendDir && hasBackendDir && hasPackageJson) {
+      // This looks like a MERN stack project
+      return {
+        fileType: 'mern',
+        projectType: 'mern',
+        isMERNStack: true,
+        message: 'MERN stack project detected. Use MERN execution endpoint.'
+      };
+    }
+    
     const codeContent = files.map(f => `File: ${f.name}\nContent:\n${f.content}`).join('\n\n');
     const maxRetries = 3;
     let lastError = null;

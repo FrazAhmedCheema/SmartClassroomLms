@@ -9,6 +9,7 @@ import 'xterm/css/xterm.css';
 import ExecutionSummary from './ExecutionSummary'; 
 
 
+
 const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGraded }) => {
   const [grade, setGrade] = useState(submission?.grade || '');
   const [feedback, setFeedback] = useState(submission?.feedback || '');
@@ -34,6 +35,17 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
   const xtermInstanceRef = useRef(null);   // xterm.js Terminal instance
   const fitAddonRef = useRef(null);        // xterm-addon-fit instance
   const websocketRef = useRef(null);       // WebSocket instance
+
+  // State for MERN execution
+  const [mernSession, setMernSession] = useState({
+    sessionId: null,
+    frontendUrl: null,
+    backendUrl: null,
+    isRunning: false,
+    isLoading: false,
+    isHealthy: false,
+    status: null
+  });
 
   // Initialize xterm.js terminal
   const initTerminal = () => {
@@ -629,9 +641,114 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
     }
   };
 
+  const handleRunMERNStack = async () => {
+    if (mernSession.isLoading || mernSession.isRunning) {
+      console.log('[RunJSApp] Aborted: isLoading or isRunning is true.');
+      return;
+    }
+
+    setError(null);
+    setCurrentProcessMessage("Preparing JavaScript application execution locally...");
+    setMernSession(prev => ({ ...prev, isLoading: true }));
+
+    if (!submission?.files?.length) {
+      setError('No files available to execute.');
+      setCurrentProcessMessage("");
+      setMernSession(prev => ({ ...prev, isLoading: false }));
+      return;
+    }
+
+    const zipFile = submission.files.find(f => f.fileType === 'application/zip' || f.fileType === 'application/x-zip-compressed');
+    if (!zipFile) {
+      setError('No zip file found in submission for JavaScript app execution.');
+      setCurrentProcessMessage("");
+      setMernSession(prev => ({ ...prev, isLoading: false }));
+      return;
+    }
+
+    try {
+      setCurrentProcessMessage("Analyzing project structure and installing dependencies...");
+      const response = await axios.post(
+        `http://localhost:8080/code/execute-mern`,
+        { fileUrl: zipFile.url, submissionId: submission._id },
+        { withCredentials: true }
+      );
+
+      if (response.data.success) {
+        console.log('[RunJSApp] Success:', response.data);
+        setMernSession({
+          sessionId: response.data.sessionId,
+          frontendUrl: response.data.frontendUrl,
+          backendUrl: response.data.backendUrl,
+          isRunning: true,
+          isLoading: false,
+          isHealthy: false,
+          status: response.data.status
+        });
+        setCurrentProcessMessage("JavaScript application deployed locally! Starting servers...");
+        
+        if (response.data.openBrowserUrl) {
+          setTimeout(() => {
+            window.open(response.data.openBrowserUrl, '_blank');
+            setCurrentProcessMessage("Application is running! Browser opened in new tab.");
+          }, 20000);
+        }
+        
+      } else {
+        throw new Error(response.data.message || 'Failed to deploy JavaScript application locally.');
+      }
+    } catch (err) {
+      console.error('[RunJSApp] Error:', err);
+      let errorMsg = err.response?.data?.message || err.message || 'Failed to deploy JavaScript application locally.';
+      
+      if (errorMsg.includes('spawn npm ENOENT') || errorMsg.includes('npm ENOENT')) {
+        errorMsg = 'Node.js/npm not found or not properly installed. Please ensure Node.js is installed from https://nodejs.org/ and restart the application.';
+      }
+      
+      setError(errorMsg);
+      setCurrentProcessMessage(`Deployment Error: ${errorMsg}`);
+      setMernSession(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const handleStopMERNStack = async () => {
+    if (!mernSession.sessionId) return;
+
+    setCurrentProcessMessage("Stopping JavaScript application...");
+    setMernSession(prev => ({ ...prev, isLoading: true }));
+
+    try {
+      await axios.post(
+        `http://localhost:8080/code/stop-mern/${mernSession.sessionId}`,
+        {},
+        { withCredentials: true }
+      );
+      
+      setMernSession({
+        sessionId: null,
+        frontendUrl: null,
+        backendUrl: null,
+        isRunning: false,
+        isLoading: false,
+        isHealthy: false,
+        status: null
+      });
+      setCurrentProcessMessage("JavaScript application stopped successfully.");
+    } catch (err) {
+      console.error('[StopJSApp] Error:', err);
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to stop JavaScript application.';
+      setError(errorMsg);
+      setCurrentProcessMessage(`Error stopping application: ${errorMsg}`);
+    }
+  };
+
   const isProgrammingAssignment = () => {
     const programmingCategories = ['java', 'c++', 'python', 'mern']; // MERN might need special handling not covered here
     return programmingCategories.includes(assignment.category.toLowerCase());
+  };
+
+  const isMERNAssignment = () => {
+    return assignment.category.toLowerCase() === 'mern';
   };
 
   return (
@@ -749,7 +866,7 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                     <div className="flex flex-col sm:flex-row gap-4">
                       <button
                         onClick={handleViewCode}
-                        disabled={loading || interactiveSession.isLoading || summaryLoading || runCodeLoading}
+                        disabled={loading || interactiveSession.isLoading || summaryLoading || runCodeLoading || mernSession.isLoading}
                         style={{backgroundColor: "#1b68b3"}}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
                       >
@@ -757,68 +874,151 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                         <span className="font-medium">View Code</span>
                       </button>
                       
-                      {(() => {
-                        if (executionSummary) { // If summary is shown, this button could be "Start New Interactive Session"
-                          return (
-                            <button
-                              onClick={() => {
-                                setExecutionSummary(null);
-                                disposeTerminal(); // Clean up old terminal
-                                setInteractiveSession({ isRunning: false, isLoading: false, isConnected: false, containerId: null, language: null });
-                                setCurrentProcessMessage("");
-                                // Then call handleRunCodeInteractive or let user click "Run Interactively" again
-                                // For simplicity, this just clears and user can click "Run Interactively"
-                              }}
-                              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
-                            >
-                              <TerminalIcon className="w-5 h-5" />
-                              <span className="font-medium">Clear Summary & Reset</span>
-                            </button>
-                          );
-                        } else if (interactiveSession.isRunning && interactiveSession.containerId && interactiveSession.isConnected) {
-                          return ( // Session is active and connected
-                            <button
-                              onClick={handleStopInteractiveCode}
-                              disabled={summaryLoading}
-                              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
-                            >
-                              {summaryLoading ? (
-                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                              ) : (
-                                <Info className="w-5 h-5" /> 
-                              )}
-                              <span className="font-medium">{summaryLoading ? 'Generating Summary...' : 'Get Summary & Stop Session'}</span>
-                            </button>
-                          );
-                        } else if (interactiveSession.isLoading && interactiveSession.isRunning) { // Starting up
-                          return (
-                            <button
-                              disabled={true}
-                              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg transition-colors shadow-sm hover:shadow-md opacity-50 cursor-not-allowed"
-                            >
+                      {isMERNAssignment() ? (
+                        // JavaScript application execution button
+                        mernSession.isRunning ? (
+                          <button
+                            onClick={handleStopMERNStack}
+                            disabled={mernSession.isLoading}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
+                          >
+                            {mernSession.isLoading ? (
                               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                              <span className="font-medium">Starting Session...</span>
-                            </button>
-                          );
-                        } else { // Default: "Run Interactively"
-                          return (
-                            <button
-                              onClick={handleRunCodeInteractive}
-                              disabled={runCodeLoading || interactiveSession.isLoading}
-                              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
-                            >
-                              <TerminalIcon className="w-5 h-5" />
-                              <span className="font-medium">Run Interactively</span>
-                            </button>
-                          );
-                        }
-                      })()}
+                            ) : (
+                              <X className="w-5 h-5" />
+                            )}
+                            <span className="font-medium">{mernSession.isLoading ? 'Stopping...' : 'Stop Application'}</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleRunMERNStack}
+                            disabled={mernSession.isLoading || loading || interactiveSession.isLoading || summaryLoading || runCodeLoading}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
+                          >
+                            {mernSession.isLoading ? (
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                            ) : (
+                              <Play className="w-5 h-5" />
+                            )}
+                            <span className="font-medium">{mernSession.isLoading ? 'Starting...' : 'Run Application'}</span>
+                          </button>
+                        )
+                      ) : (
+                        // Regular programming assignment buttons
+                        (() => {
+                          if (executionSummary) { // If summary is shown, this button could be "Start New Interactive Session"
+                            return (
+                              <button
+                                onClick={() => {
+                                  setExecutionSummary(null);
+                                  disposeTerminal(); // Clean up old terminal
+                                  setInteractiveSession({ isRunning: false, isLoading: false, isConnected: false, containerId: null, language: null });
+                                  setCurrentProcessMessage("");
+                                  // Then call handleRunCodeInteractive or let user click "Run Interactively" again
+                                  // For simplicity, this just clears and user can click "Run Interactively"
+                                }}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
+                              >
+                                <TerminalIcon className="w-5 h-5" />
+                                <span className="font-medium">Clear Summary & Reset</span>
+                              </button>
+                            );
+                          } else if (interactiveSession.isRunning && interactiveSession.containerId && interactiveSession.isConnected) {
+                            return ( // Session is active and connected
+                              <button
+                                onClick={handleStopInteractiveCode}
+                                disabled={summaryLoading}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
+                              >
+                                {summaryLoading ? (
+                                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                ) : (
+                                  <Info className="w-5 h-5" /> 
+                                )}
+                                <span className="font-medium">{summaryLoading ? 'Generating Summary...' : 'Get Summary & Stop Session'}</span>
+                              </button>
+                            );
+                          } else if (interactiveSession.isLoading && interactiveSession.isRunning) { // Starting up
+                            return (
+                              <button
+                                disabled={true}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg transition-colors shadow-sm hover:shadow-md opacity-50 cursor-not-allowed"
+                              >
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                <span className="font-medium">Starting Session...</span>
+                              </button>
+                            );
+                          } else { // Default: "Run Interactively"
+                            return (
+                              <button
+                                onClick={handleRunCodeInteractive}
+                                disabled={runCodeLoading || interactiveSession.isLoading}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
+                              >
+                                <TerminalIcon className="w-5 h-5" />
+                                <span className="font-medium">Run Interactively</span>
+                              </button>
+                            );
+                          }
+                        })()
+                      )}
                     </div>
+                    
+                    {/* JavaScript Application Status Display */}
+                    {mernSession.isRunning && (
+                      <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                        <h4 className="font-semibold text-green-800 mb-2">Application Status (Running Locally)</h4>
+                        <div className="space-y-2 text-sm">
+                          {mernSession.frontendUrl && (
+                            <div className="flex justify-between">
+                              <span>Frontend URL:</span>
+                              <a 
+                                href={mernSession.frontendUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-green-600 hover:text-green-800 underline"
+                              >
+                                {mernSession.frontendUrl}
+                              </a>
+                            </div>
+                          )}
+                          {mernSession.backendUrl && (
+                            <div className="flex justify-between">
+                              <span>Backend URL:</span>
+                              <a 
+                                href={mernSession.backendUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-green-600 hover:text-green-800 underline"
+                              >
+                                {mernSession.backendUrl}
+                              </a>
+                            </div>
+                          )}
+                          <div className="flex justify-between">
+                            <span>Status:</span>
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              mernSession.isHealthy ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {mernSession.isHealthy ? 'Running' : 'Starting'}
+                            </span>
+                          </div>
+                          <div className="mt-2 text-xs text-gray-600">
+                            <span>🏠 Running locally on your machine</span>
+                          </div>
+                          <div className="mt-2 text-xs text-blue-600">
+                            <span>💡 Browser will open automatically when ready</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {currentProcessMessage && (
                         <div className="mt-3 p-2 text-sm text-center text-gray-700 bg-gray-100 rounded-md shadow">
                             {currentProcessMessage}
                         </div>
                     )}
+                    
                     <p className="mt-3 text-sm text-gray-500 text-center">
                       Assignment Category: <span className="font-medium capitalize">{assignment.category}</span>
                       {interactiveSession.language && (interactiveSession.isRunning || interactiveSession.containerId || executionSummary) && (

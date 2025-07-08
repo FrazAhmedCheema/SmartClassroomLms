@@ -13,4 +13,9 @@ router.get('/status/:containerId', authorizeTeacher, codeExecutionController.get
 // A DELETE route for /cleanup/:containerId could also point to stopInteractiveContainer if semantics are identical.
 router.post('/analyze-output', authorizeTeacher, codeExecutionController.analyzeTerminalOutput);
 
+// Routes for MERN stack execution
+router.post('/execute-mern', authorizeTeacher, codeExecutionController.executeMERNStack);
+router.post('/stop-mern/:sessionId', authorizeTeacher, codeExecutionController.stopMERNSession);
+router.get('/mern-status/:sessionId', authorizeTeacher, codeExecutionController.getMERNSessionStatus);
+
 module.exports = router;
