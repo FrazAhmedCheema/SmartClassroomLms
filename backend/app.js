@@ -3,9 +3,11 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const http = require('http');
-const socketIo = require('socket.io');
+const socketIo = require('socket.io'); // For existing admin notifications
+const WebSocket = require('ws'); // For interactive code execution
 const path = require('path');
 const fs = require('fs');
+const url = require('url'); // Import the 'url' module
 require('dotenv').config();
 
 const subAdminRoutes = require('./routes/subAdmin');
@@ -23,14 +25,88 @@ const submissionRoutes = require('./routes/submission'); // Ensure submission ro
 const codeExecutionRoutes = require('./routes/codeExecution'); // Add this line
 const codeViewRoutes = require('./routes/codeView'); // Import new code view routes
 
+const codeExecutionService = require('./services/codeExecution');
+const mernExecutionService = require('./services/mernExecution'); // Add this import
+
 const app = express();
 const server = http.createServer(app);
+
+// Socket.IO for admin notifications
 const io = socketIo(server, {
     cors: {
         origin: 'http://localhost:3000',
         credentials: true
     }
 });
+
+// WebSocket server for interactive code execution - with noServer: true
+const wss = new WebSocket.Server({ noServer: true });
+
+wss.on('connection', (ws, req) => {
+    // req here is the original HTTP request that initiated the WebSocket upgrade.
+    // The containerId should have been extracted and validated before wss.handleUpgrade
+    // For simplicity in this direct 'connection' handler, we assume it's already a valid interactive terminal ws.
+    // More complex logic might involve passing context from handleUpgrade.
+
+    // The actual containerId would typically be passed through or re-parsed if needed.
+    // For now, let's assume the connection is valid as per handleUpgrade logic.
+    // The `req.containerId` (or similar) would be set in `handleUpgrade`.
+    // For this example, we'll re-parse, but a more robust solution might pass it.
+    const parsedUrl = url.parse(req.url, true);
+    const pathParts = parsedUrl.pathname.split('/'); // e.g. ['', 'ws', 'code-execution', 'containerId']
+
+    if (pathParts.length === 4 && pathParts[1] === 'ws' && pathParts[2] === 'code-execution') {
+        const containerId = pathParts[3];
+        console.log(`Interactive terminal WebSocket connection established for container: ${containerId}`);
+        codeExecutionService.attachToContainerStreams(containerId, ws)
+            .catch(err => {
+                console.error(`Error attaching to container ${containerId} streams:`, err);
+                if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+                    ws.send(`Error establishing connection: ${err.message}\r\n`);
+                    ws.close();
+                }
+            });
+    } else {
+        // This case should ideally not be reached if handleUpgrade filters correctly
+        console.error('Error: wss connection handler called for non-interactive path:', req.url);
+        if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+            ws.close(1008, "Invalid path for this WebSocket service");
+        }
+        return;
+    }
+
+
+    ws.on('error', (error) => {
+        console.error(`WebSocket error on client from path ${req.url}. Code: ${error.code}, Message: ${error.message}`);
+        // No need to terminate here, ws library handles its state.
+    });
+
+    ws.on('close', (code, reason) => {
+        const reasonString = reason instanceof Buffer ? reason.toString() : (reason || '').toString();
+        console.log(`WebSocket connection from path ${req.url} closed. Code: ${code}, Reason: ${reasonString}`);
+    });
+});
+
+server.on('upgrade', (request, socket, head) => {
+    const parsedUrl = url.parse(request.url, true);
+    const pathname = parsedUrl.pathname;
+
+    if (pathname && pathname.startsWith('/ws/code-execution/')) {
+        // This is an upgrade request for our interactive terminal
+        wss.handleUpgrade(request, socket, head, (ws) => {
+            // Pass the original request to the 'connection' event
+            // so we can access req.url or other properties if needed.
+            wss.emit('connection', ws, request);
+        });
+    } else {
+        // If it's not for '/ws/code-execution/', do nothing here.
+        // Socket.IO's internal mechanism will handle its own upgrade requests.
+        // If Socket.IO is not handling it and no other handler is, the socket will be destroyed.
+        // console.log('Ignoring upgrade request for path:', pathname);
+        // socket.destroy(); // Optionally destroy if no other handler is expected.
+    }
+});
+
 
 app.use(express.json());
 app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
@@ -102,5 +178,40 @@ app.use('/submission', submissionRoutes); // Ensure submission routes are regist
 app.use('/code', codeExecutionRoutes); // Add the new route
 app.use('/code-view', codeViewRoutes); // Add the new route
 
+// Add cleanup handlers for graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Received SIGINT. Cleaning up...');
+  
+  // Stop all active MERN sessions
+  const activeSessions = Array.from(mernExecutionService.activeMERNSessions?.keys() || []);
+  for (const sessionId of activeSessions) {
+    try {
+      await mernExecutionService.stopMERNSession(sessionId);
+      console.log(`Cleaned up MERN session: ${sessionId}`);
+    } catch (error) {
+      console.error(`Error cleaning up session ${sessionId}:`, error);
+    }
+  }
+  
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('Received SIGTERM. Cleaning up...');
+  
+  // Stop all active MERN sessions
+  const activeSessions = Array.from(mernExecutionService.activeMERNSessions?.keys() || []);
+  for (const sessionId of activeSessions) {
+    try {
+      await mernExecutionService.stopMERNSession(sessionId);
+      console.log(`Cleaned up MERN session: ${sessionId}`);
+    } catch (error) {
+      console.error(`Error cleaning up session ${sessionId}:`, error);
+    }
+  }
+  
+  process.exit(0);
+});
+
 connectDB();
-module.exports = { app, server, io, notifyAdmins };
+module.exports = { app, server, io, wss, notifyAdmins }; // Export wss if needed elsewhere

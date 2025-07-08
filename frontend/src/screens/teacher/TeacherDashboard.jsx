@@ -104,8 +104,7 @@ const TeacherDashboard = () => {
         <div className="mb-6">
           <SharedDashboard userRole="Teacher" />
         </div>
-        
-        {/* Classes Section */}
+             {/* Classes Section */}
         <div className="relative">
           <div className="absolute inset-x-0 -top-4 h-px bg-gray-200"></div>
           <motion.div
