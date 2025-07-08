@@ -313,12 +313,10 @@ AWS_BUCKET_NAME=your-bucket-name
 ```
 
 ### Code Execution
-The system supports multiple programming languages. Ensure you have the required compilers/interpreters installed:
+The system supports multiple programming languages with containerized execution environments:
 
-- **Java**: JDK 8+
-- **C++**: GCC compiler
-- **Python**: Python 3.x
-- **Node.js**: For JavaScript/MERN projects
+- **Java, C++, Python**: No installation required - executed in secure containers
+- **Node.js & npm**: Required for JavaScript/MERN project execution and deployment
 
 ## 📊 Features in Detail
 
