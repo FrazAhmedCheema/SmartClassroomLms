@@ -1,7 +1,9 @@
 const Submission = require('../models/Submission');
 const Assignment = require('../models/Assignment');
 const { uploadFile, deleteFile } = require('../utils/s3Service');
-const Quiz = require('../models/Quiz'); // Add this import
+const Quiz = require('../models/Quiz');
+const { createGradeNotification } = require('../utils/notificationHelper');
+const Teacher = require('../models/teacher');
 
 exports.submitAssignment = async (req, res) => {
   try {
@@ -136,10 +138,11 @@ exports.getStudentSubmission = async (req, res) => {
 
     console.log('Fetching submission:', { assignmentId, studentId });
 
+    // Populate assignment data to get points
     const submission = await Submission.findOne({ 
       assignmentId, 
       studentId 
-    });
+    }).populate('assignmentId', 'title points');
 
     console.log('Found submission:', submission);
 
@@ -158,8 +161,13 @@ exports.getStudentSubmission = async (req, res) => {
         privateComment: submission.privateComment,
         submittedAt: submission.submittedAt,
         status: submission.status,
-        grade: submission.grade, // Add grade
-        feedback: submission.feedback // Add feedback
+        grade: submission.grade,
+        feedback: submission.feedback,
+        assignment: {
+          _id: submission.assignmentId?._id,
+          title: submission.assignmentId?.title,
+          points: submission.assignmentId?.points || 100
+        }
       }
     });
   } catch (error) {
@@ -243,7 +251,12 @@ exports.gradeSubmission = async (req, res) => {
       });
     }
 
-    const submission = await Submission.findById(submissionId);
+    const submission = await Submission.findById(submissionId)
+      .populate([
+        { path: 'assignmentId', populate: { path: 'classId', select: 'className teacherId' } },
+        { path: 'quizId', populate: { path: 'classId', select: 'className teacherId' } }
+      ]);
+      
     if (!submission) {
       return res.status(404).json({
         success: false,
@@ -256,6 +269,43 @@ exports.gradeSubmission = async (req, res) => {
     submission.feedback = feedback || '';
     submission.status = 'graded';
     await submission.save();
+
+    // Send notification to student
+    try {
+      // Determine if this is an assignment or quiz submission
+      const workType = submission.assignmentId ? 'assignment' : 'quiz';
+      const workDoc = submission.assignmentId || submission.quizId;
+      const classDoc = workDoc?.classId;
+      
+      if (workDoc && classDoc) {
+        // Get teacher name
+        const teacherId = typeof classDoc.teacherId === 'object' ? classDoc.teacherId : classDoc.teacherId;
+        const teacher = await Teacher.findById(teacherId);
+        const teacherName = teacher?.name || 'Teacher';
+        
+        const title = workDoc.title || (workType === 'assignment' ? 'Assignment' : 'Quiz');
+        
+        // Get points
+        const points = workDoc.points || 100;
+        
+        await createGradeNotification(
+          submission.studentId,
+          classDoc._id,
+          workType,
+          title,
+          teacherName,
+          {
+            workId: workDoc._id,
+            grade,
+            points,
+            submissionId: submission._id
+          }
+        );
+      }
+    } catch (notificationError) {
+      console.error('Error creating grade notification:', notificationError);
+      // Don't fail the grading if notification fails
+    }
 
     res.status(200).json({
       success: true,
@@ -426,7 +476,9 @@ exports.getStudentQuizSubmission = async (req, res) => {
     const { quizId } = req.params;
     const studentId = req.user.id;
 
-    const submission = await Submission.findOne({ quizId, studentId });
+    // Populate quiz data to get points
+    const submission = await Submission.findOne({ quizId, studentId })
+      .populate('quizId', 'title points');
 
     if (!submission) {
       return res.status(404).json({
@@ -435,9 +487,17 @@ exports.getStudentQuizSubmission = async (req, res) => {
       });
     }
 
+    // Return the submission with quiz data for maximum points
     res.status(200).json({
       success: true,
-      submission
+      submission: {
+        ...submission.toObject(),
+        quiz: {
+          _id: submission.quizId?._id,
+          title: submission.quizId?.title,
+          points: submission.quizId?.points || 100
+        }
+      }
     });
   } catch (error) {
     console.error('Error fetching quiz submission:', error);

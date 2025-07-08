@@ -12,82 +12,90 @@ const DiscussionTab = ({ classId }) => {
   const { data: discussionsData, loading, error } = useSelector(state => state.class.discussions);
   const teacherState = useSelector(state => state.teacher);
   const studentState = useSelector(state => state.student);
-  
-  // Combine states based on role
-  const { isAuthenticated, role } = teacherState.role ? teacherState : studentState;
-  const userId = teacherState.teacherId || studentState.studentId;
+
+  // Combine states safely based on role
+  const currentUser = teacherState?.role ? teacherState : studentState;
+  const { isAuthenticated, role } = currentUser || {};
+  const userId = teacherState?.teacherId || studentState?.studentId;
 
   const [newTopic, setNewTopic] = useState('');
   const [newMessage, setNewMessage] = useState('');
   const [showTopicForm, setShowTopicForm] = useState(false);
   const [activeTopic, setActiveTopic] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
-  // Use cached data from Redux
+  // Effect to clear success message after a delay
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
   useEffect(() => {
     if (classId && !discussionsData) {
       dispatch(fetchDiscussions(classId));
     }
   }, [classId, discussionsData, dispatch]);
 
+  const getAuthorName = (author) => {
+    if (!author) return 'Unknown';
+    if (typeof author === 'string') return author;
+    if (author.name) return author.name;
+    if (author.firstName) return `${author.firstName} ${author.lastName || ''}`;
+    return 'Unknown';
+  };
+
   const handleCreateTopic = async (e) => {
     e.preventDefault();
     try {
-      if (!isAuthenticated || !role) {
-        throw new Error('Authentication required');
-      }
+      if (!isAuthenticated || !role) throw new Error('Authentication required');
 
       const payload = {
         classId,
         title: newTopic,
         message: newMessage,
-        authorModel: role.charAt(0).toUpperCase() + role.slice(1) // Convert 'teacher' to 'Teacher'
+        authorModel: role.charAt(0).toUpperCase() + role.slice(1)
       };
 
-      console.log('Creating discussion with:', payload);
-      
       const response = await axios.post('http://localhost:8080/discussions/create', payload, {
         withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       });
-      
+
       if (response.data.success) {
-        // Update local state with new discussion
         const newDiscussion = response.data.discussion;
         const updatedDiscussions = discussionsData ? [...discussionsData, newDiscussion] : [newDiscussion];
         dispatch(updateDiscussions(updatedDiscussions));
-        
+
         setNewTopic('');
         setNewMessage('');
         setShowTopicForm(false);
+        
+        // Show a success message
+        setSuccessMessage('Discussion created successfully! Notifications sent to class members.');
+        
       } else {
         throw new Error(response.data.message || 'Failed to create discussion');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create topic');
       console.error('Create topic error:', err);
+      alert(err.response?.data?.message || 'Failed to create topic');
     }
   };
 
   const handleSendMessage = async (e, replyTo = null) => {
     e.preventDefault();
     try {
-      console.log('Sending message:', { content: newMessage, replyTo });
-
       const response = await axios.post(
         `http://localhost:8080/discussions/message/${activeTopic}`,
-        {
-          content: newMessage,
-          replyTo
-        },
-        {
-          withCredentials: true
-        }
+        { content: newMessage, replyTo },
+        { withCredentials: true }
       );
 
       if (response.data.success && response.data.message) {
-        // Update local state with new message
         const updatedDiscussions = discussionsData.map(discussion => {
           if (discussion._id === activeTopic) {
             return {
@@ -98,7 +106,7 @@ const DiscussionTab = ({ classId }) => {
           }
           return discussion;
         });
-        
+
         dispatch(updateDiscussions(updatedDiscussions));
         setNewMessage('');
       }
@@ -107,44 +115,30 @@ const DiscussionTab = ({ classId }) => {
     }
   };
 
-  // Update the handleDeleteMessage function to properly update Redux state
   const handleDeleteMessage = async (messageId) => {
     try {
-      // Find the current discussion
       const currentDiscussion = discussionsData.find(d => d._id === activeTopic);
-      
       if (!currentDiscussion) return;
-      
-      // Filter out the deleted message
+
       const updatedMessages = currentDiscussion.messages.filter(msg => msg._id !== messageId);
-      
-      // Create a new discussion object with the updated messages
-      const updatedDiscussion = {
-        ...currentDiscussion,
-        messages: updatedMessages
-      };
-      
-      // Create a new array of discussions with the updated one
-      const updatedDiscussions = discussionsData.map(disc => 
-        disc._id === activeTopic ? updatedDiscussion : disc
+      const updatedDiscussion = { ...currentDiscussion, messages: updatedMessages };
+      const updatedDiscussions = discussionsData.map(d =>
+        d._id === activeTopic ? updatedDiscussion : d
       );
-      
-      // Update the Redux store
+
       dispatch(updateDiscussions(updatedDiscussions));
-      
-      // No need to refetch all discussions since we've updated the state locally
     } catch (err) {
       console.error('Error handling message deletion:', err);
-      
-      // On error, refresh all discussions to ensure consistency
       dispatch(fetchDiscussions(classId));
     }
   };
 
   if (!classId || loading) {
-    return <div className="flex justify-center items-center p-8">
-      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-    </div>;
+    return (
+      <div className="flex justify-center items-center p-8">
+        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   if (error) {
@@ -172,7 +166,7 @@ const DiscussionTab = ({ classId }) => {
           </div>
 
           {showTopicForm && (
-            <CreateDiscussionForm 
+            <CreateDiscussionForm
               newTopic={newTopic}
               setNewTopic={setNewTopic}
               newMessage={newMessage}
@@ -180,6 +174,30 @@ const DiscussionTab = ({ classId }) => {
               onSubmit={handleCreateTopic}
               onCancel={() => setShowTopicForm(false)}
             />
+          )}
+
+          {/* Success Message */}
+          {successMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mb-4 p-3 bg-green-50 text-green-700 rounded-lg flex items-center space-x-2"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-5 w-5" 
+                viewBox="0 0 20 20" 
+                fill="currentColor"
+              >
+                <path 
+                  fillRule="evenodd" 
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" 
+                  clipRule="evenodd" 
+                />
+              </svg>
+              <span>{successMessage}</span>
+            </motion.div>
           )}
 
           <div className="space-y-2">
@@ -212,7 +230,7 @@ const DiscussionTab = ({ classId }) => {
                   <div className="p-4">
                     <h3 className="font-semibold text-lg text-gray-900 mb-2">{topic.title}</h3>
                     <div className="flex items-center text-sm text-gray-500 mb-3">
-                      <span className="font-medium mr-2">{topic.author?.name || 'Unknown'}</span>
+                      <span className="font-medium mr-2">{getAuthorName(topic.author)}</span>
                       <span className="mx-2">•</span>
                       <span>
                         {new Date(topic.createdAt).toLocaleDateString('en-US', {
@@ -237,7 +255,6 @@ const DiscussionTab = ({ classId }) => {
                         })}
                       </div>
                     </div>
-                    {/* Add Terminated Label */}
                     {topic.terminated && (
                       <div className="mt-3 inline-block px-3 py-1 text-xs font-medium text-red-600 bg-red-100 rounded-full">
                         Terminated
@@ -250,7 +267,7 @@ const DiscussionTab = ({ classId }) => {
           </div>
         </>
       ) : (
-        <DiscussionMessages 
+        <DiscussionMessages
           messages={discussionsData?.find(d => d._id === activeTopic)?.messages || []}
           newMessage={newMessage}
           setNewMessage={setNewMessage}

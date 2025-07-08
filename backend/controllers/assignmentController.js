@@ -2,6 +2,7 @@ const Assignment = require('../models/Assignment');
 const Submission = require('../models/Submission');
 const { uploadFile, deleteFile } = require('../utils/s3Service');
 const Class = require('../models/Class'); // Add this import
+const { createClassworkNotifications } = require('../utils/notificationHelper');
 
 exports.createAssignment = async (req, res) => {
   try {
@@ -49,6 +50,28 @@ exports.createAssignment = async (req, res) => {
       { $push: { assignments: savedAssignment._id } },
       { new: true }
     );
+
+    // Create notifications for students
+    try {
+      // Get teacher name for notification
+      const classWithTeacher = await Class.findById(classId).populate('teacherId', 'name');
+      const teacherName = classWithTeacher?.teacherId?.name || 'Teacher';
+      
+      await createClassworkNotifications(
+        classId, 
+        'assignment', 
+        title, 
+        teacherName,
+        {
+          workId: savedAssignment._id,
+          dueDate: dueDate,
+          points: points
+        }
+      );
+    } catch (notificationError) {
+      console.error('Error creating assignment notifications:', notificationError);
+      // Don't fail the assignment creation if notifications fail
+    }
 
     res.status(201).json({
       success: true,

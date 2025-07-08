@@ -1,5 +1,7 @@
 const Quiz = require('../models/Quiz');
 const { uploadFile } = require('../utils/s3Service');
+const Class = require('../models/Class');
+const { createClassworkNotifications } = require('../utils/notificationHelper');
 
 exports.getQuizzes = async (req, res) => {
   try {
@@ -70,6 +72,28 @@ exports.createQuiz = async (req, res) => {
     });
 
     const savedQuiz = await quiz.save();
+
+    // Create notifications for students
+    try {
+      // Get teacher name for notification
+      const classWithTeacher = await Class.findById(classId).populate('teacherId', 'name');
+      const teacherName = classWithTeacher?.teacherId?.name || 'Teacher';
+      
+      await createClassworkNotifications(
+        classId, 
+        'quiz', 
+        title, 
+        teacherName,
+        {
+          workId: savedQuiz._id,
+          dueDate: dueDate,
+          points: points
+        }
+      );
+    } catch (notificationError) {
+      console.error('Error creating quiz notifications:', notificationError);
+      // Don't fail the quiz creation if notifications fail
+    }
 
     res.status(201).json({
       success: true,

@@ -259,19 +259,19 @@ const WorkSubmission = ({ itemId, itemType, dueDate, studentInfo }) => {
               <h3 className="text-green-700 font-medium">Graded</h3>
               <div className="mt-1 flex items-center">
                 <p className="text-xl font-semibold text-green-900">
-                  {submission.grade?.points || submission.score || 0}
+                  {submission.grade || submission.score || 0}
                   <span className="text-sm text-green-700 ml-1">
-                    / {itemType === 'quiz' ? submission.quiz?.points : submission.assignment?.points}
+                    / {itemType === 'quiz' ? submission.quiz?.points : submission.assignment?.points || 100}
                   </span>
                 </p>
               </div>
               
               {/* Feedback if available */}
-              {(submission.grade?.feedback || submission.feedback) && (
+              {(submission.feedback) && (
                 <div className="mt-2 pt-2 border-t border-green-200">
                   <h4 className="text-sm text-green-700 mb-1">Teacher feedback:</h4>
                   <p className="text-green-900">
-                    {submission.grade?.feedback || submission.feedback}
+                    {submission.feedback}
                   </p>
                 </div>
               )}
