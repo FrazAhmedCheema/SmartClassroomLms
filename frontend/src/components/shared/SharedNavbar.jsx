@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { HiMenuAlt3 } from 'react-icons/hi';
-import { Search, Bell, Plus, User, LogOut } from 'lucide-react';
+import { Search, Plus, User, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import CreateClassModal from '../teacher/CreateClassModal';
+import NotificationDropdown from './NotificationDropdown';
+import TeacherNotificationDropdown from '../teacher/TeacherNotificationDropdown';
 import logo from '../../assets/logo.png';
 import Swal from 'sweetalert2';
 import { logout } from '../../redux/slices/teacherSlice';
 
-const SharedNavbar = ({ toggleSidebar, isSidebarOpen, isMobile, userRole, onLogout, onCreateClass }) => {
+const SharedNavbar = ({ toggleSidebar, isSidebarOpen, isMobile, userRole, userName, onLogout, onCreateClass }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -96,10 +98,11 @@ const SharedNavbar = ({ toggleSidebar, isSidebarOpen, isMobile, userRole, onLogo
                 <Plus size={24} className="text-[#1b68b3]" />
               </button>
             )}
-            <button className="p-2 hover:bg-gray-100 rounded-lg relative">
-              <Bell size={24} className="text-[#1b68b3]" />
-              <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
-            </button>
+            
+            {/* Notification Dropdown - Show for both students and teachers */}
+            {userRole === 'Student' && <NotificationDropdown />}
+            {userRole === 'Teacher' && <TeacherNotificationDropdown />}
+            
             <div className="relative">
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -109,7 +112,9 @@ const SharedNavbar = ({ toggleSidebar, isSidebarOpen, isMobile, userRole, onLogo
               </button>
               {isProfileOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2">
-                  <div className="px-4 py-2 text-sm text-gray-500">{userRole}</div>
+                  <div className="px-4 py-2 text-sm text-gray-500">
+                    {userName ? `${userName} (${userRole})` : userRole}
+                  </div>
                   <hr className="my-1" />
                   <button
                     onClick={handleLogout}

@@ -18,7 +18,10 @@ import SubAdminLayout from './layouts/SubAdminLayout';
 import TeacherLayout from './layouts/TeacherLayout';
 import StudentLayout from './layouts/StudentLayout';
 import TeacherDashboard from './screens/teacher/TeacherDashboard';
+import TeacherNotifications from './screens/teacher/TeacherNotifications';
 import StudentDashboard from './screens/student/StudentDashboard';
+import StudentNotifications from './screens/student/StudentNotifications';
+import NotificationDebugger from './components/debug/NotificationDebugger';
 import TeacherLogin from './screens/teacher/TeacherLogin';
 import PrivateRoute from './components/PrivateRoute';
 import StudentLogin from './screens/student/StudentLogin';
@@ -103,6 +106,7 @@ const AppRoutes = () => {
         }>
           <Route index element={<Navigate to="home" replace />} />
           <Route path="home" element={<TeacherDashboard />} />
+          <Route path="notifications" element={<TeacherNotifications />} />
         </Route>
       </Route>
 
@@ -123,6 +127,8 @@ const AppRoutes = () => {
         }>
           <Route index element={<Navigate to="home" replace />} />
           <Route path="home" element={<StudentDashboard />} />
+          <Route path="notifications" element={<StudentNotifications />} />
+          <Route path="debug" element={<NotificationDebugger />} />
         </Route>
       </Route>
 

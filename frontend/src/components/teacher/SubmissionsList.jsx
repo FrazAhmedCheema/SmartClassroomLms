@@ -110,7 +110,7 @@ const SubmissionsList = ({ assignment, classId, submissionType = 'assignment' })
                   {studentSub.submission ? (
                     studentSub.submission.status === 'graded' ? (
                       <span className="text-green-600 font-medium">
-                        Grade: {studentSub.submission.grade}/100
+                        Grade: {studentSub.submission.grade}/{assignment?.points || 100}
                       </span>
                     ) : (
                       <div className="flex items-center text-green-800 font-medium">

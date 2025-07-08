@@ -1210,12 +1210,12 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                 <form onSubmit={handleGrade} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Grade (out of 100)
+                      Grade (out of {assignment?.points || 100})
                     </label>
                     <input
                       type="number"
                       min="0"
-                      max="100"
+                      max={assignment?.points || 100}
                       placeholder="Enter grade..."
                       value={grade}
                       onChange={(e) => setGrade(e.target.value)}

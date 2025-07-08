@@ -3,6 +3,7 @@ const Class = require('../models/Class');
 const Teacher = require('../models/teacher');
 const Student = require('../models/student');
 const mongoose = require('mongoose');
+const { createDiscussionNotifications } = require('../utils/notificationHelper');
 
 exports.getDiscussions = async (req, res) => {
   try {
@@ -57,6 +58,13 @@ exports.createDiscussion = async (req, res) => {
   try {
     const { classId, title, message, authorModel } = req.body;
     const userId = req.user.id;
+    
+    console.log(`=== CREATING DISCUSSION ===`);
+    console.log(`Class ID: ${classId}`);
+    console.log(`Title: ${title}`);
+    console.log(`Author Model: ${authorModel}`);
+    console.log(`User ID from req.user.id: ${userId}`);
+    console.log(`User from request:`, req.user);
 
     // Create the discussion
     const discussion = new Discussion({
@@ -88,9 +96,58 @@ exports.createDiscussion = async (req, res) => {
       .populate('author', 'name email')
       .populate('messages.author', 'name email');
 
+    // Get the author name and send notifications
+    let authorName = 'Unknown';
+    if (authorModel === 'Teacher') {
+      const teacher = await Teacher.findById(userId);
+      authorName = teacher ? teacher.name : 'Teacher';
+      console.log('Teacher author name:', authorName);
+    } else if (authorModel === 'Student') {
+      const student = await Student.findById(userId);
+      authorName = student ? student.name : 'Student';
+      console.log('Student author name:', authorName);
+    }
+
+    // Create notifications for all users in the class
+    console.log('[DEBUG DISCUSSION] Creating notifications with params:', {
+      classId,
+      discussionTitle: title,
+      authorName,
+      authorRole: authorModel === 'Teacher' ? 'teacher' : 'student',
+      discussionId: savedDiscussion._id,
+      userId,
+      userIdType: typeof userId
+    });
+    
+    // Verify userId is in correct format for comparison
+    console.log('[DEBUG DISCUSSION] Author ID formats:');
+    console.log(`  - userId (raw): ${userId}`);
+    console.log(`  - userId.toString(): ${userId.toString()}`);
+    console.log(`  - String(userId): ${String(userId)}`);
+    console.log(`  - userId._id (if object): ${userId._id ? userId._id : 'not an object with _id'}`);
+    
+    // Make sure to convert userId to string for proper comparison
+    const notificationResult = await createDiscussionNotifications(
+      classId,
+      title,
+      authorName,
+      authorModel === 'Teacher' ? 'teacher' : 'student',
+      savedDiscussion._id,
+      userId.toString()  // Ensure userId is a string for comparison
+    );
+    
+    console.log('[DEBUG DISCUSSION] Notification creation result:', notificationResult);
+
+    // Log more detailed info if notification creation failed
+    if (!notificationResult.success) {
+      console.error('[DEBUG DISCUSSION] Failed to create notifications:', notificationResult.error);
+      // Continue anyway, don't let notification failure prevent discussion creation
+    }
+
     res.status(201).json({
       success: true,
-      discussion: populatedDiscussion
+      discussion: populatedDiscussion,
+      notificationStatus: notificationResult.success ? 'success' : 'failed'
     });
 
   } catch (error) {
@@ -234,5 +291,61 @@ exports.terminateDiscussion = async (req, res) => {
   } catch (error) {
     console.error('Error terminating discussion:', error);
     res.status(500).json({ success: false, message: 'Failed to terminate discussion', error: error.message });
+  }
+};
+
+// Add a helper function to debug notification creation directly
+exports.debugDiscussionNotification = async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const { title, authorName, authorRole, authorId } = req.body;
+    
+    if (!classId || !title || !authorName || !authorRole) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: classId, title, authorName, authorRole'
+      });
+    }
+    
+    console.log('[DEBUG] Attempting to create a discussion notification directly');
+    console.log('[DEBUG] Params:', { classId, title, authorName, authorRole, authorId });
+    
+    // Find the class first
+    const Class = require('../models/Class');
+    const classDoc = await Class.findById(classId);
+    
+    if (!classDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Class not found'
+      });
+    }
+    
+    console.log('[DEBUG] Found class:', classDoc.className);
+    
+    // Create a mock discussion ID
+    const discussionId = new mongoose.Types.ObjectId();
+    
+    const result = await createDiscussionNotifications(
+      classId,
+      title,
+      authorName,
+      authorRole,
+      discussionId,
+      authorId || req.studentId || req.teacherId
+    );
+    
+    res.status(200).json({
+      success: result.success,
+      message: result.success ? 'Debug notification created successfully' : 'Failed to create debug notification',
+      details: result
+    });
+  } catch (error) {
+    console.error('[DEBUG] Error creating debug notification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error in debug notification creation',
+      error: error.message
+    });
   }
 };

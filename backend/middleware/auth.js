@@ -95,6 +95,7 @@ const authorizeTeacher = (req, res, next) => {
         
         // Set the user info
         req.user = decoded;
+        req.teacherId = decoded.id; // Set teacherId for easier access in controllers
         console.info('Teacher authorization successful. ID:', decoded.id);
         next();
     } catch (err) {
@@ -114,6 +115,7 @@ exports.authorizeStudent = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
+    req.studentId = decoded.id; // Add this line for notification controller
     console.log('Student authorized:', decoded);
     next();
   } catch (err) {

@@ -27,10 +27,18 @@ const QuizModal = ({ quiz, onClose }) => {
         {/* Modal Content */}
         <div className="p-6">
           <p>{quiz.instructions || 'No instructions provided.'}</p>
-          <p className="mt-4">
-            <CheckCircle size={16} className="inline-block mr-2" />
-            {quiz.questions.length} Questions
-          </p>
+          <div className="mt-4 space-y-2">
+            <p className="flex items-center">
+              <CheckCircle size={16} className="inline-block mr-2 text-green-600" />
+              {quiz.questions.length} Questions
+            </p>
+            {quiz.points > 0 && (
+              <p className="flex items-center">
+                <CheckCircle size={16} className="inline-block mr-2 text-green-600" />
+                {quiz.points} Points
+              </p>
+            )}
+          </div>
         </div>
       </motion.div>
     </motion.div>

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import logo from "../../assets/logo.png";
 import { useDispatch, useSelector } from 'react-redux';
 import { loginSuccess, loginFail, setLoading } from '../../redux/slices/adminAuthSlice';
+import HomeNavButton from '../../components/shared/HomeNavButton';
 
 const AdminLogin = () => {
   const dispatch = useDispatch();
@@ -132,6 +133,9 @@ const AdminLogin = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Home Navigation Button */}
+      <HomeNavButton />
+      
       {/* Background Pattern */}
       <div className="absolute inset-0 z-0 opacity-10">
         <div className="absolute top-0 left-0 w-full h-full bg-blue-500 opacity-20" 

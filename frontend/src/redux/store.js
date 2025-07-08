@@ -10,6 +10,8 @@ import adminAuthReducer from './slices/adminAuthSlice';
 import subAdminAuthReducer from './slices/subAdminAuthSlice';
 import classReducer from './slices/classSlice';
 import quizReducer from './slices/quizSlice';
+import notificationReducer from './slices/notificationSlice';
+import teacherNotificationReducer from './slices/teacherNotificationSlice';
 
 const persistConfig = {
   key: 'root',
@@ -27,6 +29,8 @@ const rootReducer = combineReducers({
   subAdminAuth: subAdminAuthReducer,
   class: classReducer,
   quiz: quizReducer,
+  notifications: notificationReducer,
+  teacherNotifications: teacherNotificationReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

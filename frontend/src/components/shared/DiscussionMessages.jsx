@@ -180,6 +180,66 @@ const DiscussionMessages = ({ messages, newMessage, setNewMessage, onSendMessage
     }
   };
 
+  // Add a helper function to extract author name properly from message
+  const getAuthorName = (message) => {
+    if (!message) return 'Unknown';
+    
+    // Try different possible paths to find the author name
+    if (message.author) {
+      // If author is a string (just the name)
+      if (typeof message.author === 'string') {
+        return message.author;
+      }
+      
+      // If author is an object with name property
+      if (message.author.name) {
+        return message.author.name;
+      }
+      
+      // If author has firstName/lastName
+      if (message.author.firstName) {
+        return `${message.author.firstName} ${message.author.lastName || ''}`;
+      }
+    }
+    
+    // Try authorId path (sometimes backend populates it this way)
+    if (message.authorId) {
+      if (typeof message.authorId === 'string') {
+        return 'User'; // Just ID, can't get name
+      }
+      
+      if (message.authorId.name) {
+        return message.authorId.name;
+      }
+      
+      if (message.authorId.firstName) {
+        return `${message.authorId.firstName} ${message.authorId.lastName || ''}`;
+      }
+    }
+    
+    // Try other potential paths
+    if (message.student && message.student.name) {
+      return message.student.name;
+    }
+    
+    if (message.teacher && message.teacher.name) {
+      return message.teacher.name;
+    }
+    
+    // Last resort - check message.authorModel or authorRole + check the message directly
+    if ((message.authorModel === 'Student' || message.authorRole === 'student') && message.name) {
+      return message.name;
+    }
+    
+    return 'Unknown';
+  };
+
+  // Get the first letter of author name for the avatar
+  const getAuthorInitial = (message) => {
+    const name = getAuthorName(message);
+    return name !== 'Unknown' ? name.charAt(0) : '?';
+  };
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -225,8 +285,8 @@ const DiscussionMessages = ({ messages, newMessage, setNewMessage, onSendMessage
           {messages.map((message, index) => (
             <motion.div
               key={message._id}
-              // Log message details for debugging
-              onMouseEnter={() => console.log('Rendering message:', message)}
+              // Debug logging when hovering over messages
+              onMouseEnter={() => console.log('Message data:', message)}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -235,14 +295,14 @@ const DiscussionMessages = ({ messages, newMessage, setNewMessage, onSendMessage
             >
               <div className="flex-shrink-0 pt-1">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md transform transition-transform group-hover:scale-105">
-                  {message.author?.name?.charAt(0) || '?'}
+                  {getAuthorInitial(message)}
                 </div>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <span className="font-semibold text-gray-900">
-                      {message.author?.name || 'Unknown'}
+                      {getAuthorName(message)}
                     </span>
                     <span className="text-xs text-gray-400 flex items-center">
                       <Clock size={12} className="mr-1" />
@@ -275,7 +335,7 @@ const DiscussionMessages = ({ messages, newMessage, setNewMessage, onSendMessage
                 </div>
                 {message.replyTo && (
                   <div className="text-sm text-gray-500 mt-1">
-                    Replying to @{messages.find(m => m._id === message.replyTo)?.author?.name}
+                    Replying to @{getAuthorName(messages.find(m => m._id === message.replyTo) || {})}
                   </div>
                 )}
                 <p className="mt-1 text-gray-800 leading-relaxed">

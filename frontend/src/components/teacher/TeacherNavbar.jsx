@@ -1,12 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { teacherLogout } from '../../redux/slices/teacherSlice';
 import SharedNavbar from '../shared/SharedNavbar';
 
 const TeacherNavbar = (props) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { name } = useSelector(state => state.teacher);
 
   const handleLogout = async () => {
     try {
@@ -27,6 +28,7 @@ const TeacherNavbar = (props) => {
     <SharedNavbar
       {...props}
       userRole="Teacher"
+      userName={name}
       onLogout={handleLogout}
     />
   );
