@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { FileText, Calendar, Clock, User, Paperclip, X, Trash2, Download } from 'lucide-react';
@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AssignmentSubmission from '../../student/AssignmentSubmission';
 import axios from 'axios';
 import SubmissionsList from '../../teacher/SubmissionsList';
+import { fetchSingleAssignment } from '../../../redux/actions/classActions';
 
 const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitting: propIsSubmitting, isTeacher: propIsTeacher }) => {
   const { id } = useParams();
@@ -14,17 +15,104 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
   const dispatch = useDispatch();
   
   // Use props if available, otherwise use Redux
-  const assignments = useSelector((state) => state.class.classwork.data);
+  const assignments = useSelector((state) => state.class?.classwork?.data || []);
   const teacherAuth = useSelector((state) => state.teacher);
   const studentAuth = useSelector((state) => state.student);
   const studentId = useSelector(state => state.student.studentId);
   
-  // Determine if we're using props or Redux data
-  const assignment = propAssignment || (id && assignments.find((a) => a._id === id));
+  // State for tracking assignment and loading
+  const [assignment, setAssignment] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  // Use useRef to track fetch status without causing re-renders
+  const hasFetchedRef = useRef(false);
+  const currentIdRef = useRef(null);
+  
   const isTeacher = propIsTeacher !== undefined ? propIsTeacher : teacherAuth.isAuthenticated;
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Effect to handle assignment loading
+  useEffect(() => {
+    // Reset fetch status if ID changes
+    if (currentIdRef.current !== id) {
+      hasFetchedRef.current = false;
+      currentIdRef.current = id;
+    }
+    
+    if (propAssignment) {
+      // If assignment is passed as prop, use it
+      setAssignment(propAssignment);
+      setError(null);
+      hasFetchedRef.current = true;
+      return;
+    }
+    
+    // Check if assignment exists in Redux
+    const foundAssignment = id && Array.isArray(assignments) && assignments.find((a) => a && a._id === id);
+    
+    if (foundAssignment) {
+      // If assignment is found in Redux, use it
+      setAssignment(foundAssignment);
+      setError(null);
+      hasFetchedRef.current = true;
+      return;
+    }
+    
+    if (id && !hasFetchedRef.current) {
+      // If assignment is not in Redux but we have an ID, fetch it
+      const fetchAssignment = async () => {
+        hasFetchedRef.current = true; // Set this early to prevent multiple calls
+        setIsLoading(true);
+        setError(null);
+        
+        try {
+          console.log('Fetching assignment with ID:', id);
+          const fetchedAssignment = await dispatch(fetchSingleAssignment(id));
+          console.log('Fetched assignment result:', fetchedAssignment);
+          
+          if (fetchedAssignment) {
+            setAssignment(fetchedAssignment);
+            console.log('Assignment set successfully:', fetchedAssignment);
+          } else {
+            console.log('No assignment returned from API');
+            setError('Assignment not found.');
+          }
+        } catch (err) {
+          console.error('Error fetching assignment:', err);
+          setError('Failed to load assignment.');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      fetchAssignment();
+    } else if (!id && !hasFetchedRef.current) {
+      setError('Assignment ID not provided.');
+      hasFetchedRef.current = true;
+    }
+  }, [propAssignment, assignments, id, dispatch]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-500">Loading assignment...</p>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-500">{error}</p>
+      </div>
+    );
+  }
+
+  // Assignment not found
   if (!assignment) {
     return (
       <div className="flex items-center justify-center min-h-screen">

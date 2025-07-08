@@ -11,9 +11,9 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB file size limit
 });
 
-router.get('/:classId', authorizeTeacherOrStudent,assignmentController.getAssignments);
 router.post('/:classId/create-assignment', authorizeTeacher,upload.array('attachments', 10), assignmentController.createAssignment);
-router.get('/:id', authorizeTeacherOrStudent,assignmentController.getAssignment);
+router.get('/single/:id', authorizeTeacherOrStudent,assignmentController.getAssignment);
 router.delete('/:id', authorizeTeacher,assignmentController.deleteAssignment);
+router.get('/:classId', authorizeTeacherOrStudent,assignmentController.getAssignments);
 
 module.exports = router;

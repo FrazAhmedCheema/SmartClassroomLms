@@ -782,11 +782,24 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                   )}
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-800">{student.name}</h2>
+                  <div className="flex items-center space-x-2">
+                    <h2 className="text-xl font-semibold text-gray-800">{student.name}</h2>
+                    {/* Late submission label */}
+                    {submission?.isLate && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        Late Submission
+                      </span>
+                    )}
+                  </div>
                   <p className="text-gray-600 text-sm">{student.email}</p>
                   {submission?.submittedAt && (
                     <p className="text-gray-500 text-xs mt-1">
                       Submitted on: {new Date(submission.submittedAt).toLocaleString()}
+                      {submission?.isLate && assignment?.dueDate && (
+                        <span className="text-red-500 ml-2">
+                          (Due: {new Date(assignment.dueDate).toLocaleString()})
+                        </span>
+                      )}
                     </p>
                   )}
                 </div>

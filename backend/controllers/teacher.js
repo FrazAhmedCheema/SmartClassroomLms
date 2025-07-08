@@ -393,6 +393,11 @@ exports.getTeacherStats = async (req, res) => {
         const teacherId = req.user.id;
         console.log('Fetching stats for teacher:', teacherId);
 
+        // Import models
+        const Assignment = require('../models/Assignment');
+        const Quiz = require('../models/Quiz');
+        const Submission = require('../models/Submission');
+
         // Find teacher and populate classes with their students
         const teacher = await Teacher.findById(teacherId)
             .populate({
@@ -417,13 +422,54 @@ exports.getTeacherStats = async (req, res) => {
             return total + (classObj.students ? classObj.students.length : 0);
         }, 0);
 
+        // Get class IDs for the teacher
+        const classIds = teacher.classes.map(classObj => classObj._id);
+
+        // Count assignments created by this teacher
+        const assignmentCount = await Assignment.countDocuments({ 
+            createdBy: teacherId 
+        });
+
+        // Count quizzes created by this teacher
+        const quizCount = await Quiz.countDocuments({ 
+            createdBy: teacherId 
+        });
+
+        // Count pending submissions that need grading (assignments only, as quizzes are auto-graded)
+        const pendingSubmissions = await Submission.countDocuments({
+            assignmentId: { $ne: null },
+            grade: null,
+            $or: [
+                { assignmentId: { $in: await Assignment.find({ createdBy: teacherId }).distinct('_id') } }
+            ]
+        });
+
+        // Total assignments to review (pending submissions)
+        const assignments = pendingSubmissions;
+
+        // Count upcoming assignments and quizzes (due in next 24 hours)
+        const now = new Date();
+        const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+        const upcomingAssignments = await Assignment.countDocuments({
+            createdBy: teacherId,
+            dueDate: { $gte: now, $lte: next24Hours }
+        });
+
+        const upcomingQuizzes = await Quiz.countDocuments({
+            createdBy: teacherId,
+            dueDate: { $gte: now, $lte: next24Hours }
+        });
+
+        const upcoming = upcomingAssignments + upcomingQuizzes;
+
         res.status(200).json({
             success: true,
             data: {
                 activeClasses,
                 totalStudents,
-                assignments: 0, // Dummy value as requested
-                upcoming: 0     // Dummy value as requested
+                assignments,
+                upcoming
             }
         });
     } catch (error) {

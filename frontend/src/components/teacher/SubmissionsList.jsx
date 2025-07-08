@@ -106,18 +106,26 @@ const SubmissionsList = ({ assignment, classId, submissionType = 'assignment' })
               </div>
               <div>
                 <h3 className="font-medium text-gray-900">{studentSub.student.name}</h3>
-                <div className="flex items-center text-sm">
+                <div className="flex items-center space-x-2 text-sm">
                   {studentSub.submission ? (
-                    studentSub.submission.status === 'graded' ? (
-                      <span className="text-green-600 font-medium">
-                        Grade: {studentSub.submission.grade}/{assignment?.points || 100}
-                      </span>
-                    ) : (
-                      <div className="flex items-center text-green-800 font-medium">
-                        <Clock className="w-4 h-4 mr-1" />
-                        Submitted
-                      </div>
-                    )
+                    <>
+                      {studentSub.submission.status === 'graded' ? (
+                        <span className="text-green-600 font-medium">
+                          Grade: {studentSub.submission.grade}/{assignment?.points || 100}
+                        </span>
+                      ) : (
+                        <div className="flex items-center text-green-800 font-medium">
+                          <Clock className="w-4 h-4 mr-1" />
+                          Submitted
+                        </div>
+                      )}
+                      {/* Late submission label */}
+                      {studentSub.submission.isLate && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          Late
+                        </span>
+                      )}
+                    </>
                   ) : (
                     <span className="text-red-500 font-medium">Missing</span>
                   )}
