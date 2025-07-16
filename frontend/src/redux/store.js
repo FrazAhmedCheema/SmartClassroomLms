@@ -12,6 +12,7 @@ import classReducer from './slices/classSlice';
 import quizReducer from './slices/quizSlice';
 import notificationReducer from './slices/notificationSlice';
 import teacherNotificationReducer from './slices/teacherNotificationSlice';
+import assignmentsReducer from './reducers/assignmentReducers';
 
 const persistConfig = {
   key: 'root',
@@ -31,6 +32,7 @@ const rootReducer = combineReducers({
   quiz: quizReducer,
   notifications: notificationReducer,
   teacherNotifications: teacherNotificationReducer,
+  assignments: assignmentsReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

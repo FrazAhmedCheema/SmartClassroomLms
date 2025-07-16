@@ -203,4 +203,117 @@ exports.deleteAssignment = async (req, res) => {
   }
 };
 
-// ...other assignment controller methods...
+// Get all assignments for a student
+exports.getStudentAssignments = async (req, res) => {
+  try {
+    const studentId = req.user._id;
+
+    // Get all classes the student is enrolled in
+    const classes = await Class.find({ students: studentId });
+    const classIds = classes.map(c => c._id);
+    
+    // Get all assignments from these classes with submission status
+    const assignments = await Assignment.find({ classId: { $in: classIds } })
+      .populate('classId', 'className section')
+      .lean();
+    
+    // Get all submissions for this student
+    const submissions = await Submission.find({ 
+      assignmentId: { $in: assignments.map(a => a._id) },
+      studentId
+    }).lean();
+    
+    // Create a map of assignment ID to submission
+    const submissionMap = {};
+    submissions.forEach(sub => {
+      submissionMap[sub.assignmentId.toString()] = sub;
+    });
+    
+    // Add submission status to each assignment
+    const assignmentsWithStatus = assignments.map(assignment => {
+      const submission = submissionMap[assignment._id.toString()];
+      return { 
+        ...assignment, 
+        class: assignment.classId, // Rename for frontend
+        submission
+      };
+    });
+    
+    res.status(200).json({
+      success: true,
+      assignments: assignmentsWithStatus
+    });
+  } catch (error) {
+    console.error('Error in getStudentAssignments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch assignments',
+      error: error.message
+    });
+  }
+};
+
+// Get all assignments for a teacher
+exports.getTeacherAssignments = async (req, res) => {
+  try {
+    const teacherId = req.user._id;
+    
+    // Get all classes where user is a teacher
+    const classes = await Class.find({ 
+      $or: [
+        { teacher: teacherId },
+        { additionalTeachers: teacherId }
+      ]
+    });
+    
+    const classIds = classes.map(c => c._id);
+    
+    // Get all assignments from these classes
+    const assignments = await Assignment.find({ classId: { $in: classIds } })
+      .populate('classId', 'className section')
+      .lean();
+    
+    // Get all submissions for these assignments
+    const submissions = await Submission.find({
+      assignmentId: { $in: assignments.map(a => a._id) },
+      status: 'submitted'  // Only get submitted assignments
+    }).select('assignmentId status submittedAt gradedAt grade').lean();
+    
+    // Group submissions by assignment
+    const submissionsByAssignment = {};
+    submissions.forEach(sub => {
+      const assignmentId = sub.assignmentId.toString();
+      if (!submissionsByAssignment[assignmentId]) {
+        submissionsByAssignment[assignmentId] = [];
+      }
+      submissionsByAssignment[assignmentId].push(sub);
+    });
+    
+    // Add submissions to each assignment
+    const assignmentsWithSubmissions = assignments.map(assignment => {
+      return {
+        ...assignment,
+        class: assignment.classId, // Rename for frontend
+        submissions: submissionsByAssignment[assignment._id.toString()] || []
+      };
+    });
+    
+    console.log('Sending assignments with submissions:', {
+      totalAssignments: assignmentsWithSubmissions.length,
+      totalSubmissions: submissions.length,
+      pendingSubmissions: submissions.filter(s => !s.gradedAt).length
+    });
+    
+    res.status(200).json({
+      success: true,
+      assignments: assignmentsWithSubmissions
+    });
+  } catch (error) {
+    console.error('Error in getTeacherAssignments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch assignments',
+      error: error.message
+    });
+  }
+};

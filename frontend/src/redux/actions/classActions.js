@@ -340,6 +340,23 @@ export const fetchPeople = (classId) => async (dispatch, getState) => {
   }
 };
 
+export const addTeacherToClass = (classId, email) => async (dispatch) => {
+  try {
+    const response = await api.post(`/class/${classId}/add-teacher`, { email });
+    
+    if (response.data.success) {
+      // Refresh the people data after adding teacher
+      dispatch(fetchPeople(classId));
+      return { success: true, teacher: response.data.teacher };
+    } else {
+      return { success: false, message: response.data.message };
+    }
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to add teacher';
+    return { success: false, message: errorMessage };
+  }
+};
+
 export const fetchDiscussions = (classId) => async (dispatch, getState) => {
   if (!classId) return;
   
@@ -488,6 +505,44 @@ export const fetchSingleAssignment = (assignmentId) => async (dispatch, getState
     console.error('Error fetching assignment:', error);
     console.error('Error details:', error.response?.data);
     return null;
+  }
+};
+
+export const updateClass = (classId, updates) => async (dispatch) => {
+  try {
+    console.log('Updating class with data:', { classId, updates });
+    
+    const response = await api.put(`/class/${classId}/update`, updates);
+    
+    if (response.data.success) {
+      console.log('Class updated successfully:', response.data.class);
+      
+      // Update the basic info in the Redux store
+      dispatch(fetchBasicInfoSuccess({
+        data: response.data.class,
+        lastFetched: Date.now(),
+        classId: classId
+      }));
+      
+      return {
+        success: true,
+        class: response.data.class,
+        message: response.data.message
+      };
+    } else {
+      console.error('Failed to update class:', response.data.message);
+      return {
+        success: false,
+        message: response.data.message || 'Failed to update class'
+      };
+    }
+  } catch (error) {
+    console.error('Error updating class:', error);
+    console.error('Error details:', error.response?.data);
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to update class'
+    };
   }
 };
 

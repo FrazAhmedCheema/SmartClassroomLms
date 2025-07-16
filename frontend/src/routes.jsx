@@ -19,8 +19,12 @@ import TeacherLayout from './layouts/TeacherLayout';
 import StudentLayout from './layouts/StudentLayout';
 import TeacherDashboard from './screens/teacher/TeacherDashboard';
 import TeacherNotifications from './screens/teacher/TeacherNotifications';
+import TeacherTodo from './screens/teacher/TeacherTodo';
+import TeacherSettings from './screens/teacher/TeacherSettings';
 import StudentDashboard from './screens/student/StudentDashboard';
 import StudentNotifications from './screens/student/StudentNotifications';
+import StudentTodo from './screens/student/StudentTodo';
+import StudentSettings from './screens/student/StudentSettings';
 import NotificationDebugger from './components/debug/NotificationDebugger';
 import TeacherLogin from './screens/teacher/TeacherLogin';
 import PrivateRoute from './components/PrivateRoute';
@@ -31,6 +35,8 @@ import AssignmentDetailScreen from './components/shared/classwork/AssignmentDeta
 import QuizDetailScreen from './components/shared/classwork/QuizDetailScreen';
 import MaterialDetailScreen from './components/shared/classwork/MaterialDetailScreen';
 import QuestionDetailScreen from './components/shared/classwork/QuestionDetailScreen';
+import StudentInvitation from './components/student/StudentSignup';
+import StudentInviteRedirect from './components/student/StudentInviteRedirect';
 
 const AdminLayout = () => {
   return (
@@ -50,6 +56,8 @@ const AppRoutes = () => {
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/student-invitation" element={<StudentInvitation />} />
+      <Route path="/invite" element={<StudentInviteRedirect />} />
       
       {/* Admin Routes */}
       <Route path="/admin/login" element={
@@ -107,8 +115,14 @@ const AppRoutes = () => {
           <Route index element={<Navigate to="home" replace />} />
           <Route path="home" element={<TeacherDashboard />} />
           <Route path="notifications" element={<TeacherNotifications />} />
+          <Route path="todos" element={<TeacherTodo />} />
+          <Route path="settings" element={<TeacherSettings />} />
         </Route>
       </Route>
+
+      {/* Student invitation route - public access */}
+      <Route path="/student-invitation" element={<StudentInvitation />} />
+      <Route path="/invite" element={<StudentInviteRedirect />} />
 
       {/* Student Routes */}
       <Route path="/student">
@@ -117,6 +131,8 @@ const AppRoutes = () => {
             ? <Navigate to="/student/home" replace /> 
             : <StudentLogin />
         } />
+        <Route path="signup" element={<StudentInvitation />} />
+        <Route path="invitation" element={<StudentInvitation />} />
         <Route element={
           <PrivateRoute 
             isAuthenticated={isStudentAuthenticated} 
@@ -128,6 +144,8 @@ const AppRoutes = () => {
           <Route index element={<Navigate to="home" replace />} />
           <Route path="home" element={<StudentDashboard />} />
           <Route path="notifications" element={<StudentNotifications />} />
+          <Route path="todos" element={<StudentTodo />} />
+          <Route path="settings" element={<StudentSettings />} />
           <Route path="debug" element={<NotificationDebugger />} />
         </Route>
       </Route>

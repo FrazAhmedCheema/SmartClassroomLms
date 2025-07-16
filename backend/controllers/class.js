@@ -2,6 +2,21 @@ const Class = require('../models/Class');
 const Teacher = require('../models/teacher');
 const Student = require('../models/student');
 const Discussion = require('../models/Discussion');
+const StudentInvitation = require('../models/StudentInvitation');
+const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const nodemailer = require('nodemailer');
+
+// Email transporter configuration
+const transporter = nodemailer.createTransport({
+    host: 'smtp.hostinger.com',
+    port: 465,
+    secure: true,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
 
 exports.getClassById = async (req, res) => {
     try {
@@ -168,14 +183,138 @@ exports.getClasswork = async (req, res) => {
 };
 
 exports.getPeople = async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      message: 'Class ID is required'
+    });
+  }
+
   try {
-    const people = await Class.findById(req.params.id)
-      .select('students teacherId')
-      .populate('students', 'name email registrationId')
-      .populate('teacherId', 'name email');
-    res.json({ success: true, people: { teacher: people.teacherId, students: people.students } });
+    const classData = await Class.findById(id)
+      .populate('teacherId', 'name email')
+      .populate('additionalTeachers', 'name email')
+      .populate('students', 'name email registrationId');
+
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: 'Class not found'
+      });
+    }
+
+    // Combine main teacher and additional teachers
+    const allTeachers = [classData.teacherId];
+    if (classData.additionalTeachers && classData.additionalTeachers.length > 0) {
+      allTeachers.push(...classData.additionalTeachers);
+    }
+
+    res.status(200).json({
+      success: true,
+      people: {
+        teachers: allTeachers,
+        students: classData.students || []
+      }
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Error fetching class people:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch class people',
+      error: error.message
+    });
+  }
+};
+
+exports.addTeacher = async (req, res) => {
+  const { id } = req.params;
+  const { email } = req.body;
+  const requestingUserId = req.user.id;
+
+  if (!id || !email) {
+    return res.status(400).json({
+      success: false,
+      message: 'Class ID and teacher email are required'
+    });
+  }
+
+  try {
+    // Find the class and verify the requesting user is a teacher of this class
+    const classData = await Class.findById(id);
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: 'Class not found'
+      });
+    }
+
+    // Check if the requesting user is the main teacher or an additional teacher
+    const isMainTeacher = classData.teacherId.toString() === requestingUserId;
+    const isAdditionalTeacher = classData.additionalTeachers && 
+      classData.additionalTeachers.some(teacherId => teacherId.toString() === requestingUserId);
+
+    if (!isMainTeacher && !isAdditionalTeacher) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only teachers of this class can add other teachers'
+      });
+    }
+
+    // Find the teacher by email
+    const teacherToAdd = await Teacher.findOne({ email: email.toLowerCase() });
+    if (!teacherToAdd) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher with this email not found'
+      });
+    }
+
+    // Check if teacher is already the main teacher
+    if (classData.teacherId.toString() === teacherToAdd._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'This teacher is already the main teacher of this class'
+      });
+    }
+
+    // Check if teacher is already an additional teacher
+    if (classData.additionalTeachers && 
+        classData.additionalTeachers.some(teacherId => teacherId.toString() === teacherToAdd._id.toString())) {
+      return res.status(400).json({
+        success: false,
+        message: 'This teacher is already added to this class'
+      });
+    }
+
+    // Add the teacher to additionalTeachers array
+    classData.additionalTeachers = classData.additionalTeachers || [];
+    classData.additionalTeachers.push(teacherToAdd._id);
+    await classData.save();
+
+    // Also add this class to the teacher's classes array
+    await Teacher.findByIdAndUpdate(teacherToAdd._id, { 
+      $addToSet: { classes: classData._id } 
+    });
+
+    // Return the added teacher info
+    res.status(200).json({
+      success: true,
+      message: 'Teacher added successfully',
+      teacher: {
+        _id: teacherToAdd._id,
+        name: teacherToAdd.name,
+        email: teacherToAdd.email
+      }
+    });
+  } catch (error) {
+    console.error('Error adding teacher to class:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add teacher to class',
+      error: error.message
+    });
   }
 };
 
@@ -289,8 +428,21 @@ exports.getDiscussions = async (req, res) => {
 exports.createAnnouncement = async (req, res) => {
     try {
         console.log('Creating announcement with data:', req.body);
+        console.log('req.user object:', req.user); // Debug log
         
         const { classId, content, authorName } = req.body;
+        
+        // Check if req.user exists and has an id
+        if (!req.user || !req.user.id) {
+            console.error('Authentication failed: req.user is', req.user);
+            return res.status(401).json({
+                success: false,
+                message: 'User not authenticated'
+            });
+        }
+        
+        const loggedInUserId = req.user.id; // Get the logged-in user ID
+        console.log('Logged-in user ID:', loggedInUserId);
         
         if (!classId || !content) {
             return res.status(400).json({
@@ -299,7 +451,7 @@ exports.createAnnouncement = async (req, res) => {
             });
         }
         
-        // Find the class with students populated
+        // Find the class
         const classDoc = await Class.findById(classId);
         if (!classDoc) {
             return res.status(404).json({
@@ -308,14 +460,25 @@ exports.createAnnouncement = async (req, res) => {
             });
         }
 
+        // Get the actual logged-in teacher's information
+        const loggedInTeacher = await Teacher.findById(loggedInUserId);
+        if (!loggedInTeacher) {
+            return res.status(404).json({
+                success: false,
+                message: 'Teacher not found'
+            });
+        }
+
         console.log('Found class:', classDoc.className);
+        console.log('Logged-in teacher:', loggedInTeacher.name);
 
         try {
-            // Define the announcement structure explicitly matching our desired format
+            // Use the logged-in teacher's name for the announcement
             const newAnnouncement = {
                 content: content,
                 author: {
-                    name: authorName && authorName !== "Loading..." ? authorName : classDoc.teacherId.name || "Teacher"
+                    name: loggedInTeacher.name,
+                    id: loggedInTeacher._id
                 },
                 authorRole: 'Teacher',
                 createdAt: new Date(),
@@ -421,16 +584,25 @@ exports.deleteAnnouncement = async (req, res) => {
 exports.addComment = async (req, res) => {
     try {
         const { classId, announcementId, content, authorName, authorRole, userId } = req.body;
-        // Use userId from request body if available, otherwise fall back to req.user
-        const authorId = userId || req.user?.id;
+        
+        // Check if req.user exists and has an id
+        if (!req.user || !req.user.id) {
+            console.error('Authentication failed for comment: req.user is', req.user);
+            return res.status(401).json({
+                success: false,
+                message: 'User not authenticated'
+            });
+        }
+        
+        // Use the logged-in user's ID from the authentication middleware
+        const authorId = req.user.id;
         
         console.log("Comment request details:", {
             classId,
             announcementId,
-            authorName,
+            content,
             authorRole,
-            userId: userId || "not provided",
-            authUserId: req.user?.id || "not authenticated"
+            loggedInUserId: authorId
         });
         
         if (!classId || !announcementId || !content) {
@@ -458,11 +630,11 @@ exports.addComment = async (req, res) => {
             });
         }
         
-        // Determine the author model based on role
+        // Determine the author model based on role and get the actual user from database
         const authorModelName = authorRole === 'Teacher' ? 'Teacher' : 'Student';
-        let verifiedAuthorName = authorName;
+        let verifiedAuthorName = 'Unknown User';
         
-        // Get the correct user name from database
+        // Get the correct user name from database using the logged-in user's ID
         try {
             if (authorId) {
                 const AuthorModel = mongoose.model(authorModelName);
@@ -472,18 +644,31 @@ exports.addComment = async (req, res) => {
                     console.log(`Found ${authorModelName} with ID ${authorId}, name: ${author.name}`);
                     verifiedAuthorName = author.name;
                 } else {
-                    console.log(`Using provided name as fallback: ${authorName}`);
+                    console.log(`${authorModelName} not found with ID ${authorId}`);
+                    return res.status(404).json({
+                        success: false,
+                        message: `${authorModelName} not found`
+                    });
                 }
+            } else {
+                return res.status(401).json({
+                    success: false,
+                    message: 'User not authenticated'
+                });
             }
         } catch (err) {
-            console.error("Could not verify author:", err);
+            console.error("Error verifying author:", err);
+            return res.status(500).json({
+                success: false,
+                message: 'Error verifying author identity'
+            });
         }
         
         // Create new comment
         const newComment = {
             content,
             author: {
-                name: verifiedAuthorName || 'Unknown User',
+                name: verifiedAuthorName,
                 id: authorId
             },
             authorModel: authorModelName,
@@ -573,4 +758,305 @@ exports.deleteComment = async (req, res) => {
       error: error.message
     });
   }
+};
+
+exports.updateClass = async (req, res) => {
+    try {
+        console.log('Updating class with data:', req.body);
+        
+        const { id } = req.params;
+        const { className, section } = req.body;
+        
+        // Check if req.user exists and has an id
+        if (!req.user || !req.user.id) {
+            console.error('Authentication failed: req.user is', req.user);
+            return res.status(401).json({
+                success: false,
+                message: 'User not authenticated'
+            });
+        }
+        
+        const loggedInUserId = req.user.id;
+        console.log('Logged-in user ID:', loggedInUserId);
+        
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Class ID is required'
+            });
+        }
+        
+        if (!className && !section) {
+            return res.status(400).json({
+                success: false,
+                message: 'At least one field (className or section) is required'
+            });
+        }
+        
+        // Find the class
+        const classDoc = await Class.findById(id);
+        if (!classDoc) {
+            return res.status(404).json({
+                success: false,
+                message: 'Class not found'
+            });
+        }
+        
+        // Check if teacher has permission to update this class
+        const isMainTeacher = classDoc.teacherId.toString() === loggedInUserId;
+        const isAdditionalTeacher = classDoc.additionalTeachers && classDoc.additionalTeachers.some(
+            teacherId => teacherId.toString() === loggedInUserId
+        );
+        
+        if (!isMainTeacher && !isAdditionalTeacher) {
+            return res.status(403).json({
+                success: false,
+                message: 'You do not have permission to update this class'
+            });
+        }
+        
+        // Update the class fields
+        const updateFields = {};
+        if (className) updateFields.className = className.trim();
+        if (section) updateFields.section = section.trim();
+        
+        const updatedClass = await Class.findByIdAndUpdate(
+            id,
+            updateFields,
+            { new: true, runValidators: true }
+        ).populate('teacherId', 'name email');
+        
+        console.log('Class updated successfully:', updatedClass.className);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Class updated successfully',
+            class: {
+                _id: updatedClass._id,
+                className: updatedClass.className,
+                section: updatedClass.section,
+                classCode: updatedClass.classCode,
+                teacherId: updatedClass.teacherId._id,
+                teacher: {
+                    name: updatedClass.teacherId.name,
+                    email: updatedClass.teacherId.email
+                },
+                coverImage: updatedClass.coverImage || 'https://gstatic.com/classroom/themes/img_code.jpg'
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error updating class:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating class',
+            error: error.message
+        });
+    }
+};
+
+// Invite student to class
+exports.inviteStudent = async (req, res) => {
+    try {
+        console.log('Inviting student with data:', req.body);
+        
+        const { classId, email } = req.body;
+        
+        // Check if req.user exists and has an id
+        if (!req.user || !req.user.id) {
+            console.error('Authentication failed: req.user is', req.user);
+            return res.status(401).json({
+                success: false,
+                message: 'User not authenticated'
+            });
+        }
+        
+        const loggedInUserId = req.user.id;
+        console.log('Logged-in user ID:', loggedInUserId);
+        
+        if (!classId || !email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Class ID and email are required'
+            });
+        }
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid email format'
+            });
+        }
+        
+        // Find the class
+        const classDoc = await Class.findById(classId);
+        if (!classDoc) {
+            return res.status(404).json({
+                success: false,
+                message: 'Class not found'
+            });
+        }
+        
+        // Get the logged-in teacher's information
+        const loggedInTeacher = await Teacher.findById(loggedInUserId);
+        if (!loggedInTeacher) {
+            return res.status(404).json({
+                success: false,
+                message: 'Teacher not found'
+            });
+        }
+        
+        console.log('Found class:', classDoc.className);
+        console.log('Logged-in teacher:', loggedInTeacher.name);
+        
+        // Check if teacher has permission to invite to this class
+        const isMainTeacher = classDoc.teacherId.toString() === loggedInUserId;
+        const isAdditionalTeacher = classDoc.additionalTeachers.some(
+            teacherId => teacherId.toString() === loggedInUserId
+        );
+        
+        if (!isMainTeacher && !isAdditionalTeacher) {
+            return res.status(403).json({
+                success: false,
+                message: 'You do not have permission to invite students to this class'
+            });
+        }
+        
+        // Check if invitation already exists for this email and class
+        const existingInvitation = await StudentInvitation.findOne({
+            email: email.toLowerCase(),
+            classId,
+            status: 'pending'
+        });
+        
+        if (existingInvitation) {
+            return res.status(400).json({
+                success: false,
+                message: 'An invitation has already been sent to this email for this class'
+            });
+        }
+        
+        // Check if student is already enrolled
+        const existingStudent = await Student.findOne({
+            email: email.toLowerCase(),
+            enrolledClasses: classId
+        });
+        
+        if (existingStudent) {
+            return res.status(400).json({
+                success: false,
+                message: 'Student is already enrolled in this class'
+            });
+        }
+        
+        // Generate invitation token
+        const invitationData = {
+            email: email.toLowerCase(),
+            classId,
+            invitedBy: loggedInUserId,
+            invitedByName: loggedInTeacher.name,
+            timestamp: Date.now()
+        };
+        
+        const token = jwt.sign(invitationData, process.env.JWT_SECRET, { expiresIn: '7d' });
+        
+        // Create invitation record
+        const invitation = new StudentInvitation({
+            email: email.toLowerCase(),
+            classId,
+            invitedBy: loggedInUserId,
+            invitedByName: loggedInTeacher.name,
+            token
+        });
+        
+        await invitation.save();
+        
+        // Send invitation email
+        await sendStudentInvitationEmail(
+            email.toLowerCase(),
+            loggedInTeacher.name,
+            classDoc.className,
+            token
+        );
+        
+        console.log('Student invitation sent successfully');
+        
+        res.status(201).json({
+            success: true,
+            message: 'Invitation sent successfully',
+            invitation: {
+                email: email.toLowerCase(),
+                className: classDoc.className,
+                invitedBy: loggedInTeacher.name,
+                sentAt: invitation.createdAt
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error inviting student:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error sending invitation',
+            error: error.message
+        });
+    }
+};
+
+// Send student invitation email
+const sendStudentInvitationEmail = async (email, teacherName, className, token) => {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const invitationLink = `${frontendUrl}/invite?token=${token}`;
+    
+    const mailOptions = {
+        from: process.env.EMAIL_SENDER,
+        to: email,
+        subject: `Invitation to join ${className}`,
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+                <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #1b68b3; font-size: 28px; margin: 0;">Smart Classroom LMS</h1>
+                        <p style="color: #666; font-size: 16px; margin: 10px 0;">You're invited to join a class!</p>
+                    </div>
+                    
+                    <div style="margin-bottom: 30px;">
+                        <h2 style="color: #333; font-size: 22px; margin-bottom: 15px;">Class Invitation</h2>
+                        <p style="color: #555; font-size: 16px; line-height: 1.6;">
+                            <strong>${teacherName}</strong> has invited you to join the class:
+                        </p>
+                        <div style="background-color: #f0f7ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1b68b3;">
+                            <h3 style="color: #1b68b3; margin: 0; font-size: 20px;">${className}</h3>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${invitationLink}" 
+                           style="display: inline-block; background-color: #1b68b3; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold; transition: background-color 0.3s;">
+                            Join Class
+                        </a>
+                    </div>
+                    
+                    <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
+                        <p style="color: #856404; margin: 0; font-size: 14px;">
+                            <strong>Note:</strong> This invitation will expire in 7 days. Click the button above to join the class instantly.
+                        </p>
+                    </div>
+                    
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
+                        <p style="color: #888; font-size: 14px; margin: 0;">
+                            If you have any questions, please contact your teacher or system administrator.
+                        </p>
+                        <p style="color: #888; font-size: 12px; margin: 10px 0 0 0;">
+                            If the button doesn't work, copy and paste this link: ${invitationLink}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `
+    };
+    
+    await transporter.sendMail(mailOptions);
+    console.log('Student invitation email sent to:', email);
 };
