@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { FileText, Calendar, Clock, User, Paperclip, X, Trash2, Download } from 'lucide-react';
+import { FileText, Calendar, Clock, User, Paperclip, X, Trash2, Download, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import AssignmentSubmission from '../../student/AssignmentSubmission';
 import axios from 'axios';
 import SubmissionsList from '../../teacher/SubmissionsList';
+import PlagiarismCheckButton from '../../teacher/PlagiarismCheckButton';
 import { fetchSingleAssignment } from '../../../redux/actions/classActions';
 
 const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitting: propIsSubmitting, isTeacher: propIsTeacher }) => {
@@ -20,40 +21,72 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
   const studentAuth = useSelector((state) => state.student);
   const studentId = useSelector(state => state.student.studentId);
   
-  // State for tracking assignment and loading
+  // All useState hooks grouped together
   const [assignment, setAssignment] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  
-  // Use useRef to track fetch status without causing re-renders
-  const hasFetchedRef = useRef(false);
-  const currentIdRef = useRef(null);
-  
-  const isTeacher = propIsTeacher !== undefined ? propIsTeacher : teacherAuth.isAuthenticated;
+  const [plagiarismResults, setPlagiarismResults] = useState(null);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userRole, setUserRole] = useState(null);
 
-  // Effect to handle assignment loading
+  // All useRef hooks grouped together
+  const hasFetchedRef = useRef(false);
+  const currentIdRef = useRef(null);
+
+  // Derived state
+  const isTeacher = propIsTeacher !== undefined ? propIsTeacher : teacherAuth.isAuthenticated;
+
+  // Effect for user role check - always runs
   useEffect(() => {
-    // Reset fetch status if ID changes
+    const checkUserRole = async () => {
+      try {
+        const teacherResponse = await axios.get(
+          'http://localhost:8080/teacher/auth-status',
+          { withCredentials: true }
+        );
+        
+        if (teacherResponse.data.success) {
+          setUserRole('teacher');
+        } else {
+          const studentResponse = await axios.get(
+            'http://localhost:8080/student/auth-status',
+            { withCredentials: true }
+          );
+          
+          if (studentResponse.data.success) {
+            setUserRole('student');
+          } else {
+            setUserRole(null);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking user role:', error);
+        setUserRole(null);
+      }
+    };
+
+    checkUserRole();
+  }, []);
+
+  // Effect for assignment loading - always runs
+  useEffect(() => {
     if (currentIdRef.current !== id) {
       hasFetchedRef.current = false;
       currentIdRef.current = id;
     }
     
     if (propAssignment) {
-      // If assignment is passed as prop, use it
       setAssignment(propAssignment);
       setError(null);
       hasFetchedRef.current = true;
       return;
     }
     
-    // Check if assignment exists in Redux
     const foundAssignment = id && Array.isArray(assignments) && assignments.find((a) => a && a._id === id);
     
     if (foundAssignment) {
-      // If assignment is found in Redux, use it
       setAssignment(foundAssignment);
       setError(null);
       hasFetchedRef.current = true;
@@ -61,22 +94,17 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
     }
     
     if (id && !hasFetchedRef.current) {
-      // If assignment is not in Redux but we have an ID, fetch it
       const fetchAssignment = async () => {
-        hasFetchedRef.current = true; // Set this early to prevent multiple calls
+        hasFetchedRef.current = true;
         setIsLoading(true);
         setError(null);
         
         try {
-          console.log('Fetching assignment with ID:', id);
           const fetchedAssignment = await dispatch(fetchSingleAssignment(id));
-          console.log('Fetched assignment result:', fetchedAssignment);
           
           if (fetchedAssignment) {
             setAssignment(fetchedAssignment);
-            console.log('Assignment set successfully:', fetchedAssignment);
           } else {
-            console.log('No assignment returned from API');
             setError('Assignment not found.');
           }
         } catch (err) {
@@ -93,6 +121,27 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
       hasFetchedRef.current = true;
     }
   }, [propAssignment, assignments, id, dispatch]);
+
+  // Effect for plagiarism results - always runs but has internal conditions
+  useEffect(() => {
+    const fetchPlagiarismResults = async () => {
+      if (!assignment || userRole !== 'teacher') return;
+      
+      try {
+        const response = await axios.get(
+          `http://localhost:8080/plagiarism/${assignment._id}/report`,
+          { withCredentials: true }
+        );
+        if (response.data.success) {
+          setPlagiarismResults(response.data.report);
+        }
+      } catch (error) {
+        console.error('Error fetching plagiarism results:', error);
+      }
+    };
+
+    fetchPlagiarismResults();
+  }, [assignment, userRole]);
 
   // Loading state
   if (isLoading) {
@@ -231,6 +280,122 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
     document.body.removeChild(link);
   };
 
+  // Move fetchPlagiarismResults to be a regular function since it's called by a button
+  const fetchPlagiarismResultsManual = async () => {
+    if (!assignment) return;
+    
+    try {
+      const response = await axios.get(
+        `http://localhost:8080/plagiarism/${assignment._id}/report`,
+        { withCredentials: true }
+      );
+      if (response.data.success && response.data.report) {
+        // Transform the data to match the expected structure
+        const report = response.data.report;
+        setPlagiarismResults({
+          checkId: report.checkId,
+          courseId: report.courseId,
+          overview: {
+            overviewURL: report.reportUrl,
+            submissions: report.overview?.submissions || [],
+            bardata: report.overview?.bardata || []
+          },
+          details: report.details || {},
+          status: report.status
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching plagiarism results:', error);
+    }
+  };
+
+  // Function to render plagiarism results
+  const renderPlagiarismResults = () => {
+    if (!plagiarismResults || !plagiarismResults.overview) return null;
+
+    return (
+      <div className="mt-8 border-t pt-6">
+        <h3 className="text-xl font-semibold text-gray-800 mb-4">Plagiarism Analysis Results</h3>
+        
+        {/* Report Links */}
+        <div className="mb-6 flex gap-4">
+          <a
+            href={plagiarismResults.overview.overviewURL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            View Full Report
+          </a>
+          <a
+            href={`https://dashboard.codequiry.com/course/${plagiarismResults.courseId}/assignment/${plagiarismResults.checkId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50"
+          >
+            Open in Dashboard
+          </a>
+        </div>
+
+        {/* Overview Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {plagiarismResults.overview.submissions.map(submission => (
+            <div 
+              key={submission.id}
+              className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 cursor-pointer"
+              onClick={() => setSelectedSubmission(submission)}
+            >
+              <h4 className="font-medium text-gray-900">{submission.filename}</h4>
+              <div className="mt-2">
+                <div className={`text-lg font-bold ${Number(submission.total_result) > 50 ? 'text-red-600' : 'text-green-600'}`}>
+                  {submission.total_result}% Match
+                </div>
+                <div className="text-sm text-gray-500">
+                  Created: {format(new Date(submission.created_at), 'PPp')}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Detailed Results */}
+        {selectedSubmission && (
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h4 className="text-lg font-semibold mb-4">Detailed Analysis for {selectedSubmission.filename}</h4>
+            
+            <div className="space-y-4">
+              {selectedSubmission.submissionresults?.map(result => (
+                <div key={result.id} className="border-l-4 border-blue-500 pl-4">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">
+                      Comparison with: {plagiarismResults.overview.submissions.find(s => s.id === result.submission_id_compared)?.filename || result.submission_id_compared}
+                    </span>
+                    <span className={`text-lg font-bold ${Number(result.score) > 50 ? 'text-red-600' : 'text-green-600'}`}>
+                      {result.score}% Match
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Warning for High Similarity */}
+        {plagiarismResults.overview.submissions.some(s => Number(s.total_result) > 50) && (
+          <div className="mt-4 p-4 bg-red-50 border-l-4 border-red-500 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <h5 className="font-medium text-red-800">High Similarity Detected</h5>
+              <p className="text-red-700 text-sm mt-1">
+                Some submissions show significant similarity. Please review the detailed analysis for more information.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -318,6 +483,21 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
               classId={assignment.classId} // Pass the classId
             />
           </div>
+        )}
+
+        {/* Plagiarism Check Button and Results - Only for Teachers */}
+        {userRole === 'teacher' && (
+          <>
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Academic Integrity</h3>
+              <PlagiarismCheckButton 
+                assignmentId={assignment._id} 
+                assignmentTitle={assignment.title}
+                onCheckComplete={fetchPlagiarismResultsManual}
+              />
+            </div>
+            {renderPlagiarismResults()}
+          </>
         )}
       </div>
 

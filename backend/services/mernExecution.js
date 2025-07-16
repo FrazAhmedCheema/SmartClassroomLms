@@ -11,7 +11,7 @@ const execAsync = promisify(exec);
 
 // Configure OpenAI API
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 // Store active sessions - renamed to be more generic
@@ -91,54 +91,42 @@ class JSAppExecutionService {
     return Math.abs(hash);
   }
 
-  async analyzeProjectStructure(files) {
-    if (!files || files.length === 0) {
-      throw new Error('No files found to analyze');
-    }
-    
-    // Create folder structure for OpenAI analysis
-    const folderStructure = {};
-    const packageJsonFiles = [];
-    
-    files.forEach(file => {
-      const pathParts = file.name.split(/[/\\]/);
-      if (file.name.endsWith('package.json')) {
-        packageJsonFiles.push({
-          path: file.name,
-          content: file.content
-        });
-      }
-      
-      // Build folder structure
-      let current = folderStructure;
-      pathParts.forEach((part, index) => {
-        if (index === pathParts.length - 1) {
-          if (!current.files) current.files = [];
-          current.files.push(part);
-        } else {
-          if (!current.folders) current.folders = {};
-          if (!current.folders[part]) current.folders[part] = {};
-          current = current.folders[part];
-        }
+async analyzeProjectStructure(files) {
+  if (!files || files.length === 0) {
+    throw new Error('No files found to analyze');
+  }
+
+  const folderStructure = {};
+  const packageJsonFiles = [];
+
+  files.forEach(file => {
+    const pathParts = file.name.split(/[/\\]/);
+    if (file.name.endsWith('package.json')) {
+      packageJsonFiles.push({
+        path: file.name,
+        content: file.content
       });
+    }
+
+    let current = folderStructure;
+    pathParts.forEach((part, index) => {
+      if (index === pathParts.length - 1) {
+        if (!current.files) current.files = [];
+        current.files.push(part);
+      } else {
+        if (!current.folders) current.folders = {};
+        if (!current.folders[part]) current.folders[part] = {};
+        current = current.folders[part];
+      }
     });
+  });
 
-    const maxRetries = 3;
-    let lastError = null;
+  const maxRetries = 3;
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`Project analysis attempt ${attempt}/${maxRetries}`);
-        const response = await openai.chat.completions.create({
-          model: "gpt-4",
-          messages: [
-            { 
-              role: "system", 
-              content: "You are a JavaScript/Node.js project analysis assistant. Analyze any type of JS project (React, Next.js, MERN, Express, etc.) and identify what needs to be run and how. Respond ONLY with valid JSON."
-            },
-            { 
-              role: "user", 
-              content: `Analyze this JavaScript/Node.js project structure and package.json files. Determine the project type and what components need to be run.
+  const prompt = `
+Analyze this JavaScript/Node.js project structure and package.json files. Determine the project type and what components need to be run.
 
 IMPORTANT: 
 - If it's a full-stack app, identify frontend and backend separately
@@ -167,49 +155,66 @@ Folder Structure:
 ${JSON.stringify(folderStructure, null, 2)}
 
 Package.json Files:
-${packageJsonFiles.map(p => `${p.path}:\n${p.content}`).join('\n\n')}`
-            }
-          ],
-          temperature: 0.1
-        });
+${packageJsonFiles.map(p => `${p.path}:\n${p.content}`).join('\n\n')}
+`;
 
-        const analysisText = response.choices[0].message.content.trim();
-        console.log('Raw project analysis response:', analysisText);
-        
-        let analysis;
-        try {
-          analysis = JSON.parse(analysisText);
-        } catch (parseError) {
-          const jsonMatch = analysisText.match(/\{[\s\S]*?\}/);
-          if (jsonMatch) {
-            analysis = JSON.parse(jsonMatch[0]);
-          } else {
-            throw new Error(`No valid JSON found in response: ${analysisText}`);
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Gemini project analysis attempt ${attempt}/${maxRetries}`);
+
+      const response = await axios.post(
+        url,
+        {
+          contents: [
+            {
+              parts: [{ text: prompt }]
+            }
+          ]
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": geminiApiKey
           }
         }
+      );
 
-        // Validate required fields
-        const requiredFields = ['projectType', 'hasFrontend', 'hasBackend'];
-        const missingFields = requiredFields.filter(field => !(field in analysis));
-        
-        if (missingFields.length > 0) {
-          throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      const responseText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      console.log("Gemini response:", responseText);
+
+      let analysis;
+      try {
+        analysis = JSON.parse(responseText);
+      } catch (parseError) {
+        const jsonMatch = responseText.match(/\{[\s\S]*?\}/);
+        if (jsonMatch) {
+          analysis = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error(`No valid JSON found in response: ${responseText}`);
         }
-
-        return analysis;
-
-      } catch (error) {
-        lastError = error;
-        console.error(`Project analysis attempt ${attempt} failed:`, error);
-        
-        if (attempt === maxRetries) {
-          throw new Error(`Failed to analyze project after ${maxRetries} attempts: ${lastError.message}`);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
       }
+
+      const requiredFields = ['projectType', 'hasFrontend', 'hasBackend'];
+      const missingFields = requiredFields.filter(field => !(field in analysis));
+
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+
+      return analysis;
+    } catch (err) {
+      lastError = err;
+      console.error(`Attempt ${attempt} failed:`, err.message);
+      if (attempt === maxRetries) {
+        throw new Error(`Failed after ${maxRetries} attempts: ${lastError.message}`);
+      }
+      await new Promise(r => setTimeout(r, 1000 * attempt));
     }
   }
+}
+
 
   async readFiles(dir) {
     const files = [];
