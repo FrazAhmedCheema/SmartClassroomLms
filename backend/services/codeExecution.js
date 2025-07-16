@@ -4,18 +4,17 @@ const path = require('path');
 const fs = require('fs').promises;
 const os = require('os');
 const axios = require('axios');
-const { OpenAI } = require('openai');
+// Gemini API is used for code analysis and related tasks (see analyzeCode method)
 const WebSocket = require('ws'); // Used for type checking WebSocket.OPEN
 
 // Configure Docker
 const docker = new Docker({
-  host: '13.60.197.204',
+  host: '51.20.8.71',
   port: 2375,
   protocol: 'http'
 });
 
-// Configure OpenAI API
-const openai = new OpenAI(process.env.OPENAI_API_KEY);
+// Gemini API is now used for code analysis (see analyzeCode method)
 
 // Store active interactive sessions
 const activeInteractiveSessions = new Map(); // containerId -> { container, imageName, stream, wsConnections: Set<WebSocket>, lastActivity, analysisCommands: { build: string, run: string }, initialCommandsSent: boolean }
@@ -25,14 +24,13 @@ class CodeExecutionService {
     if (!files || files.length === 0) {
       throw new Error('No files found to analyze');
     }
-    
+
     // Check if this is a MERN stack project
     const hasFrontendDir = files.some(f => f.name.includes('frontend/') || f.name.includes('client/'));
     const hasBackendDir = files.some(f => f.name.includes('backend/') || f.name.includes('server/'));
     const hasPackageJson = files.some(f => f.name === 'package.json' || f.name.includes('package.json'));
-    
+
     if (hasFrontendDir && hasBackendDir && hasPackageJson) {
-      // This looks like a MERN stack project
       return {
         fileType: 'mern',
         projectType: 'mern',
@@ -40,24 +38,16 @@ class CodeExecutionService {
         message: 'MERN stack project detected. Use MERN execution endpoint.'
       };
     }
-    
+
     const codeContent = files.map(f => `File: ${f.name}\nContent:\n${f.content}`).join('\n\n');
     const maxRetries = 3;
     let lastError = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`GPT analysis attempt ${attempt}/${maxRetries}`);
-        const response = await openai.chat.completions.create({
-          model: "gpt-4",
-          messages: [
-            { 
-              role: "system", 
-              content: "You are a code analysis assistant. Always respond with valid JSON following the specified format exactly."
-            },
-            { 
-              role: "user", 
-              content: `Analyze these code files and provide information in this exact JSON format:
+        console.log(`Gemini analysis attempt ${attempt}/${maxRetries}`);
+
+        const prompt = `Analyze these code files and provide information in this exact JSON format:
 {
   "mainFile": "string, name of the main file that should be executed first (if applicable, else pick one)",
   "fileType": "string, language type (cpp, java, python)",
@@ -72,33 +62,58 @@ class CodeExecutionService {
 }
 
 Code files:
-${codeContent}`
-            }
-          ],
-          temperature: 0.1 // Lower temperature for more consistent JSON output
-        });
+${codeContent}`;
 
-        // Attempt to parse and validate the response
-        const analysisText = response.choices[0].message.content.trim();
+        const geminiRes = await axios.post(
+           'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+
+
+          {
+            contents: [
+              {
+                parts: [{ text: prompt }]
+              }
+            ]
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-goog-api-key': process.env.GEMINI_API_KEY
+            }
+          }
+        );
+
+        const geminiText = geminiRes.data.candidates[0]?.content?.parts[0]?.text?.trim();
+        if (!geminiText) {
+          throw new Error('No response content from Gemini');
+        }
+
         let analysis;
-        
         try {
-          analysis = JSON.parse(analysisText);
+          // Remove Markdown code block wrappers if present
+          let cleanText = geminiText.trim();
+          // Remove triple backticks and optional json after them
+          cleanText = cleanText.replace(/^```json\s*|^```\s*|```$/gim, '');
+          // Remove any leading/trailing backticks or whitespace
+          cleanText = cleanText.replace(/^```[a-zA-Z]*\s*|```$/g, '').trim();
+          analysis = JSON.parse(cleanText);
         } catch (parseError) {
           console.error(`JSON parse error on attempt ${attempt}:`, parseError);
-          // Try to extract JSON if it's embedded in other text
-          const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+          // Try to extract JSON object from within the text
+          const jsonMatch = geminiText.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
-            analysis = JSON.parse(jsonMatch[0]);
+            try {
+              analysis = JSON.parse(jsonMatch[0]);
+            } catch (innerErr) {
+              throw innerErr;
+            }
           } else {
             throw parseError;
           }
         }
 
-        // Validate required fields
         const requiredFields = ['mainFile', 'fileType', 'dependencyInstallCommands', 'executionOrder', 'buildCommand', 'runCommand', 'outputFormat'];
         const missingFields = requiredFields.filter(field => !(field in analysis));
-        
         if (missingFields.length > 0) {
           throw new Error(`Invalid analysis format. Missing fields: ${missingFields.join(', ')}`);
         }
@@ -110,17 +125,17 @@ ${codeContent}`
       } catch (error) {
         lastError = error;
         console.error(`Analysis attempt ${attempt} failed:`, error);
-        
+
         if (attempt === maxRetries) {
           console.error('All analysis attempts failed');
-          throw new Error(`Failed to analyze code files with GPT after ${maxRetries} attempts: ${lastError.message}`);
+          throw new Error(`Failed to analyze code files with Gemini after ${maxRetries} attempts: ${lastError.message}`);
         }
-        
-        // Wait before retrying (exponential backoff)
+
         await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, attempt), 5000)));
       }
     }
   }
+
 
   getBaseImage(extension, fileType) { // Added fileType for robustness
     const lang = fileType || extension; // Prefer fileType from analysis
@@ -231,7 +246,7 @@ echo "---EXEC_END---${file}---EXIT_CODE=$exit_code---"
       if (files.length === 0) throw new Error("No files found in submission zip.");
       
       analysisResult = await this.analyzeCode(files);
-      console.log('Code analysis by GPT:', analysisResult);
+      console.log('Code analysis by Gemini:', analysisResult);
 
       const runScriptContent = this.generateRunScript(analysisResult.fileType, analysisResult.executionOrder);
       await fs.writeFile(path.join(tempDir, 'run_script.sh'), runScriptContent);
@@ -394,14 +409,14 @@ echo "---EXEC_END---${file}---EXIT_CODE=$exit_code---"
       console.error('Critical error during code execution process:', error);
       const rawBuildOutputError = buildLogStrings.join('\n');
       const errorMsgForAnalysis = `${error.message}\n${rawBuildOutputError ? `Build Log Snippet:\n${rawBuildOutputError.substring(0, 1000)}` : ''}`;
-      const gptErrorAnalysis = await this.analyzeError(errorMsgForAnalysis, analysisResult?.fileType || "unknown");
+      const aiErrorAnalysis = await this.analyzeError(errorMsgForAnalysis, analysisResult?.fileType || "unknown");
       
       return {
         language: analysisResult?.fileType || 'unknown',
         fileResults: [],
         error: { // Top-level error object for general failures
           message: `Execution failed: ${error.message}`,
-          aiAnalysis: gptErrorAnalysis,
+          aiAnalysis: aiErrorAnalysis,
           rawBuildOutput: rawBuildOutputError,
           stack: error.stack
         }
@@ -445,7 +460,7 @@ echo "---EXEC_END---${file}---EXIT_CODE=$exit_code---"
       if (files.length === 0) throw new Error("No files found in submission zip.");
       
       analysisResult = await this.analyzeCode(files);
-      console.log('Interactive Code analysis by GPT:', analysisResult);
+      console.log('Interactive Code analysis by Gemini:', analysisResult);
 
       const dockerfileContent = this.generateDockerfile(analysisResult, true); // Generate Dockerfile for interactive mode
       await fs.writeFile(path.join(tempDir, 'Dockerfile'), dockerfileContent);
@@ -825,27 +840,61 @@ echo "---EXEC_END---${file}---EXIT_CODE=$exit_code---"
   async formatWithGPT(stdout, title, type) {
     if (!stdout || stdout.trim() === "") return "No output.";
     try {
-      const prompt = `Format this program output clearly for title "${title}" (type: ${type}):\n\n${stdout}\n\nPresent it readably. If it's numeric, ensure numbers are clear. For text, maintain structure.`;
-      const response = await openai.chat.completions.create({
-        model: "gpt-4", messages: [{ role: "user", content: prompt }], temperature: 0.2
-      });
-      return response.choices[0].message.content.trim();
+      const prompt = `Format this program output clearly for title \"${title}\" (type: ${type}):\n\n${stdout}\n\nPresent it readably. If it's numeric, ensure numbers are clear. For text, maintain structure.`;
+      const geminiRes = await axios.post(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+        {
+          contents: [
+            {
+              parts: [{ text: prompt }]
+            }
+          ]
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-goog-api-key': process.env.GEMINI_API_KEY
+          }
+        }
+      );
+      const geminiText = geminiRes.data.candidates[0]?.content?.parts[0]?.text?.trim();
+      if (!geminiText) {
+        throw new Error('No response content from Gemini');
+      }
+      return geminiText;
     } catch (error) {
-      console.error('Error formatting output with GPT:', error);
-      return `Raw Output (GPT formatting failed):\n${stdout}`;
+      console.error('Error formatting output with Gemini:', error);
+      return `Raw Output (Gemini formatting failed):\n${stdout}`;
     }
   }
 
   async analyzeError(errorMsg, language) {
     if (!errorMsg || errorMsg.trim() === "") return { explanation: "No error message provided.", location: "", solution: "", type: "unknown" };
     try {
-      const prompt = `Analyze this ${language} error. Explain simply: 1. What's wrong. 2. Error location. 3. How to fix. Format as JSON: {"explanation": "", "location": "", "solution": "", "type": "syntax|runtime|build|unknown"}\nError:\n${errorMsg}`;
-      const response = await openai.chat.completions.create({
-        model: "gpt-4", messages: [{ role: "user", content: prompt }], temperature: 0.2
-      });
-      return JSON.parse(response.choices[0].message.content);
+      const prompt = `Analyze this ${language} error. Explain simply: 1. What's wrong. 2. Error location. 3. How to fix. Format as JSON: {\"explanation\": \"\", \"location\": \"\", \"solution\": \"\", \"type\": \"syntax|runtime|build|unknown\"}\nError:\n${errorMsg}`;
+      const geminiRes = await axios.post(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+        {
+          contents: [
+            {
+              parts: [{ text: prompt }]
+            }
+          ]
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-goog-api-key': process.env.GEMINI_API_KEY
+          }
+        }
+      );
+      const geminiText = geminiRes.data.candidates[0]?.content?.parts[0]?.text?.trim();
+      if (!geminiText) {
+        throw new Error('No response content from Gemini');
+      }
+      return JSON.parse(geminiText);
     } catch (error) {
-      console.error('Error analyzing with GPT:', error);
+      console.error('Error analyzing with Gemini:', error);
       return { explanation: "Failed to analyze error with AI.", location: "N/A", solution: "Review the raw error message.", type: "analysis_failed" };
     }
   }
@@ -891,16 +940,35 @@ ${cleanLog}
 `;
 
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4", // Or your preferred model
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.3,
-      });
-      const analysis = JSON.parse(response.choices[0].message.content);
-      return { structuredSummary: analysis }; // This will be an array
+      const geminiRes = await axios.post(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+        {
+          contents: [
+            {
+              parts: [{ text: prompt }]
+            }
+          ]
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-goog-api-key': process.env.GEMINI_API_KEY
+          }
+        }
+      );
+      const geminiText = geminiRes.data.candidates[0]?.content?.parts[0]?.text?.trim();
+      if (!geminiText) {
+        throw new Error('No response content from Gemini');
+      }
+      // Remove Markdown code block wrappers if present
+      let cleanText = geminiText.trim();
+      cleanText = cleanText.replace(/^```json\s*|^```\s*|```$/gim, '');
+      cleanText = cleanText.replace(/^```[a-zA-Z]*\s*|```$/g, '').trim();
+      const analysis = JSON.parse(cleanText);
+      return { structuredSummary: analysis };
     } catch (error) {
-      console.error('GPT analysis error for terminal output:', error);
-      throw new Error('Failed to analyze terminal output with GPT.');
+      console.error('Gemini analysis error for terminal output:', error);
+      throw new Error('Failed to analyze terminal output with Gemini.');
     }
   }
 }

@@ -1,0 +1,128 @@
+
+      <html>
+        <head>
+          <title>Plagiarism Report</title>
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+            .header { border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 2rem; }
+            .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+            .stat-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; }
+            .stat-label { font-size: 0.875rem; color: #4b5563; }
+            .stat-value { font-size: 1.5rem; font-weight: 600; color: #111827; }
+            .similarity-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin-top: 0.5rem; }
+            .similarity-fill { height: 100%; border-radius: 4px; }
+            .files-list { margin-top: 2rem; }
+            .file-item { background: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; }
+            .file-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+            .file-name { font-weight: 500; }
+            .file-similarity { font-size: 0.875rem; padding: 0.25rem 0.75rem; border-radius: 9999px; }
+            .similarity-low { background: #d1fae5; color: #065f46; }
+            .similarity-medium { background: #fef3c7; color: #92400e; }
+            .similarity-high { background: #fee2e2; color: #991b1b; }
+            pre { background: #f3f4f6; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; font-size: 0.875rem; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Plagiarism Report for Assignment: Checking plagiarism</h1>
+            <p>Generated on 7/14/2025, 3:12:01 AM</p>
+          </div>
+          
+          <div class="summary">
+            <div class="stat-card">
+              <div class="stat-label">Average Similarity</div>
+              <div class="stat-value">0%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Maximum Similarity</div>
+              <div class="stat-value">0%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Files Analyzed</div>
+              <div class="stat-value">2</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-label">Similarity Distribution</div>
+            <div style="display: grid; gap: 0.5rem; margin-top: 1rem;">
+              <div>
+                <div style="display: flex; justify-content: space-between">
+                  <span>Low Risk (0-30%)</span>
+                  <span>2 files</span>
+                </div>
+                <div class="similarity-bar">
+                  <div class="similarity-fill" style="width: 100%; background: #22c55e"></div>
+                </div>
+              </div>
+              <div>
+                <div style="display: flex; justify-content: space-between">
+                  <span>Medium Risk (31-60%)</span>
+                  <span>0 files</span>
+                </div>
+                <div class="similarity-bar">
+                  <div class="similarity-fill" style="width: 0%; background: #f59e0b"></div>
+                </div>
+              </div>
+              <div>
+                <div style="display: flex; justify-content: space-between">
+                  <span>High Risk (61-80%)</span>
+                  <span>0 files</span>
+                </div>
+                <div class="similarity-bar">
+                  <div class="similarity-fill" style="width: 0%; background: #ef4444"></div>
+                </div>
+              </div>
+              <div>
+                <div style="display: flex; justify-content: space-between">
+                  <span>Critical Risk (>80%)</span>
+                  <span>0 files</span>
+                </div>
+                <div class="similarity-bar">
+                  <div class="similarity-fill" style="width: 0%; background: #dc2626"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="files-list">
+            <h2>Detailed Results</h2>
+            
+              <div class="file-item">
+                <div class="file-header">
+                  <span class="file-name">Scan ID: 64a2c9f3-da6e-49ba-a00f-1b48f1b1f15b</span>
+                  <span class="file-similarity similarity-low">
+                    0% Similar
+                  </span>
+                </div>
+                <pre>{
+  "scanId": "64a2c9f3-da6e-49ba-a00f-1b48f1b1f15b",
+  "pdfUrl": null,
+  "status": "Completed",
+  "studentName": "Fraz Ahmed",
+  "studentId": "686cf7775f2eb1d94ab8cb05",
+  "fileName": "StudentData.java"
+}</pre>
+              </div>
+            
+              <div class="file-item">
+                <div class="file-header">
+                  <span class="file-name">Scan ID: ddc81e21-5d8a-470d-94cc-132b5ecdd9a8</span>
+                  <span class="file-similarity similarity-low">
+                    0% Similar
+                  </span>
+                </div>
+                <pre>{
+  "scanId": "ddc81e21-5d8a-470d-94cc-132b5ecdd9a8",
+  "pdfUrl": null,
+  "status": "Completed",
+  "studentName": "Ayesha Asghar",
+  "studentId": "686b8096dba89a79c58c3275",
+  "fileName": "StudentData.java"
+}</pre>
+              </div>
+            
+          </div>
+        </body>
+      </html>
+    

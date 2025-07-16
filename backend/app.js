@@ -24,6 +24,7 @@ const questionRoutes = require('./routes/question'); // Import new question rout
 const submissionRoutes = require('./routes/submission'); // Ensure submission routes are imported
 const codeExecutionRoutes = require('./routes/codeExecution'); // Add this line
 const codeViewRoutes = require('./routes/codeView'); // Import new code view routes
+const plagiarismRoutes = require('./routes/plagiarismRoutes'); // Add plagiarism routes
 
 const codeExecutionService = require('./services/codeExecution');
 const mernExecutionService = require('./services/mernExecution'); // Add this import
@@ -177,6 +178,10 @@ app.use('/question', questionRoutes); // Add question routes
 app.use('/submission', submissionRoutes); // Ensure submission routes are registered
 app.use('/code', codeExecutionRoutes); // Add the new route
 app.use('/code-view', codeViewRoutes); // Add the new route
+app.use('/api/plagiarism', plagiarismRoutes); // Add plagiarism routes
+
+// Serve static files for reports
+app.use('/reports', express.static(path.join(__dirname, 'public/reports')));
 
 // Add cleanup handlers for graceful shutdown
 process.on('SIGINT', async () => {
