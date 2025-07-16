@@ -7,7 +7,7 @@ const statsConfig = {
     { icon: BookOpen, title: 'Active Classes', key: 'activeClasses', description: 'Currently ongoing' },
     { icon: Users, title: 'Total Students', key: 'totalStudents', description: 'Enrolled students' },
     { icon: CheckSquare, title: 'Assignments', key: 'assignments', description: 'Pending reviews' },
-    { icon: Clock, title: 'Upcoming', key: 'upcoming', description: 'Next 24 hours' },
+    { icon: Clock, title: 'Recent Submissions', key: 'recentSubmissions', description: 'Last 7 days' },
   ],
   student: [
     { icon: BookOpen, title: 'Enrolled Classes', key: 'enrolledClasses', description: 'Active courses' },

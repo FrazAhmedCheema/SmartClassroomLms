@@ -111,7 +111,7 @@ const ClassPage = ({ defaultTab = 'stream' }) => {
           <div>
             <ClassTabs activeTab={activeTab} setActiveTab={setActiveTab} userRole={userRole} />
             <div className="mt-6">
-              {activeTab === 'stream' && <StreamTab classData={classDataWithCover} userRole={userRole} />}
+              {activeTab === 'stream' && <StreamTab classData={classDataWithCover} userRole={userRole} classId={id} />}
               {activeTab === 'classwork' && <ClassworkTab classId={id} userRole={userRole} assignmentId={assignmentId} />}
               {activeTab === 'people' && <PeopleTab classId={id} userRole={userRole} />}
               {activeTab === 'discussion' && <DiscussionTab classId={id} topicId={topicId} />}

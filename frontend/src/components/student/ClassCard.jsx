@@ -1,5 +1,5 @@
 import React from 'react';
-import { MoreVertical, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const StudentClassCard = ({ cls, onClick }) => {
@@ -16,11 +16,6 @@ const StudentClassCard = ({ cls, onClick }) => {
 
   const handleCardClick = () => {
     navigate(`/class/${_id}`);
-  };
-
-  const handleMoreClick = (e) => {
-    e.stopPropagation(); // Prevent card navigation when clicking the menu
-    // Handle more menu action
   };
 
   return (
@@ -41,15 +36,12 @@ const StudentClassCard = ({ cls, onClick }) => {
           <div className="p-4 md:p-6 relative h-full flex flex-col justify-between">
             <div className="flex justify-between items-start">
               <div className="flex-1">
-                <h3 className="text-lg md:text-2xl font-bold text-white truncate pr-8">
+                <h3 className="text-lg md:text-2xl font-bold text-white truncate">
                   {className}
                 </h3>
                 <p className="text-white/90 text-sm md:text-base mt-1">
                   Section: {section}
                 </p>
-              </div>
-              <div onClick={handleMoreClick}>
-                <MoreVertical className="text-white cursor-pointer hover:text-white/80" size={20} />
               </div>
             </div>
           </div>

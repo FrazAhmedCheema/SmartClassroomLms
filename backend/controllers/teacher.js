@@ -100,7 +100,19 @@ exports.getClasses = async (req, res) => {
             });
         }
 
-        const classes = await Class.find({ _id: { $in: teacher.classes } })
+        // Also find classes where this teacher is an additional teacher
+        const additionalClasses = await Class.find({ 
+            additionalTeachers: teacherId 
+        });
+
+        // Combine all classes and remove duplicates
+        const allClassIds = [
+            ...teacher.classes.map(cls => cls._id.toString()),
+            ...additionalClasses.map(cls => cls._id.toString())
+        ];
+        const uniqueClassIds = [...new Set(allClassIds)];
+
+        const classes = await Class.find({ _id: { $in: uniqueClassIds } })
             .populate({
                 path: 'teacherId',
                 select: 'name email'
@@ -317,6 +329,10 @@ exports.getClassById = async (req, res) => {
             .populate({
                 path: 'teacherId',
                 select: 'name email'
+            })
+            .populate({
+                path: 'additionalTeachers',
+                select: 'name email'
             });
 
         if (!classData) {
@@ -326,8 +342,12 @@ exports.getClassById = async (req, res) => {
             });
         }
 
-        // Verify that the requesting teacher is the one who owns this class
-        if (classData.teacherId._id.toString() !== teacherId) {
+        // Verify that the requesting teacher is the main teacher or an additional teacher
+        const isMainTeacher = classData.teacherId._id.toString() === teacherId;
+        const isAdditionalTeacher = classData.additionalTeachers && 
+            classData.additionalTeachers.some(teacher => teacher._id.toString() === teacherId);
+
+        if (!isMainTeacher && !isAdditionalTeacher) {
             return res.status(403).json({
                 success: false,
                 message: 'You do not have permission to access this class'
@@ -356,7 +376,13 @@ exports.getClassById = async (req, res) => {
                     id: classData.teacherId._id,
                     name: classData.teacherId.name,
                     email: classData.teacherId.email
-                }
+                },
+                // Add additional teachers
+                ...((classData.additionalTeachers || []).map(teacher => ({
+                    id: teacher._id,
+                    name: teacher.name,
+                    email: teacher.email
+                })))
             ],
             // Dummy cover image
             coverImage: 'https://gstatic.com/classroom/themes/img_code.jpg',
@@ -414,11 +440,25 @@ exports.getTeacherStats = async (req, res) => {
             });
         }
 
-        // Get active classes count from teacher's classes array
-        const activeClasses = teacher.classes.length;
+        // Also find classes where this teacher is an additional teacher
+        const additionalClasses = await Class.find({ 
+            additionalTeachers: teacherId 
+        }).populate('students');
+
+        // Combine all classes and remove duplicates
+        const allClasses = [...teacher.classes];
+        additionalClasses.forEach(additionalClass => {
+            const exists = teacher.classes.some(cls => cls._id.toString() === additionalClass._id.toString());
+            if (!exists) {
+                allClasses.push(additionalClass);
+            }
+        });
+
+        // Get active classes count from all classes (main + additional)
+        const activeClasses = allClasses.length;
 
         // Calculate total students across all classes
-        const totalStudents = teacher.classes.reduce((total, classObj) => {
+        const totalStudents = allClasses.reduce((total, classObj) => {
             return total + (classObj.students ? classObj.students.length : 0);
         }, 0);
 
@@ -438,7 +478,8 @@ exports.getTeacherStats = async (req, res) => {
         // Count pending submissions that need grading (assignments only, as quizzes are auto-graded)
         const pendingSubmissions = await Submission.countDocuments({
             assignmentId: { $ne: null },
-            grade: null,
+            status: 'submitted',
+            gradedAt: null,
             $or: [
                 { assignmentId: { $in: await Assignment.find({ createdBy: teacherId }).distinct('_id') } }
             ]
@@ -447,21 +488,26 @@ exports.getTeacherStats = async (req, res) => {
         // Total assignments to review (pending submissions)
         const assignments = pendingSubmissions;
 
-        // Count upcoming assignments and quizzes (due in next 24 hours)
-        const now = new Date();
-        const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        // Count recent submissions (received in last 7 days) instead of upcoming
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-        const upcomingAssignments = await Assignment.countDocuments({
-            createdBy: teacherId,
-            dueDate: { $gte: now, $lte: next24Hours }
+        const recentSubmissions = await Submission.countDocuments({
+            $or: [
+                { assignmentId: { $in: await Assignment.find({ createdBy: teacherId }).distinct('_id') } },
+                { quizId: { $in: await Quiz.find({ createdBy: teacherId }).distinct('_id') } }
+            ],
+            submittedAt: { $gte: oneWeekAgo }
         });
 
-        const upcomingQuizzes = await Quiz.countDocuments({
-            createdBy: teacherId,
-            dueDate: { $gte: now, $lte: next24Hours }
+        // Debug logging for teacher stats
+        console.log(`Teacher ${teacherId} stats:`, {
+            activeClasses,
+            totalStudents,
+            pendingSubmissions: assignments,
+            recentSubmissions,
+            oneWeekAgo: oneWeekAgo.toISOString()
         });
-
-        const upcoming = upcomingAssignments + upcomingQuizzes;
 
         res.status(200).json({
             success: true,
@@ -469,7 +515,7 @@ exports.getTeacherStats = async (req, res) => {
                 activeClasses,
                 totalStudents,
                 assignments,
-                upcoming
+                recentSubmissions
             }
         });
     } catch (error) {

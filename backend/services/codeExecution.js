@@ -9,7 +9,7 @@ const WebSocket = require('ws'); // Used for type checking WebSocket.OPEN
 
 // Configure Docker
 const docker = new Docker({
-  host: '13.60.197.204',
+  host: '51.20.8.71',
   port: 2375,
   protocol: 'http'
 });

@@ -45,7 +45,8 @@ export const handleCreateAnnouncement = async (content, safeClassData, isTeacher
           classId: safeClassData._id, 
           content,
           authorName: actualTeacherName // Always send the actual name to the server
-        }
+        },
+        { withCredentials: true } // Add credentials to include authentication cookies
       );
       
       if (response.data.success) {
@@ -86,7 +87,8 @@ export const handleDeleteAnnouncement = async (announcementId, safeClassData, an
       data: {
         classId: safeClassData._id,
         announcementId
-      }
+      },
+      withCredentials: true // Add credentials for authentication
     });
     
     // Success toast
@@ -154,7 +156,8 @@ export const handleDeleteComment = async (announcementId, commentId, safeClassDa
         classId: safeClassData._id,
         announcementId,
         commentId
-      }
+      },
+      withCredentials: true // Add credentials for authentication
     });
     
     // Success toast

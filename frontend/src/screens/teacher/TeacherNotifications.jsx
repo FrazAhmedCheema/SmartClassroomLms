@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
-import { Bell, Check, CheckCheck, X, Clock, BookOpen, FileText, MessageCircle, User, Trash2, ArrowLeft, RefreshCw, Info } from 'lucide-react';
+import { Bell, Check, CheckCheck, X, Clock, BookOpen, FileText, MessageCircle, User, Trash2, ArrowLeft, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import {
   fetchTeacherNotifications,
   markTeacherNotificationAsRead,
   markAllTeacherNotificationsAsRead,
-  deleteTeacherNotification,
-  addDebugTeacherDiscussionNotification
+  deleteTeacherNotification
 } from '../../redux/slices/teacherNotificationSlice';
 
 const TeacherNotifications = () => {
@@ -18,34 +17,10 @@ const TeacherNotifications = () => {
   const { notifications, loading, error } = useSelector(state => state.teacherNotifications);
   const [filter, setFilter] = useState('all'); // 'all', 'unread', 'read'
   const [refreshing, setRefreshing] = useState(false);
-  const [showDebugInfo, setShowDebugInfo] = useState(false);
-  
-  // Discussion notification debug tracking
-  const discussionNotifications = notifications.filter(n => n.type === 'discussion');
-  const hasDiscussionNotifications = discussionNotifications.length > 0;
 
   // Initial fetch
   useEffect(() => {
-    dispatch(fetchTeacherNotifications()).then(action => {
-      if (action.payload && action.payload.notifications) {
-        const allNotifs = action.payload.notifications;
-        console.log(`[DEBUG] Received ${allNotifs.length} total teacher notifications`);
-        
-        // Log notification types distribution
-        const typeCount = {};
-        allNotifs.forEach(n => {
-          typeCount[n.type] = (typeCount[n.type] || 0) + 1;
-        });
-        console.log('[DEBUG] Teacher notification types:', typeCount);
-        
-        // Specifically check for discussion notifications
-        const discussionNotifs = allNotifs.filter(n => n.type === 'discussion');
-        console.log(`[DEBUG] Found ${discussionNotifs.length} teacher discussion notifications`);
-        if (discussionNotifs.length > 0) {
-          console.log('[DEBUG] First teacher discussion notification:', discussionNotifs[0]);
-        }
-      }
-    });
+    dispatch(fetchTeacherNotifications());
     
     // Auto refresh every 30 seconds
     const intervalId = setInterval(() => {
@@ -135,7 +110,7 @@ const TeacherNotifications = () => {
                 onClick={() => navigate(-1)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <ArrowLeft size={24} className="text-gray-600" />
+                <ArrowLeft size={24} className="text-white" />
               </button>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Teacher Notifications</h1>
@@ -146,15 +121,8 @@ const TeacherNotifications = () => {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setShowDebugInfo(!showDebugInfo)}
-                className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-all"
-                title="Show debug info"
-              >
-                <Info size={20} />
-              </button>
-              <button
                 onClick={handleManualRefresh}
-                className={`p-2 rounded-lg transition-all flex items-center ${refreshing ? 'animate-spin text-blue-600' : 'hover:bg-gray-100 text-gray-600'}`}
+                className={`p-2 rounded-lg transition-all flex items-center ${refreshing ? 'animate-spin text-blue-600' : 'hover:bg-gray-100 text-white'}`}
                 title="Refresh notifications"
                 disabled={refreshing}
               >
@@ -173,41 +141,9 @@ const TeacherNotifications = () => {
           </div>
         </div>
 
-        {/* Debug Information Panel */}
-        {showDebugInfo && (
-          <div className="bg-gray-100 p-4 rounded-lg mb-6 text-sm border border-gray-300">
-            <h3 className="font-bold mb-2">Debug Information</h3>
-            <p><strong>Total teacher notifications:</strong> {notifications.length}</p>
-            <p><strong>Teacher discussion notifications:</strong> {discussionNotifications.length}</p>
-            {hasDiscussionNotifications ? (
-              <div className="mt-2">
-                <p className="font-semibold">Teacher discussion notifications found:</p>
-                <ul className="list-disc pl-5 mt-1">
-                  {discussionNotifications.map((n, idx) => (
-                    <li key={idx} className="mb-1">
-                      "{n.title}" - {n.message} 
-                      <span className="text-xs text-gray-500 ml-1">
-                        (Created: {new Date(n.createdAt).toLocaleString()})
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <p className="mt-2 text-orange-600">No teacher discussion notifications found in the system.</p>
-            )}
-            <button 
-              onClick={() => window.open('http://localhost:8080/teacher/notifications/discussion-debug', '_blank')}
-              className="mt-3 px-3 py-1.5 bg-blue-600 text-white rounded text-xs"
-            >
-              View detailed debug info
-            </button>
-          </div>
-        )}
-
         {/* Filter Tabs */}
         <div className="mb-6">
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
+          <div className="flex space-x-1 w-fit">
             {[
               { key: 'all', label: 'All', count: notifications.length },
               { key: 'unread', label: 'Unread', count: unreadCount },
@@ -218,8 +154,8 @@ const TeacherNotifications = () => {
                 onClick={() => setFilter(tab.key)}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   filter === tab.key
-                    ? 'bg-white text-[#1b68b3] shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-[#145091] text-white shadow-sm'
+                    : 'bg-[#1b68b3] text-white hover:bg-[#145091]'
                 }`}
               >
                 {tab.label} ({tab.count})
@@ -227,67 +163,6 @@ const TeacherNotifications = () => {
             ))}
           </div>
         </div>
-
-        {/* Debug Actions */}
-        {showDebugInfo && (
-          <div className="bg-gray-100 p-4 rounded-lg mb-6 text-sm border border-gray-300">
-            <h3 className="font-bold mb-2">Notification Debug Actions</h3>
-            <div className="flex mt-3 gap-2">
-              <button 
-                onClick={() => {
-                  fetch('http://localhost:8080/teacher/notifications/discussion-debug', {
-                    credentials: 'include'
-                  })
-                  .then(res => res.json())
-                  .then(data => {
-                    console.log('[DEBUG] Teacher discussion notifications debug data:', data);
-                    alert(`Found ${data.totalCount} teacher discussion notifications in system`);
-                  })
-                  .catch(err => console.error('Error fetching teacher debug info:', err));
-                }}
-                className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs"
-              >
-                Check teacher discussion notifications
-              </button>
-              <button 
-                onClick={() => {
-                  const classId = prompt('Enter a class ID to create a test teacher notification:');
-                  if (classId) {
-                    fetch('http://localhost:8080/teacher/notifications/test', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      credentials: 'include',
-                      body: JSON.stringify({ classId, type: 'discussion' })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                      console.log('[DEBUG] Test teacher notification created:', data);
-                      if (data.success) {
-                        alert('Test teacher notification created successfully!');
-                        dispatch(fetchTeacherNotifications());
-                      } else {
-                        alert(`Error: ${data.message}`);
-                      }
-                    })
-                    .catch(err => console.error('Error creating test teacher notification:', err));
-                  }
-                }}
-                className="px-3 py-1.5 bg-green-600 text-white rounded text-xs"
-              >
-                Create test teacher notification
-              </button>
-              <button 
-                onClick={() => {
-                  dispatch(addDebugTeacherDiscussionNotification());
-                  alert('Added debug teacher discussion notification locally. This is only for UI testing!');
-                }}
-                className="px-3 py-1.5 bg-purple-600 text-white rounded text-xs"
-              >
-                Add UI test teacher notification
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Notifications List */}
         <div className="space-y-4">
@@ -345,18 +220,18 @@ const TeacherNotifications = () => {
                         {!notification.isRead && (
                           <button
                             onClick={() => handleMarkAsRead(notification._id)}
-                            className="p-2 hover:bg-blue-100 rounded-full transition-colors"
+                            className="p-2 bg-blue-600 hover:bg-blue-700 rounded-full text-white transition-colors"
                             title="Mark as read"
                           >
-                            <Check size={16} className="text-blue-600" />
+                            <Check size={16} />
                           </button>
                         )}
                         <button
                           onClick={() => handleDeleteNotification(notification._id)}
-                          className="p-2 hover:bg-red-100 rounded-full transition-colors"
+                          className="p-2 bg-red-600 hover:bg-red-700 rounded-full text-white transition-colors"
                           title="Delete notification"
                         >
-                          <Trash2 size={16} className="text-red-600" />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </div>
