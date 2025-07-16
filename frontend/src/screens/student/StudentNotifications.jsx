@@ -135,7 +135,7 @@ const StudentNotifications = () => {
                 onClick={() => navigate(-1)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <ArrowLeft size={24} className="text-gray-600" />
+                <ArrowLeft size={24} className="text-white" />
               </button>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Notifications</h1>
@@ -154,7 +154,7 @@ const StudentNotifications = () => {
               </button>
               <button
                 onClick={handleManualRefresh}
-                className={`p-2 rounded-lg transition-all flex items-center ${refreshing ? 'animate-spin text-blue-600' : 'hover:bg-gray-100 text-gray-600'}`}
+                className={`p-2 rounded-lg transition-all flex items-center ${refreshing ? 'animate-spin text-blue-600' : 'hover:bg-gray-100 text-white'}`}
                 title="Refresh notifications"
                 disabled={refreshing}
               >
@@ -207,7 +207,7 @@ const StudentNotifications = () => {
 
         {/* Filter Tabs */}
         <div className="mb-6">
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
+          <div className="flex space-x-1 w-fit">
             {[
               { key: 'all', label: 'All', count: notifications.length },
               { key: 'unread', label: 'Unread', count: unreadCount },
@@ -218,8 +218,8 @@ const StudentNotifications = () => {
                 onClick={() => setFilter(tab.key)}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   filter === tab.key
-                    ? 'bg-white text-[#1b68b3] shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-[#145091] text-white shadow-sm'
+                    : 'bg-[#1b68b3] text-white hover:bg-[#145091]'
                 }`}
               >
                 {tab.label} ({tab.count})
@@ -373,18 +373,18 @@ const StudentNotifications = () => {
                         {!notification.isRead && (
                           <button
                             onClick={() => handleMarkAsRead(notification._id)}
-                            className="p-2 hover:bg-blue-100 rounded-full transition-colors"
+                            className="p-2 bg-blue-600 hover:bg-blue-700 rounded-full text-white transition-colors"
                             title="Mark as read"
                           >
-                            <Check size={16} className="text-blue-600" />
+                            <Check size={16} />
                           </button>
                         )}
                         <button
                           onClick={() => handleDeleteNotification(notification._id)}
-                          className="p-2 hover:bg-red-100 rounded-full transition-colors"
+                          className="p-2 bg-red-600 hover:bg-red-700 rounded-full text-white transition-colors"
                           title="Delete notification"
                         >
-                          <Trash2 size={16} className="text-red-600" />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </div>

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
   Bell, 
@@ -10,32 +10,84 @@ import {
   ChevronRight
 } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { useSelector } from 'react-redux';
 
 const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const baseRoute = userRole.toLowerCase();
   const [isClassesOpen, setIsClassesOpen] = useState(true);
+  const [stats, setStats] = useState(null);
+  
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(`http://localhost:8080/${userRole.toLowerCase()}/stats`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch stats: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          setStats(result.data);
+          console.log('Stats data in sidebar:', result.data);
+        } else {
+          throw new Error(result.message || 'Failed to fetch stats');
+        }
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    };
+
+    fetchStats();
+  }, [userRole]);
+
+  console.log(`SharedSidebar: userRole=${userRole}, baseRoute=${baseRoute}`);
+  console.log(`SharedSidebar: Todo path=/${baseRoute}/todos, Settings path=/${baseRoute}/settings`);
+  
+  // Get notification count from redux store
+  const notifications = useSelector((state) => 
+    userRole === 'Student' 
+      ? state.notifications?.notifications || []
+      : state.teacherNotifications?.notifications || []
+  );
+  
+  // Get pending assignments count for students or pending reviews for teachers
+  const assignments = useSelector((state) => state.assignments);
+  const pendingWork = userRole === 'Student'
+    ? (assignments?.assignments || []).filter(a => 
+        !(a.submission && a.submission.status === 'submitted') && 
+        new Date(a.dueDate) > new Date()
+      ).length
+    : stats?.assignments || 0;  // Use the assignments count from stats
 
   console.log('Classes in SharedSidebar:', classes);
-
-  // Only home route is implemented for now
-  const implementedRoutes = [`/${baseRoute}/home`];
-
-  const handleUnimplementedRoute = (e, title) => {
-    e.preventDefault();
-    Swal.fire({
-      title: 'Coming Soon!',
-      text: `The ${title} feature is under development.`,
-      icon: 'info',
-      confirmButtonColor: '#1b68b3',
-    });
-  };
+  console.log('Current pathname:', location.pathname);
+  console.log('Base route:', baseRoute);
 
   const menuItems = [
     { icon: Home, title: 'Home', path: `/${baseRoute}/home` },
-    { icon: Bell, title: 'Notifications', path: `/${baseRoute}/notifications` },
+    { 
+      icon: Bell, 
+      title: 'Notifications', 
+      path: `/${baseRoute}/notifications`,
+      badge: notifications.filter(n => !n.read).length
+    },
     { type: 'divider' },
-    { icon: CheckSquare, title: 'To-do Work', path: `/${baseRoute}/todos` },
+    { 
+      icon: CheckSquare, 
+      title: 'To-do Work', 
+      path: `/${baseRoute}/todos`,
+      badge: typeof pendingWork === 'number' ? pendingWork : pendingWork.length,
+      onClick: (e) => {
+        console.log(`Navigating to To-do: /${baseRoute}/todos`);
+        handleNavigation(`/${baseRoute}/todos`, e);
+      }
+    },
     { 
       icon: BookOpen, 
       title: userRole === 'Teacher' ? 'Teaching' : 'Enrolled Classes', 
@@ -47,8 +99,27 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
       }))
     },
     { type: 'divider' },
-    { icon: Settings, title: 'Settings', path: `/${baseRoute}/settings` }
+    { 
+      icon: Settings, 
+      title: 'Settings', 
+      path: `/${baseRoute}/settings`,
+      onClick: (e) => {
+        console.log(`Navigating to Settings: /${baseRoute}/settings`);
+        handleNavigation(`/${baseRoute}/settings`, e);
+      }
+    }
   ];
+
+  // Badge component for notifications/todos count
+  const Badge = ({ count }) => {
+    if (!count || count <= 0) return null;
+    
+    return (
+      <div className="flex items-center justify-center min-w-[20px] h-5 rounded-full bg-red-500 text-white text-xs font-semibold px-1">
+        {count > 99 ? '99+' : count}
+      </div>
+    );
+  };
 
   const CircleAvatar = ({ initial, isActive }) => (
     <div 
@@ -65,6 +136,14 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
       {initial}
     </div>
   );
+
+  const handleNavigation = (path, e) => {
+    console.log('Navigating to:', path);
+    if (e) e.preventDefault(); // Prevent default Link behavior
+    
+    // Force navigation with navigate function instead of relying on Link
+    navigate(path);
+  };
 
   return (
     <div
@@ -112,6 +191,8 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
                   ${isClassesOpen ? 'max-h-96' : 'max-h-0'}`}>
                   {isOpen && item.children?.map((child, childIndex) => {
                     const isSelected = location.pathname === child.path;
+                    // Check for any route that includes the class ID (like classwork, discussions, etc.)
+                    const isActive = location.pathname.includes(child.path.split('/').pop());
                     
                     return (
                       <Link
@@ -120,7 +201,9 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
                         className={`flex items-center gap-3 p-3 pl-8 rounded-lg transition-all duration-300
                           ${isSelected
                             ? 'bg-white shadow-lg transform scale-[0.98]'
-                            : 'text-white hover:bg-white/10'
+                            : isActive
+                              ? 'bg-white/10 text-white'
+                              : 'text-white hover:bg-white/10'
                           }`}
                         style={{ 
                           color: isSelected ? '#1b68b3' : 'white'
@@ -141,8 +224,7 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
             ) : (
               <div
                 key={index}
-                onClick={(e) => !implementedRoutes.includes(item.path) && handleUnimplementedRoute(e, item.title)}
-                className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-300 cursor-pointer
+                className={`flex items-center p-3 rounded-lg transition-all duration-300 cursor-pointer
                   ${location.pathname === item.path
                     ? 'bg-white shadow-lg transform scale-[0.98]'
                     : 'hover:bg-white/10'
@@ -151,28 +233,26 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
                   color: location.pathname === item.path ? '#1b68b3' : 'white',
                 }}
               >
-                {implementedRoutes.includes(item.path) ? (
-                  <Link
-                    to={item.path}
-                    className="flex items-center space-x-3 w-full"
-                  >
+                <Link to={item.path} className="flex items-center justify-between w-full" style={{ color: 'inherit' }}>
+                  <div className="flex items-center space-x-3">
                     <div className={`${!isOpen && !isMobile ? 'mx-auto' : ''}`}>
                       <item.icon size={20} />
                     </div>
                     <span className={`whitespace-nowrap ${!isOpen && !isMobile ? 'hidden' : 'block'}`}>
                       {item.title}
                     </span>
-                  </Link>
-                ) : (
-                  <>
-                    <div className={`${!isOpen && !isMobile ? 'mx-auto' : ''}`}>
-                      <item.icon size={20} />
-                    </div>
-                    <span className={`whitespace-nowrap ${!isOpen && !isMobile ? 'hidden' : 'block'}`}>
-                      {item.title}
-                    </span>
-                  </>
-                )}
+                  </div>
+                  
+                  {/* Show badge for notifications and to-dos if count > 0 */}
+                  {isOpen && item.badge > 0 && (
+                    <Badge count={item.badge} />
+                  )}
+                  
+                  {/* For collapsed sidebar, show badge without counter */}
+                  {!isOpen && !isMobile && item.badge > 0 && (
+                    <div className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-red-500" />
+                  )}
+                </Link>
               </div>
             )
           ))}

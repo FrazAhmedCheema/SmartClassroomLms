@@ -3,6 +3,9 @@ const router = express.Router();
 const teacherController = require('../controllers/teacher');
 const teacherNotificationController = require('../controllers/teacherNotificationController');
 const { authorizeTeacher } = require('../middleware/auth');
+const { changeTeacherPassword } = require('../controllers/changePasswordController');
+// Change password route
+router.post('/change-password', authorizeTeacher, changeTeacherPassword);
 
 // Route to check authentication status
 router.get('/auth-status', authorizeTeacher, teacherController.authStatus);

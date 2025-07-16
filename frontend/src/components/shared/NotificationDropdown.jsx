@@ -185,18 +185,18 @@ const NotificationDropdown = () => {
                               {!notification.isRead && (
                                 <button
                                   onClick={(e) => handleMarkAsRead(notification._id, e)}
-                                  className="p-1 hover:bg-blue-100 rounded-full"
+                                  className="p-1 bg-blue-600 hover:bg-blue-700 rounded-full text-white transition-colors"
                                   title="Mark as read"
                                 >
-                                  <Check size={14} className="text-blue-600" />
+                                  <Check size={14} />
                                 </button>
                               )}
                               <button
                                 onClick={(e) => handleDeleteNotification(notification._id, e)}
-                                className="p-1 hover:bg-red-100 rounded-full"
+                                className="p-1 bg-red-600 hover:bg-red-700 rounded-full text-white transition-colors"
                                 title="Delete notification"
                               >
-                                <X size={14} className="text-red-600" />
+                                <X size={14} />
                               </button>
                             </div>
                           </div>

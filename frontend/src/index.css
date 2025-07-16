@@ -19,6 +19,70 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Custom edit button glow effect */
+.edit-button-glow {
+  position: relative;
+  overflow: visible;
+}
+
+.edit-button-glow::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.6), rgba(99, 102, 241, 0.4), transparent 70%);
+  border-radius: 100%;
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.4s ease;
+}
+
+.edit-button-glow:hover::before {
+  opacity: 1;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+}
+
+/* Tooltip styling */
+.tooltip {
+  position: relative;
+}
+
+.tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  z-index: 10;
+}
+
+.tooltip:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
+
 a {
   font-weight: 500;
   /* color: #646cff; */

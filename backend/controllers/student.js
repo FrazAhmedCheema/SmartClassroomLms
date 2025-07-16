@@ -4,7 +4,20 @@ const Student = require('../models/student');
 const Class = require('../models/Class');
 const Teacher = require('../models/teacher');
 const RegisteredInstitute = require('../models/approveInstitute');
+const StudentInvitation = require('../models/StudentInvitation');
 const mongoose = require('mongoose');
+const nodemailer = require('nodemailer');
+
+// Email transporter configuration
+const transporter = nodemailer.createTransport({
+    host: 'smtp.hostinger.com',
+    port: 465,
+    secure: true,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
 
 const studentController = {
     // Login controller
@@ -486,7 +499,188 @@ const studentController = {
                 message: 'Server error'
             });
         }
-    }
+    },
+
+    // Join class via invitation (simplified - no signup needed)
+    joinClassViaInvitation: async (req, res) => {
+        try {
+            console.log('joinClassViaInvitation called with body:', req.body);
+            const { token } = req.body;
+            
+            if (!token) {
+                console.log('No token provided');
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invitation token is required'
+                });
+            }
+            
+            // Verify the invitation token
+            console.log('Looking for invitation with token:', token);
+            const invitation = await StudentInvitation.findOne({ 
+                token, 
+                status: 'pending' 
+            }).populate('classId');
+            
+            if (!invitation) {
+                console.log('No invitation found for token:', token);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid or expired invitation'
+                });
+            }
+            
+            console.log('Found invitation:', {
+                email: invitation.email,
+                classId: invitation.classId._id,
+                className: invitation.classId.className
+            });
+            
+            // Extract domain from email
+            const domain = invitation.email.split('@')[1];
+            if (!domain) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid email format in invitation'
+                });
+            }
+            
+            // Find institute by domain
+            const institute = await RegisteredInstitute.findOne({ domainName: domain });
+            if (!institute) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'No institute found for this email domain'
+                });
+            }
+            
+            // Find existing student
+            console.log('Looking for student with email:', invitation.email, 'and instituteId:', institute._id);
+            const student = await Student.findOne({
+                email: invitation.email,
+                instituteId: institute._id
+            });
+            
+            if (!student) {
+                console.log('Student not found with email:', invitation.email);
+                return res.status(404).json({
+                    success: false,
+                    message: 'Student not found. Please contact your administrator.'
+                });
+            }
+            
+            console.log('Found student:', {
+                id: student._id,
+                name: student.name,
+                email: student.email,
+                enrolledClasses: student.enrolledClasses
+            });
+            
+            // Check if student is already enrolled in this class
+            const isAlreadyEnrolled = student.enrolledClasses.some(
+                classId => classId.toString() === invitation.classId._id.toString()
+            );
+            
+            if (isAlreadyEnrolled) {
+                console.log('Student already enrolled in class');
+                // Mark invitation as accepted anyway
+                invitation.status = 'accepted';
+                await invitation.save();
+                
+                return res.status(200).json({
+                    success: true,
+                    message: 'You are already enrolled in this class',
+                    student: {
+                        id: student._id,
+                        name: student.name,
+                        email: student.email
+                    },
+                    className: invitation.classId.className
+                });
+            }
+            
+            console.log('Enrolling student in class...');
+            // Enroll student in the class
+            student.enrolledClasses.push(invitation.classId._id);
+            await student.save();
+            console.log('Student enrolledClasses updated');
+            
+            // Add student to class
+            const isStudentInClass = invitation.classId.students.some(
+                studentId => studentId.toString() === student._id.toString()
+            );
+            
+            if (!isStudentInClass) {
+                invitation.classId.students.push(student._id);
+                await invitation.classId.save();
+                console.log('Student added to class students array');
+            } else {
+                console.log('Student already in class students array');
+            }
+            
+            // Mark invitation as accepted
+            invitation.status = 'accepted';
+            await invitation.save();
+            console.log('Invitation marked as accepted');
+            
+            console.log('Student successfully joined class:', invitation.classId.className);
+            
+            res.status(200).json({
+                success: true,
+                message: 'Successfully joined the class!',
+                student: {
+                    id: student._id,
+                    name: student.name,
+                    email: student.email
+                },
+                className: invitation.classId.className
+            });
+            
+        } catch (error) {
+            console.error('Error joining class via invitation:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Server error while joining class'
+            });
+        }
+    },
+    
+    // Verify invitation token (for frontend to check validity)
+    verifyInvitation: async (req, res) => {
+        try {
+            const { token } = req.params;
+            
+            const invitation = await StudentInvitation.findOne({ 
+                token, 
+                status: 'pending' 
+            }).populate('classId', 'className')
+              .populate('invitedBy', 'name');
+            
+            if (!invitation) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid or expired invitation'
+                });
+            }
+            
+            res.json({
+                success: true,
+                invitation: {
+                    email: invitation.email,
+                    className: invitation.classId.className,
+                    invitedBy: invitation.invitedByName,
+                    expiresAt: invitation.expiresAt
+                }
+            });
+            
+        } catch (error) {
+            console.error('Error verifying invitation:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Server error'
+            });
+        }
+    },
 };
 
 module.exports = studentController;
