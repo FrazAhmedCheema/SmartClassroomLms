@@ -22,8 +22,27 @@ const SharedDashboard = ({ userRole }) => {
         const result = await response.json();
         
         if (result.success) {
-          setStats(result.data);
-          console.log('Stats data:', result.data);
+          // Add validation to ensure stats data is properly formatted
+          console.log('Raw stats data:', result.data);
+          
+          // Ensure all values are primitive types or null/undefined
+          const sanitizedStats = Object.keys(result.data || {}).reduce((acc, key) => {
+            const value = result.data[key];
+            // Convert objects to strings or extract meaningful values
+            if (typeof value === 'object' && value !== null) {
+              if (value.msg) {
+                acc[key] = value.msg;
+              } else {
+                acc[key] = JSON.stringify(value);
+              }
+            } else {
+              acc[key] = value;
+            }
+            return acc;
+          }, {});
+          
+          console.log('Sanitized stats data:', sanitizedStats);
+          setStats(sanitizedStats);
         } else {
           throw new Error(result.message || 'Failed to fetch stats');
         }
@@ -71,9 +90,26 @@ const SharedDashboard = ({ userRole }) => {
     );
   }
 
+  // Add error boundary for stats rendering
+  const renderStats = () => {
+    try {
+      return <DashboardStats userRole={userRole} stats={stats} />;
+    } catch (renderError) {
+      console.error('Error rendering DashboardStats:', renderError);
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+          <p className="text-red-600">Error rendering dashboard stats. Please check console for details.</p>
+          <pre className="text-xs text-gray-600 mt-2 overflow-auto">
+            {JSON.stringify(stats, null, 2)}
+          </pre>
+        </div>
+      );
+    }
+  };
+
   return (
     <div className="bg-gray-50">
-      <DashboardStats userRole={userRole} stats={stats} />
+      {renderStats()}
     </div>
   );
 };
