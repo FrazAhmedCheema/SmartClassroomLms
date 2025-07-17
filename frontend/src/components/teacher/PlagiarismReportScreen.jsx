@@ -650,7 +650,7 @@ const PlagiarismReportScreen = () => {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-500 to-blue-800 bg-clip-text text-transparent">
                 Plagiarism Analysis Dashboard
               </h1>
               <p className="text-gray-600 mt-2">Comprehensive similarity detection and academic integrity insights</p>
@@ -690,8 +690,8 @@ const PlagiarismReportScreen = () => {
               </div>
             </div>
             <div className="mt-4 flex items-center text-sm">
-              <span className="text-green-600 font-medium">+12%</span>
-              <span className="text-gray-600 ml-2">from last report</span>
+              <span className="text-green-600 font-medium">Total</span>
+              <span className="text-gray-600 ml-2">submissions in current report</span>
             </div>
           </div>
 
@@ -706,8 +706,8 @@ const PlagiarismReportScreen = () => {
               </div>
             </div>
             <div className="mt-4 flex items-center text-sm">
-              <span className="text-red-600 font-medium">+3.2%</span>
-              <span className="text-gray-600 ml-2">from last report</span>
+              <span className="text-red-600 font-medium">Overall</span>
+              <span className="text-gray-600 ml-2">Code Similarity</span>
             </div>
           </div>
 
@@ -759,7 +759,7 @@ const PlagiarismReportScreen = () => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center py-4 px-3 border-b-2 font-medium text-sm rounded-t-lg transition-all duration-200 ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-white bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg'
+                      ? 'border-blue-500 text-white bg-gradient-to-r from-blue-500 to-blue-700 shadow-lg'
                       : 'border-transparent text-white bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 hover:border-blue-300'
                   }`}
                 >
@@ -942,7 +942,7 @@ const PlagiarismReportScreen = () => {
                       <Scatter 
                         dataKey="similarity" 
                         fill="#8b5cf6"
-                        stroke="#7c3aed"
+                        stroke="transparent"
                         strokeWidth={2}
                         r={6}
                       >

@@ -431,8 +431,9 @@ const PlagiarismCheckButton = ({ assignmentId, assignmentTitle }) => {
       <button
         onClick={handlePlagiarismCheck}
         disabled={isChecking}
+        style={{color:"white" , backgroundColor:"#1b68b3"}}
         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-          isChecking ? "bg-gray-400 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700"
+          isChecking ? "bg-gray-400 cursor-not-allowed" : "hover:bg-white-100"
         } text-white`}
       >
         {isChecking ? <Loader2 className="w-5 h-5 animate-spin" /> : <Shield className="w-5 h-5" />}
