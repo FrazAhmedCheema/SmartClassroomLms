@@ -37,6 +37,7 @@ import MaterialDetailScreen from './components/shared/classwork/MaterialDetailSc
 import QuestionDetailScreen from './components/shared/classwork/QuestionDetailScreen';
 import StudentInvitation from './components/student/StudentSignup';
 import StudentInviteRedirect from './components/student/StudentInviteRedirect';
+import PlagiarismReportScreen from './components/teacher/PlagiarismReportScreen';
 
 const AdminLayout = () => {
   return (
@@ -162,6 +163,8 @@ const AppRoutes = () => {
         <Route path="/class/:id" element={<ClassPage defaultTab="stream" />} />
         <Route path="/cw/:id" element={<ClassPage defaultTab="classwork" />} />
         <Route path="/people/:id" element={<ClassPage defaultTab="people" />} />
+          <Route path="/plagiarism-report" element={<PlagiarismReportScreen />} />
+
         <Route path="/discussions/:id" element={<ClassPage defaultTab="discussion" />} />
         <Route path="/assignment/:id" element={<AssignmentDetailScreen />} />
         <Route path="/quiz/:id" element={<QuizDetailScreen />} />
