@@ -21,6 +21,11 @@ const classSchema = new mongoose.Schema({
         ref: 'Teacher',
         required: true
     },
+    // Additional teachers who have the same rights as the main teacher
+    additionalTeachers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Teacher'
+    }],
     students: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Student'

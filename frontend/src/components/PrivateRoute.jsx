@@ -1,7 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { useMemo } from 'react';
 
 const PrivateRoute = ({ children, isAuthenticated, redirectPath }) => {
   const location = useLocation();
@@ -11,7 +10,12 @@ const PrivateRoute = ({ children, isAuthenticated, redirectPath }) => {
     isTeacherRoute ? state.teacher.loading : state.student.loading
   );
 
-  console.log('PrivateRoute check - isAuthenticated:', isAuthenticated, 'Path:', location.pathname);
+  console.log('PrivateRoute check - isAuthenticated:', isAuthenticated, 'Path:', location.pathname, 'Loading:', loading);
+  
+  // Log when redirecting to help debug
+  if (!isAuthenticated) {
+    console.log('Redirecting to:', redirectPath, 'from:', location.pathname);
+  }
 
   if (loading) {
     return (

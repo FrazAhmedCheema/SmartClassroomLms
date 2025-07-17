@@ -24,7 +24,7 @@ const defaultClassData = {
   announcements: []
 };
 
-const StreamTab = ({ classData = defaultClassData, userRole }) => {
+const StreamTab = ({ classData = defaultClassData, userRole, classId }) => {
   const isTeacher = userRole === 'Teacher';
   
   // Get authenticated user information from Redux store
@@ -276,6 +276,7 @@ const StreamTab = ({ classData = defaultClassData, userRole }) => {
                     safeClassData={safeClassData}
                     isTeacher={isTeacher}
                     actualTeacherName={actualTeacherName}
+                    classId={classId}
                   />
                 )}
 

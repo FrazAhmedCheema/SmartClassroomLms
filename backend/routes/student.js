@@ -4,9 +4,14 @@ const { authorizeStudent } = require('../middleware/auth');
 const studentController = require('../controllers/student');
 const teacherController = require('../controllers/teacher');
 const studentNotificationController = require('../controllers/studentNotificationController');
+const { changeStudentPassword } = require('../controllers/changePasswordController');
+// Change password route
+router.post('/change-password', authorizeStudent, changeStudentPassword);
 
 // Authentication routes
 router.post('/login', studentController.login);
+router.post('/join-class-invitation', studentController.joinClassViaInvitation);
+router.get('/verify-invitation/:token', studentController.verifyInvitation);
 router.get('/auth-status', authorizeStudent, studentController.checkAuthStatus);
 router.post('/logout', studentController.logout);
 

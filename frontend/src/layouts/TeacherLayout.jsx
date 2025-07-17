@@ -1,14 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import TeacherNavbar from '../components/teacher/TeacherNavbar';
 import TeacherSidebar from '../components/teacher/TeacherSidebar';
 import useMediaQuery from '../hooks/useMediaQuery';
 import Swal from 'sweetalert2';
+import { fetchTeacherAssignments } from '../redux/actions/assignmentActions';
 
 const TeacherLayout = () => {
   const isMobile = useMediaQuery('(max-width: 1024px)');
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const location = useLocation();
+
+  console.log("TeacherLayout: Current path:", location.pathname);
+
+  useEffect(() => {
+    // Log the route change
+    console.log("TeacherLayout: Route changed to", location.pathname);
+  }, [location]);
+
+  useEffect(() => {
+    // Load teacher assignments data when layout mounts
+    console.log("TeacherLayout: Loading assignments data");
+    dispatch(fetchTeacherAssignments())
+      .then(result => {
+        console.log("TeacherLayout: Assignments loaded", result);
+      })
+      .catch(error => {
+        console.error("TeacherLayout: Error loading assignments", error);
+      });
+  }, [dispatch]);
 
   useEffect(() => {
     setIsSidebarOpen(!isMobile);
