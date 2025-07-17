@@ -486,7 +486,7 @@ const AssignmentDetailScreen = ({ assignment: propAssignment, onClose, isSubmitt
         )}
 
         {/* Plagiarism Check Button and Results - Only for Teachers */}
-        {userRole === 'teacher' && (
+        {userRole === 'teacher' && assignment.category && !['mern' , 'general'].includes(assignment.category.toLowerCase()) && (
           <>
             <div className="border-t pt-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Academic Integrity</h3>
