@@ -314,6 +314,11 @@ const PlagiarismCheckButton = ({ assignmentId, assignmentTitle }) => {
     // Just show first 6 characters of the ID for brevity
     return `Student ${submissionId.slice(0, 6)}...`
   }
+  const handleViewReport = () => {
+  localStorage.setItem('plagiarismResults', JSON.stringify(result));
+  window.open('/plagiarism-report', '_blank');
+};
+
 
   const handlePlagiarismCheck = async () => {
     setIsChecking(true)
@@ -426,8 +431,9 @@ const PlagiarismCheckButton = ({ assignmentId, assignmentTitle }) => {
       <button
         onClick={handlePlagiarismCheck}
         disabled={isChecking}
+        style={{color:"white" , backgroundColor:"#1b68b3"}}
         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-          isChecking ? "bg-gray-400 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700"
+          isChecking ? "bg-gray-400 cursor-not-allowed" : "hover:bg-white-100"
         } text-white`}
       >
         {isChecking ? <Loader2 className="w-5 h-5 animate-spin" /> : <Shield className="w-5 h-5" />}
@@ -508,13 +514,13 @@ const PlagiarismCheckButton = ({ assignmentId, assignmentTitle }) => {
           )}
 
           {/* View Report Button */}
-          <button
-            onClick={openReport}
-            className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm w-full justify-center"
-          >
-            <ExternalLink className="w-4 h-4" />
-            View Detailed Report
-          </button>                   
+<button
+  onClick={handleViewReport}
+  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+>
+  View Report
+</button>
+                 
         </div>
       )}
 
