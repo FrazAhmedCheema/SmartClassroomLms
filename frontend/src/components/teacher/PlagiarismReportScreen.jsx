@@ -1,258 +1,3 @@
-// import React, { useEffect, useRef, useState } from 'react';
-// import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
-// import * as d3 from 'd3';
-
-// const NetworkGraph = ({ nodes, edges }) => {
-//   const svgRef = useRef(null);
-
-//   useEffect(() => {
-//     if (!nodes || !edges) return;
-
-//     const svg = d3.select(svgRef.current);
-//     svg.selectAll("*").remove();
-
-//     const width = 350;
-//     const height = 300;
-
-//     const simulation = d3.forceSimulation(nodes)
-//       .force("link", d3.forceLink(edges).id(d => d.id).distance(80))
-//       .force("charge", d3.forceManyBody().strength(-250))
-//       .force("center", d3.forceCenter(width / 2, height / 2))
-//       .force("collision", d3.forceCollide().radius(40));
-
-//     svg.attr("width", width).attr("height", height);
-
-//     const link = svg.append("g")
-//       .selectAll("line")
-//       .data(edges)
-//       .enter().append("line")
-//       .attr("stroke", "#999")
-//       .attr("stroke-opacity", 0.6)
-//       .attr("stroke-width", d => Math.max(1, Math.sqrt(d.value / 10)));
-
-//     const edgeLabels = svg.append("g")
-//       .selectAll("text")
-//       .data(edges)
-//       .enter().append("text")
-//       .attr("font-size", "10px")
-//       .attr("font-weight", "bold")
-//       .attr("fill", "#374151")
-//       .attr("text-anchor", "middle")
-//       .attr("dy", "0.35em")
-//       .attr("pointer-events", "none")
-//       .text(d => `${d.value}%`);
-
-//     const node = svg.append("g")
-//       .selectAll("circle")
-//       .data(nodes)
-//       .enter().append("circle")
-//       .attr("r", d => Math.max(30, Math.min(55, d.value * 0.8)))
-//       .attr("fill", d => {
-//         const similarity = d.value;
-//         return similarity > 80 ? '#FCA5A5' :
-//                similarity > 50 ? '#FDE68A' :
-//                '#A7F3D0';
-//       })
-//       .attr("stroke", d => {
-//         const similarity = d.value;
-//         return similarity > 80 ? '#DC2626' :
-//                similarity > 50 ? '#D97706' :
-//                '#059669';
-//       })
-//       .attr("stroke-width", 2)
-//       .call(d3.drag()
-//         .on("start", dragstarted)
-//         .on("drag", dragged)
-//         .on("end", dragended));
-
-//     const label = svg.append("g")
-//       .selectAll("text")
-//       .data(nodes)
-//       .enter().append("text")
-//       .text(d => d.label.length > 10 ? d.label.substring(0, 10) + '...' : d.label)
-//       .attr("font-size", "10px")
-//       .attr("font-weight", "bold")
-//       .attr("fill", "#374151")
-//       .attr("text-anchor", "middle")
-//       .attr("dy", "0.35em")
-//       .attr("pointer-events", "none");
-
-//     node.append("title").text(d => `${d.label}\nSimilarity: ${d.value}%`);
-
-//     simulation.on("tick", () => {
-//       link.attr("x1", d => d.source.x)
-//           .attr("y1", d => d.source.y)
-//           .attr("x2", d => d.target.x)
-//           .attr("y2", d => d.target.y);
-
-//       edgeLabels.attr("x", d => (d.source.x + d.target.x) / 2)
-//                 .attr("y", d => (d.source.y + d.target.y) / 2);
-
-//       node.attr("cx", d => d.x).attr("cy", d => d.y);
-//       label.attr("x", d => d.x).attr("y", d => d.y);
-//     });
-
-//     function dragstarted(event, d) {
-//       if (!event.active) simulation.alphaTarget(0.3).restart();
-//       d.fx = d.x;
-//       d.fy = d.y;
-//     }
-
-//     function dragged(event, d) {
-//       d.fx = event.x;
-//       d.fy = event.y;
-//     }
-
-//     function dragended(event, d) {
-//       if (!event.active) simulation.alphaTarget(0);
-//       d.fx = null;
-//       d.fy = null;
-//     }
-
-//     return () => {
-//       simulation.stop();
-//     };
-//   }, [nodes, edges]);
-
-//   return (
-//     <div className="flex justify-center">
-//       <svg ref={svgRef}></svg>
-//     </div>
-//   );
-// };
-
-// const PlagiarismReportScreen = () => {
-//   const [results, setResults] = useState(null);
-
-//   useEffect(() => {
-//     const stored = localStorage.getItem('plagiarismResults');
-//     if (stored) setResults(JSON.parse(stored));
-//   }, []);
-
-//   if (!results) {
-//     return <div className="p-6 text-center">No report data found.</div>;
-//   }
-
-//   const nodes = results.submissions.map(sub => ({
-//     id: sub.id,
-//     label: sub.studentName || 'Unknown',
-//     value: parseFloat(sub.total_result) || 0,
-//   }));
-
-//   const edges = [];
-//   results.submissions.forEach(sub => {
-//     if (sub.submissionresults) {
-//       sub.submissionresults.forEach(comparison => {
-//         if (comparison.score > 0) {
-//           edges.push({
-//             source: sub.id,
-//             target: comparison.submission_id_compared,
-//             value: comparison.score,
-//           });
-//         }
-//       });
-//     }
-//   });
-
-//   const similarityBarData = results.submissions.map(sub => ({
-//     name: sub.studentName || 'Unknown',
-//     similarity: parseFloat(sub.result1) || 0,
-//   }));
-
-//   const getBarColor = (similarity) => {
-//     if (similarity >= 70) return '#DC2626';
-//     if (similarity >= 40) return '#D97706';
-//     return '#059669';
-//   };
-
-//   return (
-//     <div className="min-h-screen p-6 bg-gray-100">
-//       <h1 className="text-2xl font-bold text-blue-800 mb-6 text-center">Detailed Plagiarism Report</h1>
-
-//       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-//         {/* Network Graph */}
-//         <div className="bg-white p-4 rounded shadow border">
-//           <h3 className="text-md font-semibold mb-3 text-gray-800">Similarity Network</h3>
-//           <div className="h-[300px] border rounded-lg bg-gray-50 flex items-center justify-center">
-//             <NetworkGraph nodes={nodes} edges={edges} />
-//           </div>
-//         </div>
-
-//         {/* Bar Chart */}
-//         <div className="bg-white p-4 rounded shadow border">
-//           <h3 className="text-md font-semibold mb-3 text-gray-800">Student Similarity Analysis</h3>
-//           <div className="h-[300px] bg-gray-100 flex items-center justify-center">
-//             <div style={{ width: '100%', height: '300px' }}>
-//               <BarChart
-//                 width={600}
-//                 height={300}
-//                 data={similarityBarData}
-//                 margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
-//               >
-//                 <CartesianGrid strokeDasharray="3 3" />
-//                 <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={10} interval={0} />
-//                 <YAxis label={{ value: 'Similarity %', angle: -90, position: 'insideLeft' }} fontSize={10} domain={[0, 100]} />
-//                 <Tooltip formatter={value => [`${value}%`, 'Similarity']} labelFormatter={label => `Student: ${label}`} />
-//                 <Bar dataKey="similarity" fill="#3B82F6">
-//                   {similarityBarData.map((entry, index) => (
-//                     <Cell key={`cell-${index}`} fill={getBarColor(entry.similarity)} />
-//                   ))}
-//                 </Bar>
-//               </BarChart>
-//             </div>
-//           </div>
-//           <div className="mt-2 flex justify-center gap-4 text-xs">
-//             <div className="flex items-center gap-1">
-//               <div className="w-3 h-3 bg-green-600 rounded"></div><span>Low (0-39%)</span>
-//             </div>
-//             <div className="flex items-center gap-1">
-//               <div className="w-3 h-3 bg-orange-600 rounded"></div><span>Medium (40-69%)</span>
-//             </div>
-//             <div className="flex items-center gap-1">
-//               <div className="w-3 h-3 bg-red-600 rounded"></div><span>High (70%+)</span>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Summary */}
-//         <div className="bg-white p-4 rounded shadow border lg:col-span-2">
-//           <h3 className="text-md font-semibold mb-3 text-gray-800">Summary Statistics</h3>
-//           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-//             <div className="p-3 bg-blue-50 rounded-lg">
-//               <p className="text-xs text-blue-600">Total Submissions</p>
-//               <p className="text-xl font-bold text-blue-800">{results.submissions.length}</p>
-//             </div>
-//             <div className="p-3 bg-green-50 rounded-lg">
-//               <p className="text-xs text-green-600">Average Similarity</p>
-//               <p className="text-xl font-bold text-green-800">
-//                 {(results.submissions.reduce((acc, sub) => acc + (parseFloat(sub.result1) || 0), 0) / results.submissions.length).toFixed(1)}%
-//               </p>
-//             </div>
-//             <div className="p-3 bg-yellow-50 rounded-lg">
-//               <p className="text-xs text-yellow-600">Max Similarity</p>
-//               <p className="text-xl font-bold text-yellow-800">
-//                 {Math.max(...results.submissions.map(sub => parseFloat(sub.result1) || 0)).toFixed(1)}%
-//               </p>
-//             </div>
-//             <div className="p-3 bg-purple-50 rounded-lg">
-//               <p className="text-xs text-purple-600">Min Similarity</p>
-//               <p className="text-xl font-bold text-purple-800">
-//                 {Math.min(...results.submissions.map(sub => parseFloat(sub.result1) || 0)).toFixed(1)}%
-//               </p>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default PlagiarismReportScreen;
-
-
-
-
-
 import React, { useEffect, useRef, useState } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, 
@@ -264,8 +9,9 @@ import * as d3 from 'd3';
 import { 
   TrendingUp, Users, AlertTriangle, CheckCircle, 
   BarChart3, PieChart as PieChartIcon, Activity,
-  FileText, Award, Target, Eye, Download, X, Flag
+  FileText, Award, Target, Eye, Download, X, Flag, Code
 } from 'lucide-react';
+import CodeComparisonModal from './CodeComparisonModal';
 
 const NetworkGraph = ({ nodes, edges }) => {
   const svgRef = useRef(null);
@@ -276,8 +22,9 @@ const NetworkGraph = ({ nodes, edges }) => {
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const width = 400;
-    const height = 350;
+    const width = 800;
+    const height = 500;
+    const margin = 60; // Margin to keep nodes visible
 
     // Add gradient definitions
     const defs = svg.append("defs");
@@ -297,14 +44,20 @@ const NetworkGraph = ({ nodes, edges }) => {
       .attr("stop-opacity", 0.6);
 
     const simulation = d3.forceSimulation(nodes)
-      .force("link", d3.forceLink(edges).id(d => d.id).distance(100))
-      .force("charge", d3.forceManyBody().strength(-300))
+      .force("link", d3.forceLink(edges).id(d => d.id).distance(120))
+      .force("charge", d3.forceManyBody().strength(-400))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide().radius(45));
+      .force("collision", d3.forceCollide().radius(50))
+      .force("x", d3.forceX(width / 2).strength(0.1))
+      .force("y", d3.forceY(height / 2).strength(0.1));
 
     svg.attr("width", width).attr("height", height)
+      .attr("viewBox", `0 0 ${width} ${height}`)
+      .attr("preserveAspectRatio", "xMidYMid meet")
       .style("background", "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)")
-      .style("border-radius", "12px");
+      .style("border-radius", "12px")
+      .style("max-width", "100%")
+      .style("height", "auto");
 
     const link = svg.append("g")
       .selectAll("line")
@@ -378,7 +131,15 @@ const NetworkGraph = ({ nodes, edges }) => {
       edgeLabels.attr("x", d => (d.source.x + d.target.x) / 2)
                 .attr("y", d => (d.source.y + d.target.y) / 2);
 
-      node.attr("cx", d => d.x).attr("cy", d => d.y);
+      // Constrain nodes to stay within visible bounds
+      node.attr("cx", d => {
+        const nodeRadius = Math.max(35, Math.min(60, d.value * 0.9));
+        return d.x = Math.max(nodeRadius + margin, Math.min(width - nodeRadius - margin, d.x));
+      }).attr("cy", d => {
+        const nodeRadius = Math.max(35, Math.min(60, d.value * 0.9));
+        return d.y = Math.max(nodeRadius + margin, Math.min(height - nodeRadius - margin, d.y));
+      });
+      
       label.attr("x", d => d.x).attr("y", d => d.y);
     });
 
@@ -389,8 +150,10 @@ const NetworkGraph = ({ nodes, edges }) => {
     }
 
     function dragged(event, d) {
-      d.fx = event.x;
-      d.fy = event.y;
+      const nodeRadius = Math.max(35, Math.min(60, d.value * 0.9));
+      // Constrain drag position within bounds
+      d.fx = Math.max(nodeRadius + margin, Math.min(width - nodeRadius - margin, event.x));
+      d.fy = Math.max(nodeRadius + margin, Math.min(height - nodeRadius - margin, event.y));
     }
 
     function dragended(event, d) {
@@ -404,8 +167,10 @@ const NetworkGraph = ({ nodes, edges }) => {
 
   return (
     <div className="flex flex-col items-center">
-      <svg ref={svgRef}></svg>
-      <div className="mt-4 w-full">
+      <div className="w-full max-w-4xl overflow-x-auto">
+        <svg ref={svgRef} className="mx-auto"></svg>
+      </div>
+      <div className="mt-4 w-full max-w-4xl">
         {/* Color Legend */}
         <div className="flex flex-wrap justify-center gap-4 text-xs mb-3">
           <div className="flex items-center gap-2">
@@ -453,10 +218,56 @@ const PlagiarismReportScreen = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showHighRiskModal, setShowHighRiskModal] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [showCodeComparison, setShowCodeComparison] = useState(false);
+  const [selectedComparison, setSelectedComparison] = useState(null);
 
   useEffect(() => {
+    console.log('=== PLAGIARISM REPORT SCREEN: Loading data ===');
     const stored = localStorage.getItem('plagiarismResults');
-    if (stored) setResults(JSON.parse(stored));
+    console.log('Raw localStorage data:', stored?.substring(0, 200) + '...');
+    
+    if (stored) {
+      const parsedResults = JSON.parse(stored);
+      console.log('Parsed data structure:', Object.keys(parsedResults));
+      console.log('parsedResults.detailedResults length:', parsedResults.detailedResults?.length);
+      console.log('parsedResults.detailedResults sample:', parsedResults.detailedResults?.[0]);
+      
+      // Additional detailed logging for debugging
+      if (parsedResults.detailedResults && parsedResults.detailedResults.length > 0) {
+        console.log('=== DETAILED RESULTS BREAKDOWN ===');
+        parsedResults.detailedResults.forEach((detail, index) => {
+          console.log(`DetailedResult ${index}:`, {
+            submissionId: detail.submission?.id,
+            hasOtherMatches: !!detail.other_matches,
+            otherMatchesCount: detail.other_matches?.length || 0,
+            hasRelatedFiles: !!detail.related_files,
+            relatedFilesCount: detail.related_files?.length || 0
+          });
+          
+          if (detail.related_files && detail.related_files.length > 0) {
+            console.log(`DetailedResult ${index} - first file sample:`, {
+              hasContent: !!detail.related_files[0].content,
+              contentLength: detail.related_files[0].content?.length || 0,
+              contentPreview: detail.related_files[0].content?.substring(0, 100) + '...'
+            });
+          }
+        });
+      }
+      
+      setResults(parsedResults);
+      
+      // Note: detailedResults should already be in parsedResults.detailedResults
+      // No need to load from separate localStorage key
+      console.log('=== PLAGIARISM REPORT SCREEN: Data loaded successfully ===');
+      console.log('Final results object:', {
+        hasOverview: !!parsedResults.overview,
+        hasSubmissions: !!parsedResults.submissions,
+        hasDetailedResults: !!parsedResults.detailedResults,
+        detailedResultsCount: parsedResults.detailedResults?.length
+      });
+    } else {
+      console.log('No localStorage data found');
+    }
   }, []);
 
   if (!results) {
@@ -609,6 +420,20 @@ const PlagiarismReportScreen = () => {
     }
   };
 
+  // Handle code comparison
+  const handleViewCodeComparison = (submissionId) => {
+    console.log('=== PLAGIARISM REPORT SCREEN: handleViewCodeComparison called ===');
+    console.log('submissionId:', submissionId);
+    console.log('results structure:', Object.keys(results || {}));
+    console.log('results.detailedResults length:', results?.detailedResults?.length);
+    console.log('Available detailedResults:', results?.detailedResults);
+    
+    setSelectedComparison({ submissionId });
+    setShowCodeComparison(true);
+    
+    console.log('=== PLAGIARISM REPORT SCREEN: Modal should now open ===');
+  };
+
   // Get high risk submissions for modal
   const highRiskSubmissions = results.submissions.filter(sub => parseFloat(sub.result1) >= 70);
 
@@ -691,7 +516,7 @@ const PlagiarismReportScreen = () => {
             </div>
             <div className="mt-4 flex items-center text-sm">
               <span className="text-green-600 font-medium">Total</span>
-              <span className="text-gray-600 ml-2">submissions in current report</span>
+              <span className="text-gray-600 ml-2"> in current report</span>
             </div>
           </div>
 
@@ -752,7 +577,8 @@ const PlagiarismReportScreen = () => {
                 { id: 'overview', label: 'Overview', icon: BarChart3 },
                 { id: 'network', label: 'Network Analysis', icon: Activity },
                 { id: 'distribution', label: 'Risk Distribution', icon: PieChartIcon },
-                { id: 'trends', label: 'Trends & Patterns', icon: TrendingUp }
+                { id: 'comparisons', label: 'Code Comparisons', icon: Code },
+                // { id: 'trends', label: 'Trends & Patterns', icon: TrendingUp }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -798,7 +624,25 @@ const PlagiarismReportScreen = () => {
                         stroke="#666"
                       />
                       <Tooltip 
-                        formatter={val => [`${val}%`, 'Similarity']} 
+                        formatter={(val, name, props) => {
+                          const submission = results.submissions.find(s => s.studentName === props.payload.name);
+                          return [
+                            <div key="tooltip">
+                              <div>{`${val}% Similarity`}</div>
+                              {submission && parseFloat(submission.result1) >= 40 && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewCodeComparison(submission.id);
+                                  }}
+                                  className="mt-2 px-2 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
+                                >
+                                  View Code Comparison
+                                </button>
+                              )}
+                            </div>
+                          ];
+                        }}
                         labelFormatter={label => `Student: ${label}`}
                         contentStyle={{
                           backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -877,29 +721,6 @@ const PlagiarismReportScreen = () => {
                   <div className="h-[400px] flex items-center justify-center">
                     <NetworkGraph nodes={nodes} edges={edges} />
                   </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-white to-gray-50 p-6 rounded-xl border border-gray-200">
-                  <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
-                    <Target className="h-5 w-5 mr-2 text-green-600" />
-                    Analysis Metrics
-                  </h3>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <RadarChart data={radarData}>
-                      <PolarGrid />
-                      <PolarAngleAxis dataKey="subject" fontSize={10} />
-                      <PolarRadiusAxis angle={60} domain={[0, 100]} fontSize={8} />
-                      <Radar
-                        name="Similarity Metrics"
-                        dataKey="A"
-                        stroke="#8884d8"
-                        fill="#8884d8"
-                        fillOpacity={0.3}
-                        strokeWidth={2}
-                      />
-                      <Tooltip />
-                    </RadarChart>
-                  </ResponsiveContainer>
                 </div>
               </div>
             )}
@@ -1045,140 +866,94 @@ const PlagiarismReportScreen = () => {
               </div>
             )}
 
-            {activeTab === 'trends' && (
-              <div className="space-y-8">
-                <div className="bg-gradient-to-br from-white to-gray-50 p-6 rounded-xl border border-gray-200 shadow-lg">
+            {activeTab === 'comparisons' && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-br from-white to-gray-50 p-6 rounded-xl border border-gray-200">
                   <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
-                    <TrendingUp className="h-5 w-5 mr-2 text-green-600" />
-                    Similarity Trends Over Time
+                    <Code className="h-5 w-5 mr-2 text-purple-600" />
+                    Submissions with Code Similarities
                   </h3>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <AreaChart data={trendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                      <defs>
-                        <linearGradient id="colorSimilarity" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                        </linearGradient>
-                        <linearGradient id="colorAverage" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.6}/>
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis 
-                        dataKey="submission" 
-                        fontSize={11}
-                        stroke="#374151"
-                        tickLine={{ stroke: '#9ca3af' }}
-                      />
-                      <YAxis 
-                        domain={[0, 100]}
-                        label={{ value: 'Similarity %', angle: -90, position: 'insideLeft' }}
-                        fontSize={11}
-                        stroke="#374151"
-                        tickLine={{ stroke: '#9ca3af' }}
-                      />
-                      <Tooltip 
-                        formatter={(value, name) => [`${value}%`, name === 'similarity' ? 'Individual Score' : 'Running Average']}
-                        labelFormatter={(label) => `Submission: ${label}`}
-                        contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                          border: 'none',
-                          borderRadius: '12px',
-                          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
-                          fontSize: '12px'
-                        }}
-                      />
-                      <Legend 
-                        wrapperStyle={{ paddingTop: '20px' }}
-                        iconType="circle"
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="similarity" 
-                        stackId="1" 
-                        stroke="#3b82f6" 
-                        strokeWidth={3}
-                        fill="url(#colorSimilarity)"
-                        fillOpacity={1}
-                        name="Individual Similarity"
-                        dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                        activeDot={{ r: 6, stroke: '#1d4ed8', strokeWidth: 2 }}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="avgSimilarity" 
-                        stackId="2" 
-                        stroke="#10b981" 
-                        strokeWidth={2}
-                        strokeDasharray="5 5"
-                        fill="url(#colorAverage)"
-                        fillOpacity={1}
-                        name="Running Average"
-                        dot={{ fill: '#10b981', strokeWidth: 2, r: 3 }}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
                   
-                  {/* Trend Metrics */}
-                  <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {trendData.length > 0 ? Math.max(...trendData.map(d => d.similarity)) : 0}%
-                      </div>
-                      <div className="text-xs font-medium text-blue-800">Peak Score</div>
+                  {results.submissions.filter(sub => parseFloat(sub.result1) >= 40).length === 0 ? (
+                    <div className="text-center py-8">
+                      <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                      <h3 className="text-xl font-semibold text-gray-800 mb-2">No Significant Similarities Found</h3>
+                      <p className="text-gray-600">All submissions appear to be original work.</p>
                     </div>
-                    <div className="text-center p-3 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
-                      <div className="text-2xl font-bold text-green-600">
-                        {trendData.length > 0 ? Math.min(...trendData.map(d => d.similarity)) : 0}%
-                      </div>
-                      <div className="text-xs font-medium text-green-800">Lowest Score</div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {results.submissions
+                        .filter(sub => parseFloat(sub.result1) >= 40)
+                        .sort((a, b) => parseFloat(b.result1) - parseFloat(a.result1))
+                        .map((submission) => (
+                          <div key={submission.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-4">
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                                  parseFloat(submission.result1) >= 70 ? 'bg-red-100' : 'bg-orange-100'
+                                }`}>
+                                  <div className={`text-lg font-bold ${
+                                    parseFloat(submission.result1) >= 70 ? 'text-red-600' : 'text-orange-600'
+                                  }`}>
+                                    {parseFloat(submission.result1).toFixed(0)}%
+                                  </div>
+                                </div>
+                                <div>
+                                  <h4 className="text-lg font-semibold text-gray-800">
+                                    {submission.studentName || 'Unknown Student'}
+                                  </h4>
+                                  <p className="text-sm text-gray-600">ID: {submission.id}</p>
+                                  <p className="text-sm text-gray-500">
+                                    Submitted: {new Date(submission.created_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-3">
+                                <div className="text-right">
+                                  <div className={`text-2xl font-bold ${
+                                    parseFloat(submission.result1) >= 70 ? 'text-red-600' : 'text-orange-600'
+                                  }`}>
+                                    {parseFloat(submission.result1).toFixed(1)}%
+                                  </div>
+                                  <div className="text-sm text-gray-600">Similarity</div>
+                                </div>
+                                <button
+                                  onClick={() => handleViewCodeComparison(submission.id)}
+                                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                                >
+                                  <Code className="h-4 w-4" />
+                                  <span>View Code</span>
+                                </button>
+                              </div>
+                            </div>
+                            
+                            {submission.submissionresults && submission.submissionresults.length > 0 && (
+                              <div className="mt-4 pt-4 border-t border-gray-200">
+                                <h5 className="text-sm font-semibold text-gray-700 mb-2">Similar to:</h5>
+                                <div className="flex flex-wrap gap-2">
+                                  {submission.submissionresults.slice(0, 3).map((result, idx) => {
+                                    const matchedSubmission = results.submissions.find(s => s.id === result.submission_id_compared);
+                                    return (
+                                      <div key={idx} className="bg-gray-100 px-3 py-1 rounded-lg text-sm">
+                                        <span className="font-medium">
+                                          {matchedSubmission?.studentName || `Submission #${result.submission_id_compared}`}
+                                        </span>
+                                        <span className="text-gray-600 ml-2">({result.score}%)</span>
+                                      </div>
+                                    );
+                                  })}
+                                  {submission.submissionresults.length > 3 && (
+                                    <div className="bg-gray-100 px-3 py-1 rounded-lg text-sm text-gray-600">
+                                      +{submission.submissionresults.length - 3} more
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
                     </div>
-                    <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200">
-                      <div className="text-2xl font-bold text-purple-600">
-                        {trendData.length > 0 ? (trendData.reduce((acc, d) => acc + d.avgSimilarity, 0) / trendData.length).toFixed(1) : 0}%
-                      </div>
-                      <div className="text-xs font-medium text-purple-800">Overall Avg</div>
-                    </div>
-                    <div className="text-center p-3 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg border border-orange-200">
-                      <div className="text-2xl font-bold text-yellow-500">
-                        {trendData.length > 0 ? (
-                          trendData[trendData.length - 1].similarity > trendData[0].similarity ? '↗' : '↘'
-                        ) : '→'}
-                      </div>
-                      <div className="text-xs font-medium text-yellow-500">Trend Direction</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 shadow-sm hover:shadow-md transition-shadow duration-300">
-                    <div className="flex items-center mb-3">
-                      <TrendingUp className="h-6 w-6 text-blue-600 mr-2" />
-                      <h4 className="font-semibold text-blue-800">Trend Analysis</h4>
-                    </div>
-                    <p className="text-sm text-blue-800 leading-relaxed font-medium">
-                      Similarity scores show patterns across submissions, suggesting potential widespread collaboration or shared coding approaches.
-                    </p>
-                  </div>
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-amber-200 shadow-sm hover:shadow-md transition-shadow duration-300">
-                    <div className="flex items-center mb-3">
-                      <Users className="h-6 w-6 text-purple-600 mr-2" />
-                      <h4 className="font-semibold text-purple-800">Pattern Detection</h4>
-                    </div>
-                    <p className="text-sm text-purple-800 leading-relaxed font-medium">
-                      Multiple students exhibit similar coding patterns, indicating possible shared resources or collaborative work.
-                    </p>
-                  </div>
-                  <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-green-200 shadow-sm hover:shadow-md transition-shadow duration-300">
-                    <div className="flex items-center mb-3">
-                      <AlertTriangle className="h-6 w-6 text-red-600 mr-2" />
-                      <h4 className="font-semibold text-red-800">Recommendations</h4>
-                    </div>
-                    <p className="text-sm text-red-800 leading-relaxed font-medium">
-                      Consider implementing stricter guidelines and individual assessment methods for future assignments.
-                    </p>
-                  </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1266,6 +1041,13 @@ const PlagiarismReportScreen = () => {
                       )}
                       
                       <div className="mt-4 flex gap-2">
+                        <button 
+                          onClick={() => handleViewCodeComparison(submission.id)}
+                          className="px-3 py-1 bg-purple-100 text-purple-800 text-sm rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-1"
+                        >
+                          <Code className="h-3 w-3" />
+                          Compare Code
+                        </button>
                         <button className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-lg hover:bg-blue-200 transition-colors">
                           View Details
                         </button>
@@ -1307,6 +1089,17 @@ const PlagiarismReportScreen = () => {
           </div>
         </div>
       )}
+      
+      {/* Code Comparison Modal */}
+      <CodeComparisonModal
+        isOpen={showCodeComparison}
+        onClose={() => {
+          setShowCodeComparison(false);
+          setSelectedComparison(null);
+        }}
+        comparisonData={selectedComparison}
+        results={results}
+      />
     </div>
   );
 };

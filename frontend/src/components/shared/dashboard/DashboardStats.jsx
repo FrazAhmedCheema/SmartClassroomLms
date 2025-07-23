@@ -68,8 +68,14 @@ const DashboardStats = ({ userRole, stats }) => {
           </div>
           <h3 className="text-lg font-semibold text-gray-700 mb-1">{stat.title}</h3>
           <p className="text-3xl font-bold mb-2" style={{ color: '#1b68b3' }}>
-            {/* Display stats value - no special formatting needed since participation was replaced */}
-            {stats ? stats[stat.key] : '0'}
+            {/* Safely render stats value, handling objects with msg property */}
+            {(() => {
+              const value = stats?.[stat.key];
+              if (value === null || value === undefined) return '0';
+              if (typeof value === 'object' && value.msg !== undefined) return value.msg;
+              if (typeof value === 'object') return JSON.stringify(value);
+              return String(value);
+            })()}
           </p>
           <p className="text-sm text-gray-500">{stat.description}</p>
         </motion.div>

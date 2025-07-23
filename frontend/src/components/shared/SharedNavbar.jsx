@@ -1,21 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { HiMenuAlt3 } from 'react-icons/hi';
-import { Search, Plus, User, LogOut } from 'lucide-react';
+import { Search, Plus, User, LogOut, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import CreateClassModal from '../teacher/CreateClassModal';
 import NotificationDropdown from './NotificationDropdown';
 import TeacherNotificationDropdown from '../teacher/TeacherNotificationDropdown';
+import SearchDropdown from './SearchDropdown';
+import { useGlobalSearch } from '../../hooks/useGlobalSearch';
 import logo from '../../assets/logo.png';
 import Swal from 'sweetalert2';
 import { logout } from '../../redux/slices/teacherSlice';
 
-const SharedNavbar = ({ toggleSidebar, isSidebarOpen, isMobile, userRole, userName, onLogout, onCreateClass }) => {
+const SharedNavbar = ({ toggleSidebar, isSidebarOpen, isMobile, userRole, userName, onLogout, onCreateClass, onSearch }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const searchRef = useRef(null);
+  
+  // Use global search hook
+  const {
+    searchTerm,
+    searchResults,
+    isSearchOpen,
+    handleSearch,
+    clearSearch,
+    setIsSearchOpen
+  } = useGlobalSearch(userRole);
+
+  // Handle clicking outside search to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setIsSearchOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [setIsSearchOpen]);
+
+  // Legacy support for onSearch prop (for dashboard filtering)
+  useEffect(() => {
+    if (onSearch) {
+      onSearch(searchTerm);
+    }
+  }, [searchTerm, onSearch]);
 
   const handleCreateClass = (classData) => {
     // Pass the data to parent component
@@ -73,18 +106,45 @@ const SharedNavbar = ({ toggleSidebar, isSidebarOpen, isMobile, userRole, userNa
           </div>
 
           {/* Search Bar */}
-          <div className="flex-1 max-w-2xl px-4">
+          <div className="flex-1 max-w-2xl px-4" ref={searchRef}>
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search classes..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-2 pl-10 rounded-lg bg-gray-50 border border-gray-200 
+                onChange={(e) => handleSearch(e.target.value)}
+                onFocus={() => searchTerm.trim() && setIsSearchOpen(true)}
+                className="w-full px-4 py-2 pl-10 pr-10 rounded-lg bg-gray-50 border border-gray-200 
                      focus:outline-none focus:border-[#1b68b3] focus:ring-1 focus:ring-[#1b68b3]
                      placeholder-gray-400 text-gray-600"
               />
               <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+{searchTerm && (
+  <button
+    onClick={clearSearch}
+    className="absolute right-3 inset-y-0 my-auto text-gray-400 hover:text-gray-600 
+               p-0 bg-transparent border-none outline-none focus:outline-none"
+    style={{
+      backgroundColor: 'transparent',
+      boxShadow: 'none',
+      WebkitTapHighlightColor: 'transparent', // Mobile fix
+      display: 'flex',
+      alignItems: 'center',
+    }}
+  >
+    <X size={16} />
+  </button>
+)}
+
+
+              
+              {/* Search Dropdown */}
+              <SearchDropdown
+                searchResults={searchResults}
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+                searchTerm={searchTerm}
+              />
             </div>
           </div>
 

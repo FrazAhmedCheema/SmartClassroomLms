@@ -6,10 +6,12 @@ import TeacherSidebar from '../components/teacher/TeacherSidebar';
 import useMediaQuery from '../hooks/useMediaQuery';
 import Swal from 'sweetalert2';
 import { fetchTeacherAssignments } from '../redux/actions/assignmentActions';
+import { fetchClasses } from '../redux/slices/classesSlice';
 
 const TeacherLayout = () => {
   const isMobile = useMediaQuery('(max-width: 1024px)');
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const location = useLocation();
@@ -31,6 +33,16 @@ const TeacherLayout = () => {
       .catch(error => {
         console.error("TeacherLayout: Error loading assignments", error);
       });
+
+    // Load teacher classes for global search
+    console.log("TeacherLayout: Loading classes for search");
+    dispatch(fetchClasses())
+      .then(result => {
+        console.log("TeacherLayout: Classes loaded for search", result);
+      })
+      .catch(error => {
+        console.error("TeacherLayout: Error loading classes", error);
+      });
   }, [dispatch]);
 
   useEffect(() => {
@@ -46,6 +58,10 @@ const TeacherLayout = () => {
     window.dispatchEvent(event);
   };
 
+  const handleSearch = (term) => {
+    setSearchTerm(term);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <TeacherNavbar 
@@ -53,6 +69,7 @@ const TeacherLayout = () => {
         isSidebarOpen={isSidebarOpen}
         isMobile={isMobile}
         onCreateClass={handleCreateClass}
+        onSearch={handleSearch}
       />
       <TeacherSidebar 
         isOpen={isSidebarOpen} 
@@ -60,7 +77,7 @@ const TeacherLayout = () => {
         isMobile={isMobile}
       />
       <div className={`transition-all duration-300 pt-16 ${isSidebarOpen ? 'ml-64' : isMobile ? 'ml-0' : 'ml-20'}`}>
-        <Outlet />
+        <Outlet context={{ searchTerm }} />
       </div>
     </div>
   );

@@ -365,7 +365,11 @@ class PlagiarismService {
 
           // Step 6: Get detailed results for each submission
           const detailedResults = [];
+          console.log('=== BACKEND STEP 6: Getting detailed results ===');
+          console.log('Overview submissions:', overviewRes.data.submissions.map(s => ({ id: s.id, filename: s.filename })));
+          
           for (const submission of overviewRes.data.submissions) {
+            console.log(`=== BACKEND STEP 6A: Getting detailed results for submission ${submission.id} ===`);
             const submissionRes = await axios.post(
               'https://codequiry.com/api/v1/check/results',
               null,
@@ -380,8 +384,33 @@ class PlagiarismService {
                 }
               }
             );
+            console.log(`=== BACKEND STEP 6B: Detailed results for submission ${submission.id} ===`);
+            console.log('Has submission:', !!submissionRes.data?.submission);
+            console.log('Has other_matches:', !!submissionRes.data?.other_matches);
+            console.log('Other matches count:', submissionRes.data?.other_matches?.length || 0);
+            console.log('Has related_files:', !!submissionRes.data?.related_files);
+            console.log('Related files count:', submissionRes.data?.related_files?.length || 0);
+            
+            if (submissionRes.data?.other_matches?.length > 0) {
+              console.log('Sample other_match:', submissionRes.data.other_matches[0]);
+            }
+            if (submissionRes.data?.related_files?.length > 0) {
+              console.log('Sample related_file:', {
+                id: submissionRes.data.related_files[0].id,
+                submission_id: submissionRes.data.related_files[0].submission_id,
+                filedir: submissionRes.data.related_files[0].filedir,
+                hasContent: !!submissionRes.data.related_files[0].content,
+                contentLength: submissionRes.data.related_files[0].content?.length || 0
+              });
+            }
+
             detailedResults.push(submissionRes.data);
           }
+
+          console.log('=== BACKEND STEP 6C: All detailed results collected ===');
+          console.log('Total detailed results:', detailedResults.length);
+          console.log('Results with other_matches:', detailedResults.filter(r => r.other_matches?.length > 0).length);
+          console.log('Results with related_files:', detailedResults.filter(r => r.related_files?.length > 0).length);
 
           return {
             checkId,
@@ -540,13 +569,22 @@ async checkPlagiarism(submissions, assignmentId, language = 'java') {
       codequiry: {
         check_id: codequiryResult.checkId,
         report_url: codequiryResult.reportUrl,
-        overview: codequiryResult.overviewResults,
+        overview: {
+          ...codequiryResult.overviewResults,
+          detailedResults: codequiryResult.detailedResults // Add detailed results here
+        },
         results: resultsMap,
         statistics,
         studentMap: Object.fromEntries(this.studentInfoMap),
         detectedLanguage // Include the detected language in the response
       }
     };
+
+    console.log('=== BACKEND STEP 8: Final result structure ===');
+    console.log('Has overview:', !!result.codequiry.overview);
+    console.log('Has detailedResults:', !!result.codequiry.overview.detailedResults);
+    console.log('DetailedResults length:', result.codequiry.overview.detailedResults?.length || 0);
+    console.log('DetailedResults sample:', result.codequiry.overview.detailedResults?.[0] || 'none');
 
     // Clear the student info map after use
     this.studentInfoMap = new Map();

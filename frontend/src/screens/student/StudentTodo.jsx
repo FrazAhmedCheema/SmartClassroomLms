@@ -4,28 +4,6 @@ import { Link } from 'react-router-dom';
 import { fetchAssignments } from '../../redux/actions/assignmentActions';
 import { Calendar, CheckSquare, AlertCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
-
-const                 {pendingWork.length === 0 && !loading ? (
-                  <div className="text-center py-12 bg-blue-50 rounded-xl border border-dashed border-blue-300 shadow">
-                    <div className="p-4 bg-blue-500 rounded-full w-fit mx-auto mb-4 shadow">
-                      <CheckSquare className="text-white" size={32} />
-                    </div>
-                    <h3 className="font-bold text-blue-800 mb-2 text-xl">Generating test data...</h3>
-                    <p className="text-blue-700 font-medium">
-                      No assignments found. Showing test data for development purposes.
-                    </p>
-                    <button 
-                      onClick={generateTestData}
-                      className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200"
-                    >
-                      Refresh Test Data
-                    </button>
-                  </div>
-                ) : (do = () => {
-  const dispatch = useDispatch();
-  const { assignments, loading, error } = useSelector((state) => state.assignments);
-  const [pendingWork, setPendingWork] = useState([]);
-
   // Debug logging
   console.log('StudentTodo component is rendering...');
   console.log('Loading state:', loading);

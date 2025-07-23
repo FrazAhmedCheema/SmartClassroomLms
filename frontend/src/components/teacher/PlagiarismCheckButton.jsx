@@ -361,7 +361,12 @@ const PlagiarismCheckButton = ({ assignmentId, assignmentTitle }) => {
     return `Student ${submissionId.slice(0, 6)}...`
   }
   const handleViewReport = () => {
-  localStorage.setItem('plagiarismResults', JSON.stringify(result));
+  console.log('=== PLAGIARISM BUTTON: Opening report (data already saved) ===');
+  console.log('Result state check:', !!result);
+  console.log('LocalStorage check:', !!localStorage.getItem('plagiarismResults'));
+  
+  // Data is already saved to localStorage in the main plagiarism check flow
+  // No need to save again here
   window.open('/plagiarism-report', '_blank');
 };
 
@@ -462,6 +467,21 @@ const PlagiarismCheckButton = ({ assignmentId, assignmentTitle }) => {
           setCurrentStep('Processing detailed results...')
           await new Promise((resolve) => setTimeout(resolve, 300))
           
+          // Also fetch detailed results for code comparison
+          setCurrentStep('Fetching detailed comparison data...')
+          let detailedResults = null;
+          try {
+            const detailedResponse = await axios.get(`http://localhost:8080/api/plagiarism/detailed-results/${assignmentId}`, {
+              withCredentials: true,
+            });
+            if (detailedResponse.data.success) {
+              detailedResults = detailedResponse.data.detailedResults;
+              console.log('Detailed results for code comparison:', detailedResults);
+            }
+          } catch (detailError) {
+            console.warn('Could not fetch detailed results:', detailError);
+          }
+          
           setProgress(93)
           setCurrentStep('Mapping student information...')
           await new Promise((resolve) => setTimeout(resolve, 200))
@@ -504,7 +524,7 @@ const PlagiarismCheckButton = ({ assignmentId, assignmentTitle }) => {
             : 0
           const minSimilarity = similarities.length ? Math.min(...similarities) : 0
 
-          // Create the final result object with proper structure
+          // Create the final result object with proper structure - INCLUDING ALL API DATA
           const finalResult = {
             overview: report.overview,
             submissions: submissionsWithNames,
@@ -513,7 +533,18 @@ const PlagiarismCheckButton = ({ assignmentId, assignmentTitle }) => {
             minSimilarity,
             similarities,
             totalSubmissions: submissionsWithNames.length,
+            detailedResults: detailedResults, // Add detailed results for code comparison
+            // Include ALL original API data for complete access
+            codequiry: report, // Complete codequiry API response
+            rawOverview: report.overview, // Direct access to overview
+            rawDetailed: detailedResults // Direct access to detailed results
           }
+          
+          console.log('=== PLAGIARISM BUTTON: Final Result Created ===');
+          console.log('finalResult structure:', Object.keys(finalResult));
+          console.log('finalResult.detailedResults length:', finalResult.detailedResults?.length);
+          console.log('finalResult.detailedResults sample:', finalResult.detailedResults?.[0]);
+          console.log('Complete finalResult:', finalResult);
           
           setProgress(97)
           setCurrentStep('Finalizing report...')
@@ -523,7 +554,15 @@ const PlagiarismCheckButton = ({ assignmentId, assignmentTitle }) => {
           setCurrentStep('Analysis complete!')
           await new Promise((resolve) => setTimeout(resolve, 500))
           
+          console.log('=== PLAGIARISM BUTTON: About to setResult ===');
           setResult(finalResult)
+          console.log('=== PLAGIARISM BUTTON: setResult called ===');
+          
+          // Also save finalResult directly to localStorage to avoid state timing issues
+          console.log('=== PLAGIARISM BUTTON: Saving finalResult directly to localStorage ===');
+          localStorage.setItem('plagiarismResults', JSON.stringify(finalResult));
+          console.log('=== PLAGIARISM BUTTON: finalResult saved to localStorage ===');
+          
           setReportReady(true)
         }
       }
