@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DashboardStats from './dashboard/DashboardStats';
+import ErrorBoundary from './ErrorBoundary';
 
 const SharedDashboard = ({ userRole }) => {
   const [stats, setStats] = useState(null);
@@ -25,14 +26,29 @@ const SharedDashboard = ({ userRole }) => {
           // Add validation to ensure stats data is properly formatted
           console.log('Raw stats data:', result.data);
           
+          // Validate that result.data exists and is an object
+          if (!result.data || typeof result.data !== 'object') {
+            console.warn('Invalid stats data structure:', result.data);
+            setStats({});
+            return;
+          }
+          
           // Ensure all values are primitive types or null/undefined
           const sanitizedStats = Object.keys(result.data || {}).reduce((acc, key) => {
             const value = result.data[key];
             // Convert objects to strings or extract meaningful values
             if (typeof value === 'object' && value !== null) {
-              if (value.msg) {
+              if (value.msg !== undefined) {
+                // Extract the msg property if it exists
                 acc[key] = value.msg;
+              } else if (value.count !== undefined) {
+                // Extract count if it exists
+                acc[key] = value.count;
+              } else if (value.total !== undefined) {
+                // Extract total if it exists
+                acc[key] = value.total;
               } else {
+                // Fallback to stringified version
                 acc[key] = JSON.stringify(value);
               }
             } else {
@@ -93,7 +109,11 @@ const SharedDashboard = ({ userRole }) => {
   // Add error boundary for stats rendering
   const renderStats = () => {
     try {
-      return <DashboardStats userRole={userRole} stats={stats} />;
+      return (
+        <ErrorBoundary>
+          <DashboardStats userRole={userRole} stats={stats} />
+        </ErrorBoundary>
+      );
     } catch (renderError) {
       console.error('Error rendering DashboardStats:', renderError);
       return (

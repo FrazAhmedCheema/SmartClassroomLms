@@ -15,6 +15,60 @@ fs.ensureDirSync(REPORTS_DIR);
 fs.ensureDirSync(TEMP_DIR);
 
 class PlagiarismService {
+  // Helper to map language names to Codequiry language IDs
+  getLanguageId(language) {
+    const languageMap = {
+      'java': 13,
+      'python': 14,
+      'c': 16,
+      'cpp': 17,
+      'c++': 17,
+      'csharp': 18,
+      'c#': 18,
+      'perl': 20,
+      'php': 21,
+      'sql': 22,
+      'vb': 23,
+      'xml': 24,
+      'haskell': 28,
+      'pascal': 29,
+      'go': 30,
+      'golang': 30,
+      'matlab': 31,
+      'lisp': 32,
+      'ruby': 33,
+      'assembly': 34,
+      'javascript': 39,
+      'js': 39,
+      'typescript': 55,
+      'ts': 55,
+      'html': 40,
+      'swift': 43,
+      'kotlin': 44,
+      'shell': 50,
+      'bash': 50,
+      'rust': 51,
+      'scala': 52,
+      'r': 53,
+      'markdown': 56,
+      'julia': 57,
+      'groovy': 58,
+      'lua': 61,
+      'dart': 49
+    };
+
+    const normalizedLanguage = language.toLowerCase().trim();
+    const languageId = languageMap[normalizedLanguage];
+    
+    if (!languageId) {
+      console.warn(`Unknown language: ${language}, defaulting to Plain text (41)`);
+      return 41; // Default to plain text
+    }
+    
+    console.log(`Using language: ${language} (ID: ${languageId})`);
+    return languageId;
+  }
+
   // Helper to check if file is source code
   isSourceCodeFile(fileName) {
     const sourceExtensions = [
@@ -28,6 +82,55 @@ class PlagiarismService {
     const ext = path.extname(fileName).toLowerCase();
     console.log(`Checking file extension for ${fileName}: ${ext}`);
     return sourceExtensions.includes(ext);
+  }
+
+  // Helper to detect language from file extensions
+  detectLanguageFromFiles(sourceFiles) {
+    const languageMap = {
+      '.java': 'java',
+      '.py': 'python',
+      '.cpp': 'cpp',
+      '.c': 'c',
+      '.js': 'javascript',
+      '.jsx': 'javascript',
+      '.ts': 'typescript',
+      '.tsx': 'typescript',
+      '.php': 'php',
+      '.cs': 'csharp',
+      '.go': 'go',
+      '.rb': 'ruby',
+      '.html': 'html',
+      '.css': 'css',
+      '.scss': 'css'
+    };
+
+    const extensionCounts = {};
+    
+    // Count file extensions
+    for (const file of sourceFiles) {
+      const ext = path.extname(file.name).toLowerCase();
+      extensionCounts[ext] = (extensionCounts[ext] || 0) + 1;
+    }
+
+    // Find the most common extension
+    let mostCommonExt = null;
+    let maxCount = 0;
+    
+    for (const [ext, count] of Object.entries(extensionCounts)) {
+      if (count > maxCount) {
+        maxCount = count;
+        mostCommonExt = ext;
+      }
+    }
+
+    const detectedLanguage = languageMap[mostCommonExt] || 'java';
+    console.log(`Detected language from file extensions:`, {
+      extensionCounts,
+      mostCommonExt,
+      detectedLanguage
+    });
+
+    return detectedLanguage;
   }
 
   async downloadFile(url) {
@@ -158,13 +261,16 @@ class PlagiarismService {
     }
   }
 
-  async runCodequiryCheck(studentZipUrls, assignmentName, language = '13') {
+  async runCodequiryCheck(studentZipUrls, assignmentName, language = 'java') {
     try {
+      // Get the correct language ID
+      const languageId = this.getLanguageId(language);
+      
       // Step 1: Create a new check
       console.log('Creating new check...');
       const formData = new FormData();
       formData.append('name', assignmentName);
-      formData.append('language', 13); // Fixed: Using numeric ID for Java
+      formData.append('language', languageId); // Use the correct language ID
 
       const createCheckRes = await axios.post(
         'https://codequiry.com/api/v1/check/create',
@@ -259,7 +365,11 @@ class PlagiarismService {
 
           // Step 6: Get detailed results for each submission
           const detailedResults = [];
+          console.log('=== BACKEND STEP 6: Getting detailed results ===');
+          console.log('Overview submissions:', overviewRes.data.submissions.map(s => ({ id: s.id, filename: s.filename })));
+          
           for (const submission of overviewRes.data.submissions) {
+            console.log(`=== BACKEND STEP 6A: Getting detailed results for submission ${submission.id} ===`);
             const submissionRes = await axios.post(
               'https://codequiry.com/api/v1/check/results',
               null,
@@ -274,8 +384,33 @@ class PlagiarismService {
                 }
               }
             );
+            console.log(`=== BACKEND STEP 6B: Detailed results for submission ${submission.id} ===`);
+            console.log('Has submission:', !!submissionRes.data?.submission);
+            console.log('Has other_matches:', !!submissionRes.data?.other_matches);
+            console.log('Other matches count:', submissionRes.data?.other_matches?.length || 0);
+            console.log('Has related_files:', !!submissionRes.data?.related_files);
+            console.log('Related files count:', submissionRes.data?.related_files?.length || 0);
+            
+            if (submissionRes.data?.other_matches?.length > 0) {
+              console.log('Sample other_match:', submissionRes.data.other_matches[0]);
+            }
+            if (submissionRes.data?.related_files?.length > 0) {
+              console.log('Sample related_file:', {
+                id: submissionRes.data.related_files[0].id,
+                submission_id: submissionRes.data.related_files[0].submission_id,
+                filedir: submissionRes.data.related_files[0].filedir,
+                hasContent: !!submissionRes.data.related_files[0].content,
+                contentLength: submissionRes.data.related_files[0].content?.length || 0
+              });
+            }
+
             detailedResults.push(submissionRes.data);
           }
+
+          console.log('=== BACKEND STEP 6C: All detailed results collected ===');
+          console.log('Total detailed results:', detailedResults.length);
+          console.log('Results with other_matches:', detailedResults.filter(r => r.other_matches?.length > 0).length);
+          console.log('Results with related_files:', detailedResults.filter(r => r.related_files?.length > 0).length);
 
           return {
             checkId,
@@ -316,7 +451,7 @@ async checkPlagiarism(submissions, assignmentId, language = 'java') {
       fileCount: s.files?.length || 0
     })), null, 2));
 
-    // Step 1: Create ZIP files
+    // Step 1: Create ZIP files and collect all source files for language detection
     const zipPromises = submissions.map(sub => this.createZipFromSubmission(sub));
     const zipPaths = await Promise.all(zipPromises);
     const validZipPaths = zipPaths.filter(Boolean);
@@ -326,14 +461,41 @@ async checkPlagiarism(submissions, assignmentId, language = 'java') {
       throw new Error('At least 2 valid student submissions with source code files required');
     }
 
+    // Step 2: Collect all source files for language detection
+    let allSourceFiles = [];
+    for (const submission of submissions) {
+      if (!submission.files || submission.files.length === 0) continue;
+      
+      for (const file of submission.files) {
+        if (file.fileType === 'application/zip' || path.extname(file.fileName).toLowerCase() === '.zip') {
+          try {
+            const zipBuffer = await this.downloadFile(file.url);
+            const extractedFiles = await this.extractZipAndFindSourceFiles(zipBuffer, TEMP_DIR);
+            allSourceFiles.push(...extractedFiles);
+          } catch (error) {
+            console.error(`Error processing ZIP file ${file.fileName}:`, error);
+          }
+        } else if (this.isSourceCodeFile(file.fileName)) {
+          allSourceFiles.push({ name: file.fileName });
+        }
+      }
+    }
+
+    // Step 3: Auto-detect language from file extensions
+    let detectedLanguage = language; // Use provided language as fallback
+    if (allSourceFiles.length > 0) {
+      detectedLanguage = this.detectLanguageFromFiles(allSourceFiles);
+      console.log(`Language detection: provided='${language}', detected='${detectedLanguage}', using='${detectedLanguage}'`);
+    }
+
     const studentZipUrls = validZipPaths.map(zipPath => `file://${zipPath}`);
     const assignmentName = `Assignment_${assignmentId}`;
     
-    // Step 2: Run Codequiry
-    const codequiryResult = await this.runCodequiryCheck(studentZipUrls, assignmentName, language);
+    // Step 4: Run Codequiry with detected language
+    const codequiryResult = await this.runCodequiryCheck(studentZipUrls, assignmentName, detectedLanguage);
     console.log(`Codequiry scan complete:`, codequiryResult.checkId);
 
-    // Step 3: Map results
+    // Step 5: Map results
     const resultsMap = {};
     let totalSimilarity = 0;
     let maxSimilarity = 0;
@@ -370,13 +532,13 @@ async checkPlagiarism(submissions, assignmentId, language = 'java') {
       distribution
     };
 
-    // Step 4: Cleanup
+    // Step 6: Cleanup
     await Promise.all(validZipPaths.map(zipPath => 
       fs.remove(zipPath).catch(err => 
         console.error(`Error removing temporary file ${zipPath}:`, err))
     ));
 
-    // Step 5: Add student names to overview submissions
+    // Step 7: Add student names to overview submissions
     if (codequiryResult.overviewResults && codequiryResult.overviewResults.submissions) {
       console.log('Original submissions:', codequiryResult.overviewResults.submissions);
       console.log('Student info map:', Array.from(this.studentInfoMap.entries()));
@@ -402,17 +564,27 @@ async checkPlagiarism(submissions, assignmentId, language = 'java') {
       console.log('Updated submissions with student info:', codequiryResult.overviewResults.submissions);
     }
 
-    // Step 6: Return updated format with student information
+    // Step 8: Return updated format with student information
     const result = {
       codequiry: {
         check_id: codequiryResult.checkId,
         report_url: codequiryResult.reportUrl,
-        overview: codequiryResult.overviewResults,
+        overview: {
+          ...codequiryResult.overviewResults,
+          detailedResults: codequiryResult.detailedResults // Add detailed results here
+        },
         results: resultsMap,
         statistics,
-        studentMap: Object.fromEntries(this.studentInfoMap)
+        studentMap: Object.fromEntries(this.studentInfoMap),
+        detectedLanguage // Include the detected language in the response
       }
     };
+
+    console.log('=== BACKEND STEP 8: Final result structure ===');
+    console.log('Has overview:', !!result.codequiry.overview);
+    console.log('Has detailedResults:', !!result.codequiry.overview.detailedResults);
+    console.log('DetailedResults length:', result.codequiry.overview.detailedResults?.length || 0);
+    console.log('DetailedResults sample:', result.codequiry.overview.detailedResults?.[0] || 'none');
 
     // Clear the student info map after use
     this.studentInfoMap = new Map();

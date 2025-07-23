@@ -3,7 +3,8 @@ import { useNavigate  ,Link} from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   GraduationCap, Users, BookOpen, Clock, Mail, Home, Info, 
-  CheckCircle, Award, Globe, MessageCircle, HelpCircle 
+  CheckCircle, Award, Globe, MessageCircle, HelpCircle, Code, 
+  Shield, FileText, Video, Zap, Database
 } from 'lucide-react';
 import logo from '../assets/logo2.png';
 import landingImage from '../assets/landingpage1.webp';
@@ -55,24 +56,24 @@ const LandingPage = () => {
 
   const features = [
     {
-      icon: <GraduationCap className="w-12 h-12" style={{ color: "#1b68b3" }} />, 
-      title: "Smart Learning", 
-      description: "Enhanced learning experience with modern tools."
+      icon: <MessageCircle className="w-12 h-12" style={{ color: "#1b68b3" }} />, 
+      title: "Discussion Forum", 
+      description: "Interactive forums for students and teachers to discuss topics, ask questions, and collaborate."
     },
     {
-      icon: <Users className="w-12 h-12" style={{ color: "#1b68b3" }} />, 
-      title: "Interactive Classes", 
-      description: "Real-time collaboration between teachers and students."
+      icon: <Code className="w-12 h-12" style={{ color: "#1b68b3" }} />, 
+      title: "Code Execution", 
+      description: "Real-time code execution environment supporting multiple programming languages."
     },
     {
-      icon: <Clock className="w-12 h-12" style={{ color: "#1b68b3" }} />, 
-      title: "24/7 Support", 
-      description: "Round-the-clock assistance for all users."
+      icon: <Shield className="w-12 h-12" style={{ color: "#1b68b3" }} />, 
+      title: "Plagiarism Detection", 
+      description: "Advanced AI-powered plagiarism detection to ensure academic integrity."
     },
     {
-      icon: <BookOpen className="w-12 h-12" style={{ color: "#1b68b3" }} />, 
-      title: "Rich Resources", 
-      description: "Access to comprehensive learning materials."
+      icon: <FileText className="w-12 h-12" style={{ color: "#1b68b3" }} />, 
+      title: "Assignment Management", 
+      description: "Create, distribute, and grade assignments with automated workflow management."
     }
   ];
 

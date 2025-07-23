@@ -7,6 +7,7 @@ import { FitAddon } from 'xterm-addon-fit';
 // import { WebLinksAddon } from 'xterm-addon-web-links'; // Optional: for clickable links in terminal
 import 'xterm/css/xterm.css';
 import ExecutionSummary from './ExecutionSummary'; 
+import JupyterResultsScreen from '../shared/JupyterResultsScreen'; 
 
 
 
@@ -22,6 +23,13 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
   const [executionSummary, setExecutionSummary] = useState(null); // New state for structured summary
   const [summaryLoading, setSummaryLoading] = useState(false); // Loading state for summary generation
   const [currentProcessMessage, setCurrentProcessMessage] = useState(''); // New state for process messages
+
+  // State for Jupyter notebook viewer
+  const [jupyterViewer, setJupyterViewer] = useState({
+    isOpen: false,
+    htmlContent: null,
+    fileName: null
+  });
 
   // State for interactive terminal
   const [interactiveSession, setInteractiveSession] = useState({
@@ -228,6 +236,7 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
       console.log('[RunInteractive] Aborted: isLoading or isRunning is true.');
       return;
     }
+
     setExecutionSummary(null); 
     setCodeExecutionResult(null);
     setError(null);
@@ -258,6 +267,18 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
         { fileUrl: zipFile.url, submissionId: submission._id },
         { withCredentials: true }
       );
+
+      // Check if this was a notebook that got redirected to regular execution
+      if (response.data.success && response.data.isNotebookRedirect) {
+        console.log('[RunInteractive] Notebook detected - redirected to regular execution');
+        setCurrentProcessMessage("");
+        setInteractiveSession(prev => ({ ...prev, isLoading: false, isRunning: false }));
+        
+        // Set the execution result as if it came from regular execution
+        setCodeExecutionResult(response.data.executionResult);
+        setError(null);
+        return;
+      }
 
       if (response.data.success && response.data.containerId) {
         console.log(`[RunInteractive] Success from backend. Container ID: ${response.data.containerId}, Language: ${response.data.language}`);
@@ -743,12 +764,16 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
   };
 
   const isProgrammingAssignment = () => {
-    const programmingCategories = ['java', 'c++', 'python', 'mern']; // MERN might need special handling not covered here
+    const programmingCategories = ['java', 'c++', 'python', 'mern', 'jupyter', 'notebook']; // Added jupyter and notebook support
     return programmingCategories.includes(assignment.category.toLowerCase());
   };
 
   const isMERNAssignment = () => {
     return assignment.category.toLowerCase() === 'mern';
+  };
+
+  const isNotebookAssignment = () => {
+    return ['jupyter', 'notebook'].includes(assignment.category.toLowerCase());
   };
 
   return (
@@ -916,6 +941,20 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                             <span className="font-medium">{mernSession.isLoading ? 'Starting...' : 'Run Application'}</span>
                           </button>
                         )
+                      ) : isNotebookAssignment() ? (
+                        // Jupyter notebook - only show execute button, no interactive mode
+                        <button
+                          onClick={handleRunCode}
+                          disabled={runCodeLoading}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-50"
+                        >
+                          {runCodeLoading ? (
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          ) : (
+                            <Play className="w-5 h-5" />
+                          )}
+                          <span className="font-medium">{runCodeLoading ? 'Executing...' : 'Execute Notebook'}</span>
+                        </button>
                       ) : (
                         // Regular programming assignment buttons
                         (() => {
@@ -1132,23 +1171,356 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                         <div className="mb-3">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full
                             ${fileRes.status === 'success' ? 'bg-green-500/30 text-green-300' : ''}
+                            ${fileRes.status === 'partial_success' ? 'bg-yellow-500/30 text-yellow-300' : ''}
                             ${fileRes.status === 'compile_error' ? 'bg-red-500/30 text-red-300' : ''}
                             ${fileRes.status === 'runtime_error' ? 'bg-yellow-500/30 text-yellow-300' : ''}
+                            ${fileRes.status === 'error' ? 'bg-red-500/30 text-red-300' : ''}
                             ${fileRes.status === 'not_run_due_to_compile_error' ? 'bg-gray-500/30 text-gray-400' : ''}
                             ${['script_error', 'unknown', 'unknown_error'].includes(fileRes.status) ? 'bg-purple-500/30 text-purple-300' : ''}
                           `}>
                             Status: {fileRes.status.replace(/_/g, ' ')}
                           </span>
+                          {fileRes.executionDetails?.hasPartialResults && (
+                            <span className="ml-2 px-2 py-1 text-xs font-medium rounded-full bg-blue-500/30 text-blue-300">
+                              Partial Results Available
+                            </span>
+                          )}
                         </div>
 
-                        {/* Successful Output */}
-                        {fileRes.status === 'success' && fileRes.stdout && (
-                          <div>
-                            <p className="text-xs text-gray-400 mb-1">Output:</p>
-                            <pre className="text-green-300 whitespace-pre-wrap p-3 bg-black/30 rounded font-mono text-sm">{fileRes.stdout}</pre>
+                        {/* Notebook Error Analysis */}
+                        {fileRes.isNotebook && fileRes.notebookErrors && (
+                          <div className="mb-4 space-y-4">
+                            {/* AI Analysis Summary */}
+                            {fileRes.notebookErrors.aiAnalysis && (
+                              <div className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-500/30 rounded-lg p-4">
+                                <div className="flex items-center space-x-2 mb-3">
+                                  <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                                    <span className="text-white text-xs">🤖</span>
+                                  </div>
+                                  <h6 className="font-semibold text-purple-300">AI Error Analysis</h6>
+                                  <span className={`px-2 py-1 text-xs rounded-full
+                                    ${fileRes.notebookErrors.aiAnalysis.severity === 'high' ? 'bg-red-500/30 text-red-300' : ''}
+                                    ${fileRes.notebookErrors.aiAnalysis.severity === 'medium' ? 'bg-yellow-500/30 text-yellow-300' : ''}
+                                    ${fileRes.notebookErrors.aiAnalysis.severity === 'low' ? 'bg-green-500/30 text-green-300' : ''}
+                                  `}>
+                                    {fileRes.notebookErrors.aiAnalysis.severity} severity
+                                  </span>
+                                </div>
+                                
+                                <div className="space-y-3">
+                                  <div>
+                                    <p className="text-sm text-gray-300">{fileRes.notebookErrors.aiAnalysis.explanation}</p>
+                                  </div>
+                                  
+                                  {fileRes.notebookErrors.aiAnalysis.suggestions && fileRes.notebookErrors.aiAnalysis.suggestions.length > 0 && (
+                                    <div>
+                                      <h7 className="text-xs font-medium text-blue-300 mb-2 block">💡 Suggestions:</h7>
+                                      <ul className="text-sm text-gray-300 space-y-1">
+                                        {fileRes.notebookErrors.aiAnalysis.suggestions.map((suggestion, idx) => (
+                                          <li key={idx} className="flex items-start space-x-2">
+                                            <span className="text-blue-400 mt-1">•</span>
+                                            <span>{suggestion}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  
+                                  {fileRes.notebookErrors.aiAnalysis.commonCauses && fileRes.notebookErrors.aiAnalysis.commonCauses.length > 0 && (
+                                    <div>
+                                      <h7 className="text-xs font-medium text-yellow-300 mb-2 block">🔍 Common Causes:</h7>
+                                      <ul className="text-sm text-gray-300 space-y-1">
+                                        {fileRes.notebookErrors.aiAnalysis.commonCauses.map((cause, idx) => (
+                                          <li key={idx} className="flex items-start space-x-2">
+                                            <span className="text-yellow-400 mt-1">•</span>
+                                            <span>{cause}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Cell-Specific Errors */}
+                            {(fileRes.notebookErrors.syntaxErrors?.length > 0 || fileRes.notebookErrors.cellErrors?.length > 0) && (
+                              <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+                                <h6 className="font-semibold text-red-300 mb-3 flex items-center space-x-2">
+                                  <span>⚠️</span>
+                                  <span>Cell Errors Detected</span>
+                                </h6>
+                                
+                                {/* Syntax Errors */}
+                                {fileRes.notebookErrors.syntaxErrors?.map((syntaxError, idx) => (
+                                  <div key={`syntax-${idx}`} className="mb-3 p-3 bg-red-800/30 rounded border-l-4 border-red-500">
+                                    <div className="flex items-center space-x-2 mb-2">
+                                      <span className="px-2 py-1 bg-red-500/50 text-red-200 text-xs rounded">Cell {syntaxError.cell_index}</span>
+                                      <span className="px-2 py-1 bg-purple-500/50 text-purple-200 text-xs rounded">Syntax Error</span>
+                                    </div>
+                                    <p className="text-sm text-red-300 mb-1">{syntaxError.error}</p>
+                                    {syntaxError.text && (
+                                      <pre className="text-xs text-gray-400 bg-black/20 rounded p-2 font-mono">Line {syntaxError.line}: {syntaxError.text}</pre>
+                                    )}
+                                  </div>
+                                ))}
+                                
+                                {/* Runtime Errors */}
+                                {fileRes.notebookErrors.cellErrors?.map((cellError, idx) => (
+                                  <div key={`cell-${idx}`} className="mb-3 p-3 bg-yellow-800/30 rounded border-l-4 border-yellow-500">
+                                    <div className="flex items-center space-x-2 mb-2">
+                                      <span className="px-2 py-1 bg-yellow-500/50 text-yellow-200 text-xs rounded">Cell {cellError.cell_index}</span>
+                                      <span className="px-2 py-1 bg-red-500/50 text-red-200 text-xs rounded">{cellError.category}</span>
+                                    </div>
+                                    <p className="text-sm text-yellow-300 mb-1">
+                                      <strong>{cellError.error_name}:</strong> {cellError.error_value}
+                                    </p>
+                                    {cellError.traceback && (
+                                      <details className="mt-2">
+                                        <summary className="cursor-pointer text-xs text-gray-400 hover:text-gray-300">Show Traceback</summary>
+                                        <pre className="text-xs text-gray-400 bg-black/20 rounded p-2 mt-1 font-mono whitespace-pre-wrap">{cellError.traceback}</pre>
+                                      </details>
+                                    )}
+                                    
+                                    {/* Cell-specific AI analysis */}
+                                    {fileRes.notebookErrors.aiAnalysis?.cellAnalysis?.find(ca => ca.cellIndex === cellError.cell_index) && (
+                                      <div className="mt-2 p-2 bg-blue-900/20 rounded border border-blue-500/30">
+                                        {(() => {
+                                          const cellAnalysis = fileRes.notebookErrors.aiAnalysis.cellAnalysis.find(ca => ca.cellIndex === cellError.cell_index);
+                                          return (
+                                            <div className="text-sm">
+                                              <p className="text-blue-300 mb-1"><strong>Issue:</strong> {cellAnalysis.issue}</p>
+                                              <p className="text-green-300"><strong>Fix:</strong> {cellAnalysis.fix}</p>
+                                            </div>
+                                          );
+                                        })()}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* System-level Error Details */}
+                            {fileRes.notebookErrors.errorDetails && (
+                              <div className="bg-gray-800/50 border border-gray-600 rounded-lg p-4">
+                                <h6 className="font-semibold text-gray-300 mb-3 flex items-center space-x-2">
+                                  <span>🔧</span>
+                                  <span>System Error Details</span>
+                                </h6>
+                                <div className="space-y-2 text-sm">
+                                  <p><span className="text-gray-400">Error Type:</span> <span className="text-red-300">{fileRes.notebookErrors.errorDetails.error_type}</span></p>
+                                  <p><span className="text-gray-400">Category:</span> <span className="text-yellow-300">{fileRes.notebookErrors.errorDetails.category}</span></p>
+                                  <p><span className="text-gray-400">Message:</span> <span className="text-gray-300">{fileRes.notebookErrors.errorDetails.error_message}</span></p>
+                                  {fileRes.notebookErrors.errorDetails.traceback && (
+                                    <details className="mt-2">
+                                      <summary className="cursor-pointer text-gray-400 hover:text-gray-300">Show Technical Details</summary>
+                                      <pre className="text-xs text-gray-400 bg-black/30 rounded p-2 mt-1 font-mono whitespace-pre-wrap">{fileRes.notebookErrors.errorDetails.traceback}</pre>
+                                    </details>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
 
+                        {/* Successful Output or Partial Results */}
+                        {(fileRes.status === 'success' || fileRes.status === 'partial_success') && fileRes.stdout && (
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">
+                              {fileRes.status === 'partial_success' ? 'Partial Results:' : 'Output:'}
+                            </p>
+                            {fileRes.isNotebook && fileRes.contentType === 'text/html' ? (
+                              // Render Jupyter notebook with enhanced viewer
+                              <div className="space-y-3">
+                                {/* Preview Container */}
+                                <div className="bg-white rounded-lg p-4 border-2 border-blue-200">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center space-x-2">
+                                      <div className="w-6 h-6 bg-gradient-to-r from-orange-400 to-red-500 rounded flex items-center justify-center text-white text-xs font-bold">
+                                        J
+                                      </div>
+                                      <span className="font-medium text-gray-700">
+                                        📊 Jupyter Notebook Results
+                                      </span>
+                                    </div>
+                                    <span className={`text-xs px-2 py-1 rounded-full ${
+                                      fileRes.status === 'success' 
+                                        ? 'bg-green-100 text-green-700' 
+                                        : 'bg-yellow-100 text-yellow-700'
+                                    }`}>
+                                      {fileRes.status === 'success' ? '✅ Executed Successfully' : '⚠️ Executed with Errors'}
+                                    </span>
+                                  </div>
+                                  
+                                  {fileRes.status === 'partial_success' && (
+                                    <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                      <p className="text-sm text-yellow-800">
+                                        ⚠️ This notebook completed with some errors. Results may be incomplete. 
+                                        {fileRes.notebookErrors && (fileRes.notebookErrors.syntaxErrors?.length > 0 || fileRes.notebookErrors.cellErrors?.length > 0) && 
+                                          ` ${fileRes.notebookErrors.syntaxErrors?.length || 0} syntax errors and ${fileRes.notebookErrors.cellErrors?.length || 0} runtime errors detected.`
+                                        }
+                                      </p>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Preview iframe - smaller */}
+                                  <div className="bg-gray-50 rounded-lg overflow-hidden mb-3">
+                                    <iframe
+                                      srcDoc={fileRes.stdout}
+                                      title={`Notebook preview for ${fileRes.fileName}`}
+                                      className="w-full h-48 border-0"
+                                      sandbox="allow-scripts allow-same-origin"
+                                    />
+                                  </div>
+                                  
+                                  {/* Action buttons */}
+                                  <div className="flex items-center justify-center space-x-3">
+                                    <button
+                                      onClick={() => setJupyterViewer({
+                                        isOpen: true,
+                                        htmlContent: fileRes.stdout,
+                                        fileName: fileRes.fileName
+                                      })}
+                                      className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 flex items-center space-x-2"
+                                    >
+                                      <span>🔍</span>
+                                      <span>View Full Results</span>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        const blob = new Blob([fileRes.stdout], { type: 'text/html' });
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = `${fileRes.fileName.replace('.ipynb', '')}_output.html`;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        document.body.removeChild(a);
+                                        URL.revokeObjectURL(url);
+                                      }}
+                                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+                                    >
+                                      <Download size={16} />
+                                      <span>Download HTML</span>
+                                    </button>
+                                  </div>
+
+                                  {/* Generated Files Section */}
+                                  {fileRes.generatedFiles && fileRes.generatedFiles.length > 0 && (
+                                    <div className="mt-4 border-t pt-4">
+                                      <h7 className="text-sm font-semibold text-gray-700 mb-3 block flex items-center space-x-2">
+                                        <span>📁</span>
+                                        <span>Generated Files ({fileRes.generatedFiles.length})</span>
+                                      </h7>
+                                      <div className="space-y-2">
+                                        {fileRes.generatedFiles.map((genFile, genIdx) => (
+                                          <div key={genIdx} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                            <div className="flex items-center justify-between mb-2">
+                                              <div className="flex items-center space-x-2">
+                                                <span className="text-lg">
+                                                  {genFile.fileType === 'csv' ? '📊' : 
+                                                   genFile.fileType === 'txt' ? '📄' : 
+                                                   genFile.fileType === 'json' ? '📋' : '📁'}
+                                                </span>
+                                                <div>
+                                                  <p className="font-medium text-gray-800">{genFile.fileName}</p>
+                                                  <p className="text-xs text-gray-600">
+                                                    {genFile.fileType.toUpperCase()} • {(genFile.fileSize / 1024).toFixed(1)} KB
+                                                    {genFile.totalLines && ` • ${genFile.totalLines} lines`}
+                                                  </p>
+                                                </div>
+                                              </div>
+                                              <button
+                                                onClick={async () => {
+                                                  try {
+                                                    const response = await fetch(
+                                                      `http://localhost:8080/code/download/${fileRes.workDir}/${genFile.fileName}`,
+                                                      { credentials: 'include' }
+                                                    );
+                                                    
+                                                    if (!response.ok) {
+                                                      throw new Error(`Download failed: ${response.statusText}`);
+                                                    }
+                                                    
+                                                    const blob = await response.blob();
+                                                    const url = URL.createObjectURL(blob);
+                                                    const a = document.createElement('a');
+                                                    a.href = url;
+                                                    a.download = genFile.fileName;
+                                                    document.body.appendChild(a);
+                                                    a.click();
+                                                    document.body.removeChild(a);
+                                                    URL.revokeObjectURL(url);
+                                                  } catch (error) {
+                                                    console.error('Download error:', error);
+                                                    setError(`Failed to download ${genFile.fileName}: ${error.message}`);
+                                                  }
+                                                }}
+                                                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium transition-colors duration-200 flex items-center space-x-1"
+                                              >
+                                                <Download size={14} />
+                                                <span>Download</span>
+                                              </button>
+                                            </div>
+                                            
+                                            {/* File Preview */}
+                                            {genFile.preview && (
+                                              <div className="mt-2">
+                                                <details className="group">
+                                                  <summary className="cursor-pointer text-xs text-gray-600 hover:text-gray-800 select-none">
+                                                    Preview first few lines
+                                                  </summary>
+                                                  <div className="mt-2 bg-white rounded p-2 border border-gray-200 max-h-32 overflow-y-auto">
+                                                    <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                                                      {genFile.preview}
+                                                    </pre>
+                                                  </div>
+                                                </details>
+                                              </div>
+                                            )}
+                                            
+                                            {/* Error display if file couldn't be read */}
+                                            {genFile.error && (
+                                              <div className="mt-2 text-xs text-red-600 bg-red-50 rounded p-2">
+                                                Error reading file: {genFile.error}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              // Render regular text output
+                              <pre className="text-green-300 whitespace-pre-wrap p-3 bg-black/30 rounded font-mono text-sm">{fileRes.stdout}</pre>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Error Display for Notebooks */}
+                        {fileRes.isNotebook && fileRes.status === 'error' && !fileRes.stdout && (
+                          <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+                            <div className="flex items-center space-x-2 mb-3">
+                              <div className="w-6 h-6 bg-gradient-to-r from-orange-400 to-red-500 rounded flex items-center justify-center text-white text-xs font-bold">
+                                J
+                              </div>
+                              <span className="font-medium text-red-300">📊 Jupyter Notebook Execution Failed</span>
+                            </div>
+                            <p className="text-sm text-red-300 mb-3">
+                              The notebook could not be executed due to errors. See analysis below for details.
+                            </p>
+                            {fileRes.rawOutput && (
+                              <details className="mt-3">
+                                <summary className="cursor-pointer text-xs text-gray-400 hover:text-gray-300">Show Raw Execution Log</summary>
+                                <pre className="text-xs text-gray-400 bg-black/30 rounded p-2 mt-1 font-mono whitespace-pre-wrap max-h-40 overflow-y-auto">{fileRes.rawOutput}</pre>
+                              </details>
+                            )}
+                          </div>
+                        )}
+                        
                         {/* Compile Error Analysis */}
                         {fileRes.status === 'compile_error' && fileRes.compileErrorAnalysis && (
                           <div className="space-y-2 text-sm">
@@ -1319,6 +1691,14 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Enhanced Jupyter Notebook Viewer */}
+        <JupyterResultsScreen
+          htmlContent={jupyterViewer.htmlContent}
+          fileName={jupyterViewer.fileName}
+          isOpen={jupyterViewer.isOpen}
+          onClose={() => setJupyterViewer({ isOpen: false, htmlContent: null, fileName: null })}
+        />
       </div>
     </>
   );

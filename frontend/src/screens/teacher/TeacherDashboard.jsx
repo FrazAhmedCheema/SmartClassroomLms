@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 
 import SharedDashboard from '../../components/shared/SharedDashboard';
 import ClassesGrid from '../../components/shared/ClassesGrid';  // Updated import path
@@ -17,6 +17,21 @@ const TeacherDashboard = () => {
   const classesStatus = useSelector(selectClassesStatus);
   const classesError = useSelector(selectClassesError);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Get search term from outlet context
+  const outletContext = useOutletContext();
+  const searchTerm = outletContext?.searchTerm || '';
+
+  // Filter classes based on search term
+  const filteredClasses = useMemo(() => {
+    if (!searchTerm) return classes;
+    
+    return classes.filter(classItem => 
+      classItem.className?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      classItem.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      classItem.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [classes, searchTerm]);
 
   const coverImages = [
     'https://gstatic.com/classroom/themes/img_code.jpg',
@@ -139,8 +154,22 @@ const TeacherDashboard = () => {
               </div>
             )}
             
-            {classesStatus === 'succeeded' && classes.length > 0 && (
-              <ClassesGrid classes={classes} />
+            {classesStatus === 'succeeded' && filteredClasses.length > 0 && (
+              <>
+                <div className="text-sm text-gray-500 mb-4">
+                  {searchTerm ? 
+                    `${filteredClasses.length} of ${classes.length} classes found for "${searchTerm}"` : 
+                    `${classes.length} classes loaded`
+                  }
+                </div>
+                <ClassesGrid classes={filteredClasses} />
+              </>
+            )}
+            
+            {classesStatus === 'succeeded' && searchTerm && filteredClasses.length === 0 && classes.length > 0 && (
+              <div className="text-center py-10">
+                <p className="text-gray-600">No classes found matching "{searchTerm}"</p>
+              </div>
             )}
           </motion.div>
         </div>

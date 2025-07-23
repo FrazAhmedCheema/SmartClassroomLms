@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import SharedDashboard from '../../components/shared/SharedDashboard';
 import ClassesGrid from '../../components/shared/ClassesGrid';
 import JoinClassModal from '../../components/student/JoinClassModal';
@@ -13,6 +13,22 @@ const StudentDashboard = () => {
   const { studentId } = useSelector((state) => state.student);
   const { classes, status, error } = useSelector((state) => state.enrolledClasses);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Get search term from outlet context
+  const outletContext = useOutletContext();
+  const searchTerm = outletContext?.searchTerm || '';
+
+  // Filter classes based on search term
+  const filteredClasses = useMemo(() => {
+    if (!searchTerm) return classes;
+    
+    return classes.filter(classItem => 
+      classItem.className?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      classItem.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      classItem.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      classItem.teacherName?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [classes, searchTerm]);
 
   useEffect(() => {
     console.log('Fetching enrolled classes...');
@@ -58,9 +74,12 @@ const StudentDashboard = () => {
             </div>
             {/* Add debug information */}
             <div className="text-sm text-gray-500 mb-4">
-              {`${classes.length} classes loaded`}
+              {searchTerm ? 
+                `${filteredClasses.length} of ${classes.length} classes found for "${searchTerm}"` : 
+                `${classes.length} classes loaded`
+              }
             </div>
-            <ClassesGrid classes={classes} />
+            <ClassesGrid classes={filteredClasses} />
           </motion.div>
         </div>
       </div>

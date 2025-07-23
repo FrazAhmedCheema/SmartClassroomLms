@@ -16,6 +16,9 @@ router.post('/analyze-output', authorizeTeacher, codeExecutionController.analyze
 // Routes for MERN stack execution
 router.post('/execute-mern', authorizeTeacher, codeExecutionController.executeMERNStack);
 router.post('/stop-mern/:sessionId', authorizeTeacher, codeExecutionController.stopMERNSession);
-router.get('/mern-status/:sessionId', authorizeTeacher, codeExecutionController.getMERNSessionStatus);
+router.get('/status-mern/:sessionId', authorizeTeacher, codeExecutionController.getMERNSessionStatus);
+
+// Route for downloading generated files (CSV, TXT, etc.)
+router.get('/download/:workDir/:fileName', authorizeTeacher, codeExecutionController.downloadGeneratedFile);
 
 module.exports = router;

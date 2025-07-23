@@ -4,15 +4,60 @@ const path = require('path');
 const fs = require('fs').promises;
 const os = require('os');
 const axios = require('axios');
+const { Client } = require('ssh2'); // For EC2 SSH connection
 // Gemini API is used for code analysis and related tasks (see analyzeCode method)
 const WebSocket = require('ws'); // Used for type checking WebSocket.OPEN
 
 // Configure Docker
 const docker = new Docker({
-  host: '51.20.8.71',
+  host: '13.53.42.198',
   port: 2375,
   protocol: 'http'
 });
+
+// Configure EC2 for Jupyter notebook execution
+const ec2Config = {
+  host: '16.16.75.204',
+  username: 'ubuntu', // Default for Ubuntu AMI
+  // TODO: Configure SSH authentication - options:
+  // 1. privateKey: require('fs').readFileSync('/path/to/your/key.pem')
+  // 2. password: 'your-password'
+  // 3. agent: process.env.SSH_AUTH_SOCK (for SSH agent forwarding)
+  // For now, we'll try multiple authentication methods
+  tryKeyboard: true,
+  algorithms: {
+    kex: [
+      'ecdh-sha2-nistp256',
+      'ecdh-sha2-nistp384', 
+      'ecdh-sha2-nistp521',
+      'diffie-hellman-group14-sha256',
+      'diffie-hellman-group16-sha512',
+      'diffie-hellman-group18-sha512',
+      'diffie-hellman-group14-sha1'
+    ],
+    serverHostKey: [
+      'rsa-sha2-512',
+      'rsa-sha2-256', 
+      'ecdsa-sha2-nistp256',
+      'ecdsa-sha2-nistp384',
+      'ecdsa-sha2-nistp521',
+      'ssh-rsa',
+      'ssh-dss'
+    ],
+    cipher: [
+      'aes128-ctr',
+      'aes192-ctr', 
+      'aes256-ctr',
+      'aes128-gcm',
+      'aes256-gcm'
+    ],
+    hmac: [
+      'hmac-sha2-256',
+      'hmac-sha2-512',
+      'hmac-sha1'
+    ]
+  }
+};
 
 // Gemini API is now used for code analysis (see analyzeCode method)
 
@@ -23,6 +68,20 @@ class CodeExecutionService {
   async analyzeCode(files) {
     if (!files || files.length === 0) {
       throw new Error('No files found to analyze');
+    }
+
+    // Check for Jupyter notebook files first
+    const notebookFiles = files.filter(f => f.name.endsWith('.ipynb'));
+    if (notebookFiles.length > 0) {
+      console.log('Jupyter notebook detected:', notebookFiles.map(f => f.name));
+      return {
+        fileType: 'jupyter',
+        projectType: 'notebook',
+        isNotebook: true,
+        mainFile: notebookFiles[0].name,
+        notebookFiles: notebookFiles.map(f => f.name),
+        message: 'Jupyter notebook project detected. Will execute on EC2 instance.'
+      };
     }
 
     // Check if this is a MERN stack project
@@ -248,6 +307,11 @@ echo "---EXEC_END---${file}---EXIT_CODE=$exit_code---"
       analysisResult = await this.analyzeCode(files);
       console.log('Code analysis by Gemini:', analysisResult);
 
+      // Handle Jupyter notebook execution
+      if (analysisResult.isNotebook) {
+        return await this.executeNotebookOnEC2(tempDir, analysisResult);
+      }
+
       const runScriptContent = this.generateRunScript(analysisResult.fileType, analysisResult.executionOrder);
       await fs.writeFile(path.join(tempDir, 'run_script.sh'), runScriptContent);
 
@@ -461,6 +525,12 @@ echo "---EXEC_END---${file}---EXIT_CODE=$exit_code---"
       
       analysisResult = await this.analyzeCode(files);
       console.log('Interactive Code analysis by Gemini:', analysisResult);
+
+      // Handle Jupyter notebook - automatically redirect to regular execution
+      if (analysisResult.isNotebook) {
+        console.log('Jupyter notebook detected in interactive request - redirecting to regular notebook execution');
+        return await this.executeNotebookOnEC2(tempDir, analysisResult);
+      }
 
       const dockerfileContent = this.generateDockerfile(analysisResult, true); // Generate Dockerfile for interactive mode
       await fs.writeFile(path.join(tempDir, 'Dockerfile'), dockerfileContent);
@@ -868,6 +938,112 @@ echo "---EXEC_END---${file}---EXIT_CODE=$exit_code---"
     }
   }
 
+  async analyzeNotebookError(errorMsg, cellErrors, errorDetails) {
+    if (!errorMsg || errorMsg.trim() === "") {
+      return { 
+        explanation: "No error message provided.", 
+        suggestions: [], 
+        errorSummary: "No errors detected",
+        cellAnalysis: []
+      };
+    }
+    
+    try {
+      const prompt = `Analyze this Jupyter notebook execution error. Provide a comprehensive analysis including:
+
+1. Overall error summary
+2. Specific explanations for each error type
+3. Actionable suggestions to fix the issues
+4. Common causes and solutions
+
+Error Details:
+${errorMsg}
+
+Cell-specific errors:
+${cellErrors.map(err => `Cell ${err.cell_index} (${err.category}): ${err.error_name || err.error} - ${err.error_value || err.error}`).join('\n')}
+
+Error Context:
+${errorDetails ? `Main Error: ${errorDetails.error_type} - ${errorDetails.error_message} (Category: ${errorDetails.category})` : 'Multiple cell-level errors'}
+
+Format response as JSON:
+{
+  "explanation": "Brief overall explanation of what went wrong",
+  "errorSummary": "One-sentence summary of the main issues",
+  "suggestions": ["specific action 1", "specific action 2", ...],
+  "cellAnalysis": [
+    {
+      "cellIndex": number,
+      "issue": "what's wrong in this cell",
+      "fix": "how to fix it",
+      "category": "error type"
+    }
+  ],
+  "commonCauses": ["likely cause 1", "likely cause 2"],
+  "severity": "low|medium|high"
+}`;
+
+      const geminiRes = await axios.post(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+        {
+          contents: [
+            {
+              parts: [{ text: prompt }]
+            }
+          ]
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-goog-api-key': process.env.GEMINI_API_KEY
+          }
+        }
+      );
+
+      const geminiText = geminiRes.data.candidates[0]?.content?.parts[0]?.text?.trim();
+      if (!geminiText) {
+        throw new Error('No response content from Gemini');
+      }
+
+      // Clean up the response to extract JSON
+      let cleanText = geminiText.trim();
+      cleanText = cleanText.replace(/^```json\s*|^```\s*|```$/gim, '');
+      cleanText = cleanText.replace(/^```[a-zA-Z]*\s*|```$/g, '').trim();
+      
+      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        cleanText = jsonMatch[0];
+      }
+
+      const analysis = JSON.parse(cleanText);
+      
+      // Ensure all required fields are present
+      return {
+        explanation: analysis.explanation || "Failed to analyze error",
+        errorSummary: analysis.errorSummary || "Error analysis unavailable",
+        suggestions: Array.isArray(analysis.suggestions) ? analysis.suggestions : ["Review error messages manually"],
+        cellAnalysis: Array.isArray(analysis.cellAnalysis) ? analysis.cellAnalysis : [],
+        commonCauses: Array.isArray(analysis.commonCauses) ? analysis.commonCauses : [],
+        severity: analysis.severity || "medium"
+      };
+      
+    } catch (error) {
+      console.error('Error analyzing notebook error with Gemini:', error);
+      return { 
+        explanation: "Failed to analyze notebook errors with AI", 
+        errorSummary: "AI analysis failed",
+        suggestions: ["Review the raw error messages below", "Check notebook cell syntax", "Verify all required packages are installed"],
+        cellAnalysis: cellErrors.map(err => ({
+          cellIndex: err.cell_index,
+          issue: `${err.error_name || err.error}: ${err.error_value || err.error}`,
+          fix: "Review and fix the code in this cell",
+          category: err.category || "unknown"
+        })),
+        commonCauses: ["Syntax errors", "Missing dependencies", "Runtime exceptions"],
+        severity: "medium"
+      };
+    }
+  }
+
   async analyzeError(errorMsg, language) {
     if (!errorMsg || errorMsg.trim() === "") return { explanation: "No error message provided.", location: "", solution: "", type: "unknown" };
     try {
@@ -892,7 +1068,20 @@ echo "---EXEC_END---${file}---EXIT_CODE=$exit_code---"
       if (!geminiText) {
         throw new Error('No response content from Gemini');
       }
-      return JSON.parse(geminiText);
+
+      // Clean up the response to extract JSON
+      let cleanText = geminiText.trim();
+      // Remove Markdown code block wrappers if present
+      cleanText = cleanText.replace(/^```json\s*|^```\s*|```$/gim, '');
+      cleanText = cleanText.replace(/^```[a-zA-Z]*\s*|```$/g, '').trim();
+      
+      // Try to extract JSON object from within the text if there are extra characters
+      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        cleanText = jsonMatch[0];
+      }
+
+      return JSON.parse(cleanText);
     } catch (error) {
       console.error('Error analyzing with Gemini:', error);
       return { explanation: "Failed to analyze error with AI.", location: "N/A", solution: "Review the raw error message.", type: "analysis_failed" };
@@ -970,6 +1159,708 @@ ${cleanLog}
       console.error('Gemini analysis error for terminal output:', error);
       throw new Error('Failed to analyze terminal output with Gemini.');
     }
+  }
+
+  // New methods for Jupyter notebook execution on EC2
+  async executeNotebookOnEC2(tempDir, analysisResult) {
+    console.log('Executing Jupyter notebook on EC2...');
+    const notebookFile = analysisResult.notebookFiles[0]; // Use the first notebook file
+    const notebookPath = path.join(tempDir, notebookFile);
+    
+    try {
+      // Read the notebook content
+      const notebookContent = await fs.readFile(notebookPath, 'utf8');
+      
+      // Execute notebook on EC2
+      const executionResult = await this.executeNotebookRemotely(notebookContent, notebookFile);
+      
+      // Process the execution result
+      if (executionResult.success) {
+        return {
+          language: 'jupyter',
+          fileResults: [{
+            fileName: notebookFile,
+            status: 'success',
+            stdout: executionResult.htmlContent || null,
+            stderr: null,
+            isNotebook: true,
+            contentType: 'text/html',
+            rawOutput: null,
+            generatedFiles: executionResult.generatedFiles || [],
+            workDir: executionResult.workDir, // Pass the workDir for downloads
+            executionDetails: {
+              success: true,
+              message: executionResult.message
+            }
+          }]
+        };
+      } else {
+        // Handle execution with errors or partial success
+        const fileResult = {
+          fileName: notebookFile,
+          status: executionResult.hasPartialResults ? 'partial_success' : 'error',
+          stdout: executionResult.htmlContent || null,
+          stderr: null,
+          isNotebook: true,
+          contentType: 'text/html',
+          rawOutput: executionResult.rawOutput || null,
+          generatedFiles: executionResult.generatedFiles || [], // Include generated files even with errors
+          workDir: executionResult.workDir, // Pass the workDir for downloads
+          executionDetails: {
+            success: false,
+            message: executionResult.message,
+            hasPartialResults: executionResult.hasPartialResults
+          },
+          notebookErrors: {
+            syntaxErrors: executionResult.syntaxErrors || [],
+            cellErrors: executionResult.cellErrors || [],
+            errorDetails: executionResult.errorDetails,
+            aiAnalysis: executionResult.aiAnalysis
+          }
+        };
+
+        return {
+          language: 'jupyter',
+          fileResults: [fileResult],
+          hasErrors: true,
+          errorSummary: executionResult.aiAnalysis?.errorSummary || 'Notebook execution encountered errors'
+        };
+      }
+    } catch (error) {
+      console.error('Notebook execution error:', error);
+      
+      // Analyze the error with AI
+      const aiAnalysis = await this.analyzeNotebookError(error.message, [], {
+        error_type: error.constructor.name,
+        error_message: error.message,
+        category: 'system',
+        traceback: error.stack
+      });
+
+      return {
+        error: {
+          message: `Failed to execute Jupyter notebook: ${error.message}`,
+          aiAnalysis,
+          rawBuildOutput: error.stack,
+          category: 'system_error'
+        }
+      };
+    }
+  }
+
+  async executeNotebookRemotely(notebookContent, fileName) {
+    return new Promise((resolve, reject) => {
+      const conn = new Client();
+      let htmlContent = '';
+      let errorOutput = '';
+      
+      // Create a unique working directory
+      const workDir = `notebook_${Date.now()}`;
+      const fullWorkDir = `/tmp/${workDir}`;
+      
+      conn.on('ready', () => {
+        console.log('SSH connection established to EC2');
+        
+        const notebookPath = `${fullWorkDir}/${fileName}`;
+        const htmlPath = `${fullWorkDir}/${fileName.replace('.ipynb', '.html')}`;
+        
+        // Execute commands sequentially
+        const commands = [
+          `mkdir -p ${fullWorkDir}`,
+          `cat > ${notebookPath} << 'EOF'\n${notebookContent}\nEOF`,
+          `cd ${fullWorkDir}`,
+          `cd ${fullWorkDir} && source /home/ubuntu/venv/bin/activate && python -c "
+import sys
+import json
+import traceback
+import os
+import re
+
+# Change to the working directory
+os.chdir('${fullWorkDir}')
+print(f'Current working directory: {os.getcwd()}')
+print('Files in directory:', os.listdir('.'))
+
+def categorize_error(error_str, traceback_str):
+    '''Categorize the type of error for better handling'''
+    error_lower = error_str.lower()
+    traceback_lower = traceback_str.lower()
+    
+    # Syntax errors
+    if 'syntaxerror' in error_lower or 'indentationerror' in error_lower:
+        return 'syntax'
+    
+    # Import/dependency errors
+    if 'modulenotfounderror' in error_lower or 'importerror' in error_lower:
+        return 'dependency'
+    
+    # Runtime errors
+    if any(err in error_lower for err in ['nameerror', 'typeerror', 'valueerror', 'attributeerror', 'keyerror', 'indexerror']):
+        return 'runtime'
+    
+    # File/IO errors
+    if 'filenotfounderror' in error_lower or 'permissionerror' in error_lower:
+        return 'file_io'
+    
+    # Timeout or execution errors
+    if 'timeout' in error_lower or 'execution' in error_lower:
+        return 'execution'
+    
+    return 'unknown'
+
+def extract_cell_errors(nb):
+    '''Extract errors from executed notebook cells'''
+    cell_errors = []
+    for i, cell in enumerate(nb.cells):
+        if cell.cell_type == 'code' and hasattr(cell, 'outputs'):
+            for output in cell.outputs:
+                if output.output_type == 'error':
+                    cell_errors.append({
+                        'cell_index': i + 1,
+                        'error_name': output.get('ename', 'Unknown'),
+                        'error_value': output.get('evalue', ''),
+                        'traceback': '\\n'.join(output.get('traceback', [])),
+                        'category': categorize_error(
+                            output.get('ename', '') + ' ' + output.get('evalue', ''),
+                            '\\n'.join(output.get('traceback', []))
+                        )
+                    })
+    return cell_errors
+
+try:
+    import nbformat
+    import nbclient
+    from nbconvert import HTMLExporter
+    
+    print('Reading notebook file: ${fileName}')
+    with open('${fileName}', 'r') as f:
+        nb = nbformat.read(f, as_version=4)
+    print(f'Notebook loaded successfully with {len(nb.cells)} cells')
+    
+    # Check for basic syntax issues in cells before execution
+    syntax_errors = []
+    for i, cell in enumerate(nb.cells):
+        if cell.cell_type == 'code' and cell.source.strip():
+            try:
+                compile(cell.source, f'<cell_{i+1}>', 'exec')
+            except SyntaxError as e:
+                syntax_errors.append({
+                    'cell_index': i + 1,
+                    'error': str(e),
+                    'line': e.lineno,
+                    'text': e.text.strip() if e.text else '',
+                    'category': 'syntax'
+                })
+    
+    if syntax_errors:
+        print('NOTEBOOK_SYNTAX_ERRORS_DETECTED')
+        print('SYNTAX_ERRORS_START')
+        print(json.dumps(syntax_errors, indent=2))
+        print('SYNTAX_ERRORS_END')
+        # Continue execution anyway to see how far we get
+    
+    print('Executing notebook...')
+    client = nbclient.NotebookClient(nb, timeout=300)  # 5 minute timeout
+    
+    execution_successful = True
+    try:
+        client.execute()
+        print('Notebook execution completed successfully')
+    except Exception as exec_error:
+        execution_successful = False
+        print(f'Notebook execution failed: {str(exec_error)}')
+        print('Execution error traceback:')
+        traceback.print_exc()
+        
+        # Still try to extract partial results and cell-level errors
+        cell_errors = extract_cell_errors(nb)
+        if cell_errors:
+            print('CELL_ERRORS_START')
+            print(json.dumps(cell_errors, indent=2))
+            print('CELL_ERRORS_END')
+    
+    print('Converting to HTML...')
+    html_exporter = HTMLExporter()
+    (body, resources) = html_exporter.from_notebook_node(nb)
+    
+    print('Writing HTML output...')
+    with open('notebook_output.html', 'w') as f:
+        f.write(body)
+    print('HTML file written successfully')
+    
+    # Check for generated CSV files and other output files
+    generated_files = []
+    current_files = os.listdir('.')
+    csv_files = [f for f in current_files if f.endswith('.csv') and f != '${fileName}']
+    
+    if csv_files:
+        print('GENERATED_CSV_FILES_DETECTED')
+        for csv_file in csv_files:
+            try:
+                # Get file size and basic info
+                file_size = os.path.getsize(csv_file)
+                
+                # Read first few lines to get preview
+                with open(csv_file, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                    preview = ''.join(lines[:5])  # First 5 lines
+                    total_lines = len(lines)
+                
+                generated_files.append({
+                    'fileName': csv_file,
+                    'fileType': 'csv',
+                    'fileSize': file_size,
+                    'totalLines': total_lines,
+                    'preview': preview,
+                    'fullPath': os.path.abspath(csv_file)
+                })
+                print(f'Found CSV file: {csv_file} ({file_size} bytes, {total_lines} lines)')
+            except Exception as csv_error:
+                print(f'Error reading CSV file {csv_file}: {str(csv_error)}')
+                generated_files.append({
+                    'fileName': csv_file,
+                    'fileType': 'csv',
+                    'error': str(csv_error),
+                    'fullPath': os.path.abspath(csv_file)
+                })
+    
+    # Also check for other common output file types
+    other_output_files = [f for f in current_files if f.endswith(('.txt', '.json', '.xml', '.log')) and f not in ['notebook_output.html', '${fileName}']]
+    for output_file in other_output_files:
+        try:
+            file_size = os.path.getsize(output_file)
+            with open(output_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+                preview = content[:500] if len(content) > 500 else content
+            
+            generated_files.append({
+                'fileName': output_file,
+                'fileType': output_file.split('.')[-1],
+                'fileSize': file_size,
+                'preview': preview,
+                'fullPath': os.path.abspath(output_file)
+            })
+            print(f'Found output file: {output_file} ({file_size} bytes)')
+        except Exception as file_error:
+            print(f'Error reading output file {output_file}: {str(file_error)}')
+    
+    if generated_files:
+        print('GENERATED_FILES_START')
+        print(json.dumps(generated_files, indent=2))
+        print('GENERATED_FILES_END')
+    
+    # Extract any remaining cell errors after execution
+    final_cell_errors = extract_cell_errors(nb)
+    if final_cell_errors:
+        print('FINAL_CELL_ERRORS_START')
+        print(json.dumps(final_cell_errors, indent=2))
+        print('FINAL_CELL_ERRORS_END')
+    
+    if execution_successful and not final_cell_errors:
+        print('NOTEBOOK_EXECUTION_SUCCESS')
+    else:
+        print('NOTEBOOK_EXECUTION_COMPLETED_WITH_ERRORS')
+    
+except Exception as e:
+    error_category = categorize_error(str(e), traceback.format_exc())
+    error_details = {
+        'error_type': type(e).__name__,
+        'error_message': str(e),
+        'category': error_category,
+        'traceback': traceback.format_exc()
+    }
+    
+    print(f'NOTEBOOK_EXECUTION_ERROR: {str(e)}')
+    print('ERROR_DETAILS_START')
+    print(json.dumps(error_details, indent=2))
+    print('ERROR_DETAILS_END')
+    print('Full traceback:')
+    traceback.print_exc()
+    sys.exit(1)
+"`,
+          `cd ${fullWorkDir} && cat notebook_output.html`,
+          `cd ${fullWorkDir} && ls -la *.csv *.txt *.json *.xml *.log 2>/dev/null || echo "No additional output files found"`
+        ];
+        
+        this.executeCommandsSequentially(conn, commands, 0, async (success, output, error) => {
+          conn.end();
+          
+          console.log('Command execution completed:', { success, outputLength: output.length, errorLength: error.length });
+          
+          // Parse the output for different types of results
+          const parseExecutionResult = async (output, error) => {
+            let htmlContent = '';
+            let executionErrors = [];
+            let syntaxErrors = [];
+            let cellErrors = [];
+            let executionSuccessful = false;
+            let errorDetails = null;
+            
+            // Check for complete success
+            if (output.includes('NOTEBOOK_EXECUTION_SUCCESS')) {
+              executionSuccessful = true;
+            } else if (output.includes('NOTEBOOK_EXECUTION_COMPLETED_WITH_ERRORS')) {
+              executionSuccessful = false; // Partial success with errors
+            }
+            
+            // Extract syntax errors
+            const syntaxErrorMatch = output.match(/SYNTAX_ERRORS_START\n([\s\S]*?)\nSYNTAX_ERRORS_END/);
+            if (syntaxErrorMatch) {
+              try {
+                syntaxErrors = JSON.parse(syntaxErrorMatch[1]);
+              } catch (e) {
+                console.warn('Failed to parse syntax errors:', e);
+              }
+            }
+            
+            // Extract cell execution errors
+            const cellErrorMatch = output.match(/(?:CELL_ERRORS_START|FINAL_CELL_ERRORS_START)\n([\s\S]*?)\n(?:CELL_ERRORS_END|FINAL_CELL_ERRORS_END)/);
+            if (cellErrorMatch) {
+              try {
+                cellErrors = JSON.parse(cellErrorMatch[1]);
+              } catch (e) {
+                console.warn('Failed to parse cell errors:', e);
+              }
+            }
+            
+            // Extract error details for complete failures
+            const errorDetailsMatch = output.match(/ERROR_DETAILS_START\n([\s\S]*?)\nERROR_DETAILS_END/);
+            if (errorDetailsMatch) {
+              try {
+                errorDetails = JSON.parse(errorDetailsMatch[1]);
+              } catch (e) {
+                console.warn('Failed to parse error details:', e);
+              }
+            }
+            
+            // Extract HTML content
+            const htmlStart = output.indexOf('<!DOCTYPE html>');
+            if (htmlStart !== -1) {
+              htmlContent = output.substring(htmlStart);
+              console.log('HTML content extracted successfully, length:', htmlContent.length);
+            }
+            
+            // Extract generated files information
+            let generatedFiles = [];
+            const generatedFilesMatch = output.match(/GENERATED_FILES_START\n([\s\S]*?)\nGENERATED_FILES_END/);
+            if (generatedFilesMatch) {
+              try {
+                generatedFiles = JSON.parse(generatedFilesMatch[1]);
+                console.log('Generated files detected:', generatedFiles.length);
+              } catch (e) {
+                console.warn('Failed to parse generated files:', e);
+              }
+            }
+            
+            // Compile all errors for AI analysis
+            const allErrors = [...syntaxErrors, ...cellErrors];
+            let aiAnalysis = null;
+            
+            if (errorDetails || allErrors.length > 0) {
+              const errorForAnalysis = errorDetails ? 
+                `${errorDetails.error_type}: ${errorDetails.error_message}\n${errorDetails.traceback}` :
+                allErrors.map(err => 
+                  `Cell ${err.cell_index}: ${err.error_name || err.error}: ${err.error_value || err.error}\n${err.traceback || ''}`
+                ).join('\n\n');
+              
+              try {
+                aiAnalysis = await this.analyzeNotebookError(errorForAnalysis, allErrors, errorDetails);
+              } catch (aiError) {
+                console.warn('Failed to get AI analysis for notebook errors:', aiError);
+                aiAnalysis = {
+                  explanation: 'Failed to analyze errors with AI',
+                  suggestions: ['Review the error messages below for details'],
+                  errorSummary: 'AI analysis unavailable'
+                };
+              }
+            }
+            
+            return {
+              success: executionSuccessful && allErrors.length === 0 && !errorDetails,
+              htmlContent,
+              syntaxErrors,
+              cellErrors,
+              errorDetails,
+              aiAnalysis,
+              generatedFiles,
+              workDir, // Include the workDir for file downloads
+              hasPartialResults: htmlContent.length > 0,
+              message: executionSuccessful ? 
+                (allErrors.length > 0 ? 'Notebook executed with some cell errors' : 'Notebook executed successfully') :
+                (errorDetails ? `Execution failed: ${errorDetails.error_message}` : 'Notebook execution failed')
+            };
+          };
+          
+          if (success && (output.includes('NOTEBOOK_EXECUTION_SUCCESS') || output.includes('NOTEBOOK_EXECUTION_COMPLETED_WITH_ERRORS'))) {
+            const result = await parseExecutionResult(output, error);
+            resolve(result);
+          } else {
+            console.error('Notebook execution failed');
+            console.log('Error output:', error);
+            console.log('Output sample:', output.substring(Math.max(0, output.length - 1000)));
+            
+            // Try to parse partial results even on failure
+            const result = await parseExecutionResult(output, error);
+            if (!result.success) {
+              result.error = error || 'Notebook execution failed';
+              result.rawOutput = output.length > 2000 ? output.substring(0, 2000) + '...' : output;
+            }
+            resolve(result);
+          }
+        });
+      });
+      
+      conn.on('error', (err) => {
+        console.error('SSH connection error:', err);
+        
+        // Provide more specific error messages based on the error type
+        let errorMessage = `SSH connection failed: ${err.message}`;
+        
+        if (err.level === 'client-authentication') {
+          errorMessage = `SSH authentication failed to EC2 instance ${ec2Config.host}. Please configure proper authentication credentials. You can set:
+- EC2_PRIVATE_KEY_PATH environment variable to point to your private key file
+- EC2_PASSWORD environment variable for password authentication
+- Ensure SSH agent is running with loaded keys (SSH_AUTH_SOCK)
+- Check that private key file has correct permissions (chmod 600)`;
+        } else if (err.level === 'handshake') {
+          errorMessage = `SSH handshake failed with EC2 instance ${ec2Config.host}. This might be due to:
+- Incompatible SSH algorithms between client and server
+- Network connectivity issues
+- Server configuration problems
+Error: ${err.message}`;
+        } else if (err.code === 'ECONNREFUSED') {
+          errorMessage = `Cannot connect to EC2 instance ${ec2Config.host}. Please verify:
+- The EC2 instance is running
+- Security group allows SSH access from your IP
+- The host address is correct`;
+        }
+        
+        reject(new Error(errorMessage));
+      });
+      
+      // Connect to EC2 - try multiple authentication methods
+      const connectionConfig = {
+        host: ec2Config.host,
+        username: ec2Config.username,
+        readyTimeout: 30000,
+        ...ec2Config.algorithms && { algorithms: ec2Config.algorithms }
+      };
+
+      // Try SSH agent first if available
+      if (process.env.SSH_AUTH_SOCK) {
+        connectionConfig.agent = process.env.SSH_AUTH_SOCK;
+      }
+
+      // Try password authentication as fallback (if configured)
+      if (process.env.EC2_PASSWORD) {
+        connectionConfig.password = process.env.EC2_PASSWORD;
+      }
+
+      // Try private key authentication as another fallback (if configured)
+      if (process.env.EC2_PRIVATE_KEY_PATH) {
+        try {
+          const keyPath = path.resolve(process.env.EC2_PRIVATE_KEY_PATH);
+          console.log(`Attempting to load private key from: ${keyPath}`);
+          connectionConfig.privateKey = require('fs').readFileSync(keyPath);
+          console.log('Private key loaded successfully');
+        } catch (keyError) {
+          console.warn('Failed to read EC2 private key:', keyError.message);
+        }
+      }
+
+      conn.connect(connectionConfig);
+    });
+  }
+
+  async downloadGeneratedFile(workDir, fileName) {
+    return new Promise((resolve, reject) => {
+      const conn = new Client();
+      
+      conn.on('ready', () => {
+        console.log(`SSH connection established for file download: ${fileName}`);
+        
+        const filePath = `${workDir}/${fileName}`;
+        
+        conn.exec(`cd ${workDir} && cat ${fileName}`, (err, stream) => {
+          if (err) {
+            conn.end();
+            return reject(new Error(`Failed to read file ${fileName}: ${err.message}`));
+          }
+          
+          let fileContent = '';
+          
+          stream.on('close', (code) => {
+            conn.end();
+            if (code === 0) {
+              console.log(`Successfully downloaded file: ${fileName}`);
+              resolve(fileContent);
+            } else {
+              reject(new Error(`File download failed with exit code: ${code}`));
+            }
+          }).on('data', (data) => {
+            fileContent += data.toString();
+          }).stderr.on('data', (data) => {
+            console.error(`Download stderr: ${data}`);
+          });
+        });
+      });
+      
+      conn.on('error', (err) => {
+        console.error('SSH connection error during file download:', err);
+        reject(new Error(`SSH connection failed: ${err.message}`));
+      });
+      
+      // Use the same connection config as notebook execution
+      const connectionConfig = {
+        host: ec2Config.host,
+        username: ec2Config.username,
+        readyTimeout: 30000,
+        ...ec2Config.algorithms && { algorithms: ec2Config.algorithms }
+      };
+
+      if (process.env.SSH_AUTH_SOCK) {
+        connectionConfig.agent = process.env.SSH_AUTH_SOCK;
+      }
+
+      if (process.env.EC2_PASSWORD) {
+        connectionConfig.password = process.env.EC2_PASSWORD;
+      }
+
+      if (process.env.EC2_PRIVATE_KEY_PATH) {
+        try {
+          const keyPath = path.resolve(process.env.EC2_PRIVATE_KEY_PATH);
+          connectionConfig.privateKey = require('fs').readFileSync(keyPath);
+        } catch (keyError) {
+          console.warn('Failed to read EC2 private key for file download:', keyError.message);
+        }
+      }
+
+      conn.connect(connectionConfig);
+    });
+  }
+
+  executeCommandsSequentially(conn, commands, index, callback, accumulatedOutput = '', accumulatedError = '') {
+    if (index >= commands.length) {
+      return callback(true, accumulatedOutput, accumulatedError);
+    }
+    
+    const command = commands[index];
+    console.log(`Executing command ${index + 1}/${commands.length}: ${command.substring(0, 100)}...`);
+    
+    let stdout = '';
+    let stderr = '';
+    
+    conn.exec(command, (err, stream) => {
+      if (err) {
+        console.error(`Command execution error at step ${index + 1}:`, err);
+        return callback(false, accumulatedOutput + stdout, accumulatedError + `Command execution error: ${err.message}`);
+      }
+      
+      stream.on('close', (code, signal) => {
+        console.log(`Command ${index + 1} completed with exit code: ${code}`);
+        if (stdout) console.log(`Command ${index + 1} stdout:`, stdout.substring(0, 500));
+        if (stderr) console.log(`Command ${index + 1} stderr:`, stderr.substring(0, 500));
+        
+        // Accumulate output from all commands
+        const newAccumulatedOutput = accumulatedOutput + stdout;
+        const newAccumulatedError = accumulatedError + stderr;
+        
+        if (code === 0) {
+          // Continue with next command
+          this.executeCommandsSequentially(conn, commands, index + 1, callback, newAccumulatedOutput, newAccumulatedError);
+        } else {
+          console.error(`Command ${index + 1} failed with exit code ${code}`);
+          callback(false, newAccumulatedOutput, newAccumulatedError || `Command failed with exit code ${code}`);
+        }
+      }).on('data', (data) => {
+        stdout += data.toString();
+      }).stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+    });
+  }
+
+  // Method to download generated files from EC2
+  async downloadGeneratedFile(workDir, fileName) {
+    return new Promise((resolve, reject) => {
+      const conn = new Client();
+
+      conn.on('ready', () => {
+        console.log('SSH connection established for file download');
+        
+        // Construct the full file path
+        const filePath = `/tmp/${workDir}/${fileName}`;
+        
+        // Security check - ensure we're only accessing files in the expected directory
+        if (!workDir.startsWith('notebook_')) {
+          conn.end();
+          return reject(new Error('Invalid work directory format'));
+        }
+        
+        // Download the file content
+        conn.exec(`cat ${filePath}`, (err, stream) => {
+          if (err) {
+            console.error('Error executing file download command:', err);
+            conn.end();
+            return reject(new Error(`Failed to read file: ${err.message}`));
+          }
+
+          let fileContent = '';
+          let errorOutput = '';
+
+          stream.on('close', (code) => {
+            conn.end();
+            
+            if (code === 0 && fileContent) {
+              console.log(`File ${fileName} downloaded successfully, size: ${fileContent.length} bytes`);
+              resolve(fileContent);
+            } else {
+              console.error(`File download failed with exit code: ${code}, error: ${errorOutput}`);
+              reject(new Error(errorOutput || `File not found or could not be read: ${fileName}`));
+            }
+          }).on('data', (data) => {
+            fileContent += data.toString();
+          }).stderr.on('data', (data) => {
+            errorOutput += data.toString();
+          });
+        });
+      });
+
+      conn.on('error', (err) => {
+        console.error('SSH connection error during file download:', err);
+        reject(new Error(`SSH connection failed: ${err.message}`));
+      });
+
+      // Use the same connection configuration as notebook execution
+      const connectionConfig = {
+        host: ec2Config.host,
+        username: ec2Config.username,
+        readyTimeout: 30000,
+        ...ec2Config.algorithms && { algorithms: ec2Config.algorithms }
+      };
+
+      // Try SSH agent first if available
+      if (process.env.SSH_AUTH_SOCK) {
+        connectionConfig.agent = process.env.SSH_AUTH_SOCK;
+      }
+
+      // Try password authentication as fallback (if configured)
+      if (process.env.EC2_PASSWORD) {
+        connectionConfig.password = process.env.EC2_PASSWORD;
+      }
+
+      // Try private key authentication as another fallback (if configured)
+      if (process.env.EC2_PRIVATE_KEY_PATH) {
+        try {
+          const keyPath = path.resolve(process.env.EC2_PRIVATE_KEY_PATH);
+          connectionConfig.privateKey = require('fs').readFileSync(keyPath);
+        } catch (keyError) {
+          console.warn('Failed to read EC2 private key for file download:', keyError.message);
+        }
+      }
+
+      conn.connect(connectionConfig);
+    });
   }
 }
 

@@ -58,8 +58,20 @@ exports.executeInteractiveCode = async (req, res) => {
     
     // The service will download and process the zip from fileUrl
     const result = await codeExecutionService.executeInteractiveCode(fileUrl);
-    // result should contain { containerId, language }
-    res.status(200).json({ success: true, ...result });
+    
+    // Check if this was a notebook that got automatically redirected to regular execution
+    if (result.language === 'jupyter' && result.fileResults) {
+      // This was a notebook execution, return as regular execution result
+      res.status(200).json({ 
+        success: true, 
+        isNotebookRedirect: true,
+        executionResult: result,
+        message: 'Jupyter notebook detected - executed on EC2 instead of interactive mode'
+      });
+    } else {
+      // result should contain { containerId, language } for interactive sessions
+      res.status(200).json({ success: true, ...result });
+    }
 
   } catch (error) {
     console.error('Error in executeInteractiveCode controller:', error);
@@ -178,5 +190,65 @@ exports.getMERNSessionStatus = async (req, res) => {
   } catch (error) {
     console.error(`Controller error getting MERN session status ${req.params.sessionId}:`, error);
     res.status(500).json({ success: false, message: 'Failed to get MERN session status due to server error.', error: error.message });
+  }
+};
+
+exports.downloadGeneratedFile = async (req, res) => {
+  try {
+    const { workDir, fileName } = req.params;
+    
+    if (!workDir || !fileName) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing workDir or fileName parameter.' 
+      });
+    }
+
+    // Security check - prevent directory traversal
+    if (fileName.includes('..') || fileName.includes('/') || fileName.includes('\\')) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid file name. File names cannot contain path separators.' 
+      });
+    }
+
+    // Only allow certain file types for security
+    const allowedExtensions = ['.csv', '.txt', '.json', '.xml', '.log'];
+    const fileExtension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
+    
+    if (!allowedExtensions.includes(fileExtension)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `File type ${fileExtension} is not allowed for download.` 
+      });
+    }
+
+    // Get the file content from EC2
+    const fileContent = await codeExecutionService.downloadGeneratedFile(workDir, fileName);
+    
+    // Set appropriate headers for file download
+    const mimeTypes = {
+      '.csv': 'text/csv',
+      '.txt': 'text/plain',
+      '.json': 'application/json',
+      '.xml': 'application/xml',
+      '.log': 'text/plain'
+    };
+    
+    const mimeType = mimeTypes[fileExtension] || 'application/octet-stream';
+    
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    res.status(200).send(fileContent);
+
+  } catch (error) {
+    console.error(`Error downloading generated file ${req.params.fileName}:`, error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to download file.', 
+      error: error.message 
+    });
   }
 };
