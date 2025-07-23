@@ -11,14 +11,14 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB file size limit
 });
 
+// User-specific assignment routes (for todo list and dashboard) - MUST come before /:classId routes
+router.get('/student-assignments', authorizeStudent, assignmentController.getStudentAssignments);
+router.get('/teacher-assignments', authorizeTeacher, assignmentController.getTeacherAssignments);
+
 // Class-specific assignment routes
 router.post('/:classId/create-assignment', authorizeTeacher, upload.array('attachments', 10), assignmentController.createAssignment);
 router.get('/single/:id', authorizeTeacherOrStudent, assignmentController.getAssignment);
 router.delete('/:id', authorizeTeacher, assignmentController.deleteAssignment);
 router.get('/:classId', authorizeTeacherOrStudent, assignmentController.getAssignments);
-
-// User-specific assignment routes (for todo list and dashboard)
-router.get('/student-assignments', authorizeStudent, assignmentController.getStudentAssignments);
-router.get('/teacher-assignments', authorizeTeacher, assignmentController.getTeacherAssignments);
 
 module.exports = router;

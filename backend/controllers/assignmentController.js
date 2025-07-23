@@ -256,7 +256,11 @@ exports.getStudentAssignments = async (req, res) => {
 // Get all assignments for a teacher
 exports.getTeacherAssignments = async (req, res) => {
   try {
+    console.log('=== getTeacherAssignments called ===');
+    console.log('User from req:', req.user);
+    
     const teacherId = req.user._id;
+    console.log('Teacher ID:', teacherId);
     
     // Get all classes where user is a teacher
     const classes = await Class.find({ 
@@ -266,18 +270,25 @@ exports.getTeacherAssignments = async (req, res) => {
       ]
     });
     
+    console.log('Found classes for teacher:', classes.length);
+    
     const classIds = classes.map(c => c._id);
+    console.log('Class IDs:', classIds);
     
     // Get all assignments from these classes
     const assignments = await Assignment.find({ classId: { $in: classIds } })
       .populate('classId', 'className section')
       .lean();
     
+    console.log('Found assignments:', assignments.length);
+    
     // Get all submissions for these assignments
     const submissions = await Submission.find({
       assignmentId: { $in: assignments.map(a => a._id) },
       status: 'submitted'  // Only get submitted assignments
     }).select('assignmentId status submittedAt gradedAt grade').lean();
+    
+    console.log('Found submissions:', submissions.length);
     
     // Group submissions by assignment
     const submissionsByAssignment = {};
@@ -291,10 +302,11 @@ exports.getTeacherAssignments = async (req, res) => {
     
     // Add submissions to each assignment
     const assignmentsWithSubmissions = assignments.map(assignment => {
+      const assignmentSubmissions = submissionsByAssignment[assignment._id.toString()] || [];
       return {
         ...assignment,
         class: assignment.classId, // Rename for frontend
-        submissions: submissionsByAssignment[assignment._id.toString()] || []
+        submissions: assignmentSubmissions
       };
     });
     

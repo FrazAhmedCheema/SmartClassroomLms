@@ -8,21 +8,23 @@ import {
   FETCH_TEACHER_ASSIGNMENTS_FAILURE
 } from '../constants/assignmentConstants';
 
+// Create axios instance with default config
+const api = axios.create({
+  baseURL: 'http://localhost:8080',
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
 // Action to fetch assignments for a student
 export const fetchAssignments = () => async (dispatch, getState) => {
   try {
     dispatch({ type: FETCH_ASSIGNMENTS_REQUEST });
 
-    const { student } = getState();
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${student.token}`
-      },
-      withCredentials: true
-    };
-
-    const { data } = await axios.get('/api/assignment/student-assignments', config);
+    console.log('Fetching student assignments...');
+    const { data } = await api.get('/assignment/student-assignments');
+    console.log('Received student assignments data:', data);
 
     dispatch({
       type: FETCH_ASSIGNMENTS_SUCCESS,
@@ -31,6 +33,7 @@ export const fetchAssignments = () => async (dispatch, getState) => {
 
     return { success: true, assignments: data.assignments };
   } catch (error) {
+    console.error('Error in fetchAssignments:', error);
     dispatch({
       type: FETCH_ASSIGNMENTS_FAILURE,
       payload: error.response && error.response.data.message
@@ -46,18 +49,9 @@ export const fetchTeacherAssignments = () => async (dispatch, getState) => {
   try {
     dispatch({ type: FETCH_TEACHER_ASSIGNMENTS_REQUEST });
 
-    const { teacher } = getState();
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${teacher.token}`
-      },
-      withCredentials: true
-    };
-
     console.log('Fetching teacher assignments...');
-    const { data } = await axios.get('http://localhost:8080/assignment/teacher-assignments', config);
-    console.log('Received assignments data:', data);
+    const { data } = await api.get('/assignment/teacher-assignments');
+    console.log('Received teacher assignments data:', data);
 
     dispatch({
       type: FETCH_TEACHER_ASSIGNMENTS_SUCCESS,
@@ -66,6 +60,7 @@ export const fetchTeacherAssignments = () => async (dispatch, getState) => {
 
     return { success: true, assignments: data.assignments };
   } catch (error) {
+    console.error('Error in fetchTeacherAssignments:', error);
     dispatch({
       type: FETCH_TEACHER_ASSIGNMENTS_FAILURE,
       payload: error.response && error.response.data.message

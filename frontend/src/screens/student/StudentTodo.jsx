@@ -1,20 +1,51 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { Link } from 'react-router-dom';
 import { fetchAssignments } from '../../redux/actions/assignmentActions';
 import { Calendar, CheckSquare, AlertCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 
-const StudentTodo = () => {
+const                 {pendingWork.length === 0 && !loading ? (
+                  <div className="text-center py-12 bg-blue-50 rounded-xl border border-dashed border-blue-300 shadow">
+                    <div className="p-4 bg-blue-500 rounded-full w-fit mx-auto mb-4 shadow">
+                      <CheckSquare className="text-white" size={32} />
+                    </div>
+                    <h3 className="font-bold text-blue-800 mb-2 text-xl">Generating test data...</h3>
+                    <p className="text-blue-700 font-medium">
+                      No assignments found. Showing test data for development purposes.
+                    </p>
+                    <button 
+                      onClick={generateTestData}
+                      className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200"
+                    >
+                      Refresh Test Data
+                    </button>
+                  </div>
+                ) : (do = () => {
   const dispatch = useDispatch();
-  const { assignments, loading } = useSelector((state) => state.assignments);
+  const { assignments, loading, error } = useSelector((state) => state.assignments);
   const [pendingWork, setPendingWork] = useState([]);
 
+  // Debug logging
+  console.log('StudentTodo component is rendering...');
+  console.log('Loading state:', loading);
+  console.log('Error state:', error);
+  console.log('Assignments:', assignments);
+
   useEffect(() => {
-    dispatch(fetchAssignments());
+    console.log('StudentTodo: Fetching assignments...');
+    dispatch(fetchAssignments())
+      .then(() => {
+        console.log('StudentTodo: Assignments fetched successfully');
+      })
+      .catch((error) => {
+        console.error('StudentTodo: Error fetching assignments:', error);
+      });
   }, [dispatch]);
 
   useEffect(() => {
     if (assignments) {
+      console.log('StudentTodo: Processing assignments:', assignments);
       // Filter assignments that are not submitted and not past due date
       const pendingAssignments = assignments.filter(assignment => {
         const isSubmitted = assignment.submission && assignment.submission.status === 'submitted';
@@ -25,6 +56,7 @@ const StudentTodo = () => {
       // Sort by due date - closest first
       pendingAssignments.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
       
+      console.log('StudentTodo: Pending assignments count:', pendingAssignments.length);
       setPendingWork(pendingAssignments);
     }
   }, [assignments]);
@@ -47,6 +79,15 @@ const StudentTodo = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-6xl mx-auto">
+        {/* Debug info */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+          <h3 className="font-semibold text-blue-800">Debug Info:</h3>
+          <p>Loading: {loading ? 'true' : 'false'}</p>
+          <p>Error: {error || 'none'}</p>
+          <p>Assignments: {assignments ? assignments.length : 'null'}</p>
+          <p>Pending Work: {pendingWork.length}</p>
+        </div>
+
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-800">To-do Work</h1>
         </div>
@@ -54,6 +95,25 @@ const StudentTodo = () => {
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1b68b3]"></div>
+            <p className="ml-4">Loading assignments...</p>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <AlertCircle className="text-red-500" size={24} />
+              <h2 className="text-xl font-semibold text-red-700">Error Loading Todo</h2>
+            </div>
+            <p className="text-red-600">Failed to load your assignments. Please try refreshing the page.</p>
+            <p className="text-red-600 text-sm mt-2">Error: {error}</p>
+            <button 
+              onClick={() => {
+                console.log('Retrying assignment fetch...');
+                dispatch(fetchAssignments());
+              }}
+              className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+            >
+              Retry Loading
+            </button>
           </div>
         ) : (
           <>
@@ -87,12 +147,12 @@ const StudentTodo = () => {
                               </span>
                             </div>
                           </div>
-                          <a 
-                            href={`/assignment/${work._id}`}
+                          <Link 
+                            to={`/assignment/${work._id}`}
                             className="px-4 py-2 bg-[#1b68b3] text-white rounded-lg hover:bg-[#145091] transition-colors text-sm font-medium"
                           >
                             View Work
-                          </a>
+                          </Link>
                         </div>
                       </div>
                     );
