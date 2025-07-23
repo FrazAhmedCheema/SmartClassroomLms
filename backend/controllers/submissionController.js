@@ -2,7 +2,7 @@ const Submission = require('../models/Submission');
 const Assignment = require('../models/Assignment');
 const { uploadFile, deleteFile } = require('../utils/s3Service');
 const Quiz = require('../models/Quiz');
-const { createGradeNotification } = require('../utils/notificationHelper');
+const { createGradeNotification, createPrivateCommentNotification, createQuizPrivateCommentNotification } = require('../utils/notificationHelper');
 const Teacher = require('../models/teacher');
 
 exports.submitAssignment = async (req, res) => {
@@ -97,7 +97,7 @@ exports.addOrUpdatePrivateComment = async (req, res) => {
   try {
     const { assignmentId } = req.params;
     const { privateComment } = req.body;
-    const studentId = req.user._id;
+    const studentId = req.user.id || req.user._id;
 
     console.log(`Adding private comment for assignment: ${assignmentId}, student: ${studentId}`);
     
@@ -128,6 +128,20 @@ exports.addOrUpdatePrivateComment = async (req, res) => {
     }
 
     console.log('Private comment saved successfully');
+    
+    // Create notification for teachers about the private comment
+    try {
+      console.log(`[CONTROLLER] Calling createPrivateCommentNotification with assignmentId: ${assignmentId}, studentId: ${studentId}, comment length: ${privateComment.length}`);
+      const notificationResult = await createPrivateCommentNotification(assignmentId, studentId, privateComment);
+      if (notificationResult && notificationResult.success) {
+        console.log(`[CONTROLLER] Created ${notificationResult.count} teacher notification(s) for private comment`);
+      } else {
+        console.warn('[CONTROLLER] Failed to create teacher notification for private comment:', notificationResult);
+      }
+    } catch (notificationError) {
+      console.error('[CONTROLLER] Error creating private comment notification:', notificationError);
+      // Don't fail the request if notification creation fails
+    }
     
     res.status(200).json({
       success: true,
@@ -338,7 +352,7 @@ exports.gradeSubmission = async (req, res) => {
 exports.deleteSubmission = async (req, res) => {
   try {
     const { submissionId } = req.params;
-    const studentId = req.user._id;
+    const studentId = req.user.id || req.user._id;
 
     const submission = await Submission.findOne({ _id: submissionId, studentId });
     if (!submission) {
@@ -606,6 +620,19 @@ exports.addOrUpdateQuizPrivateComment = async (req, res) => {
     }
 
     console.log('Private comment saved successfully');
+    
+    // Create notification for teachers about the private comment
+    try {
+      const notificationResult = await createQuizPrivateCommentNotification(quizId, studentId, privateComment);
+      if (notificationResult && notificationResult.success) {
+        console.log(`Created ${notificationResult.count} teacher notification(s) for quiz private comment`);
+      } else {
+        console.warn('Failed to create teacher notification for quiz private comment');
+      }
+    } catch (notificationError) {
+      console.error('Error creating quiz private comment notification:', notificationError);
+      // Don't fail the request if notification creation fails
+    }
     
     res.status(200).json({
       success: true,

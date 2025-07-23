@@ -206,7 +206,7 @@ exports.deleteAssignment = async (req, res) => {
 // Get all assignments for a student
 exports.getStudentAssignments = async (req, res) => {
   try {
-    const studentId = req.user._id;
+    const studentId = req.user.id;
 
     // Get all classes the student is enrolled in
     const classes = await Class.find({ students: studentId });
@@ -259,7 +259,7 @@ exports.getTeacherAssignments = async (req, res) => {
     console.log('=== getTeacherAssignments called ===');
     console.log('User from req:', req.user);
     
-    const teacherId = req.user._id;
+    const teacherId = req.user.id || req.user._id;
     console.log('Teacher ID:', teacherId);
     
     // Get all classes where user is a teacher

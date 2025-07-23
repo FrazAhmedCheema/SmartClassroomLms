@@ -166,22 +166,29 @@ const TeacherTodo = () => {
       <div className="container mx-auto px-6 py-8">
         <div className="max-w-7xl mx-auto">
           
-          {/* Standard Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 bg-blue-600 rounded-xl p-6 shadow-lg">
-            <style> backgroundColor: #1d62d1ff;</style>
-            <div className="mb-4 md:mb-0">
-              <h1 className="text-3xl font-bold text-white mb-2">To-do Work</h1>
-              <p className="text-blue-100 text-lg font-medium">Manage your pending assignments and reviews</p>
-            </div>
-            <div className="flex items-center space-x-4">
+          {/* Simple Elegant Header */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between">
+              <div className="mb-6 md:mb-0">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <CheckSquare className="text-blue-600" size={20} />
+                  </div>
+                  <h1 className="text-3xl font-bold text-gray-900">To-do Work</h1>
+                </div>
+                <p className="text-gray-600 text-lg">Review pending assignments and student submissions</p>
+              </div>
+              
               {stats && (
-                <div className="bg-white/20 rounded-xl p-4 shadow-md border border-white/30">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-4 h-4 bg-green-400 rounded-full"></div>
-                    <span className="text-lg text-white font-bold flex items-center">
-                      <span className="mr-1">{stats.assignments}</span> 
-                      <span>pending reviews</span>
-                    </span>
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">{stats.assignments}</span>
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-600">Pending Reviews</div>
+                      <div className="text-lg font-semibold text-gray-900">{stats.assignments} assignments</div>
+                    </div>
                   </div>
                 </div>
               )}

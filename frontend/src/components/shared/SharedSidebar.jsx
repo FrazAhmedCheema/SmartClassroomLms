@@ -10,14 +10,48 @@ import {
   ChevronRight
 } from 'lucide-react';
 import Swal from 'sweetalert2';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchUnreadCount } from '../../redux/slices/notificationSlice';
+import { fetchTeacherUnreadCount } from '../../redux/slices/teacherNotificationSlice';
 
 const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const baseRoute = userRole.toLowerCase();
   const [isClassesOpen, setIsClassesOpen] = useState(true);
   const [stats, setStats] = useState(null);
+  
+  // Get notification data from Redux store
+  const notificationState = useSelector((state) => 
+    userRole === 'Student' 
+      ? state.notifications
+      : state.teacherNotifications
+  );
+  
+  const { notifications = [], unreadCount = 0 } = notificationState || {};
+  
+  useEffect(() => {
+    // Fetch unread count when component mounts and when userRole changes
+    if (userRole === 'Student') {
+      dispatch(fetchUnreadCount());
+    } else if (userRole === 'Teacher') {
+      dispatch(fetchTeacherUnreadCount());
+    }
+  }, [dispatch, userRole]);
+  
+  // Set up interval to refresh unread count for real-time sync
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (userRole === 'Student') {
+        dispatch(fetchUnreadCount());
+      } else if (userRole === 'Teacher') {
+        dispatch(fetchTeacherUnreadCount());
+      }
+    }, 10000); // Every 10 seconds for real-time sync
+    
+    return () => clearInterval(interval);
+  }, [dispatch, userRole]);
   
   useEffect(() => {
     const fetchStats = async () => {
@@ -62,23 +96,14 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
 
   console.log(`SharedSidebar: userRole=${userRole}, baseRoute=${baseRoute}`);
   console.log(`SharedSidebar: Todo path=/${baseRoute}/todos, Settings path=/${baseRoute}/settings`);
-  
-  // Get notification count from redux store
-  const notifications = useSelector((state) => 
-    userRole === 'Student' 
-      ? state.notifications?.notifications || []
-      : state.teacherNotifications?.notifications || []
-  );
+  console.log('Notification state in sidebar:', { unreadCount, totalNotifications: notifications.length });
   
   // Get pending assignments count for students or pending reviews for teachers
   const assignments = useSelector((state) => state.assignments);
   
   // Calculate pending work based on user role
   const pendingWork = userRole === 'Student'
-    ? (assignments?.assignments || []).filter(a => 
-        !(a.submission && a.submission.status === 'submitted') && 
-        new Date(a.dueDate) > new Date()
-      ).length
+    ? (stats?.todos || 0) // Use stats API data for consistency
     : (() => {
         // For teachers, use teacherAssignments from redux and calculate pending reviews
         const teacherAssignments = assignments?.teacherAssignments || [];
@@ -113,7 +138,7 @@ const SharedSidebar = ({ isOpen, toggle, isMobile, userRole, classes = [] }) => 
       icon: Bell, 
       title: 'Notifications', 
       path: `/${baseRoute}/notifications`,
-      badge: notifications.filter(n => !n.read).length
+      badge: unreadCount // Use unreadCount from Redux for immediate sync
     },
     { type: 'divider' },
     { 

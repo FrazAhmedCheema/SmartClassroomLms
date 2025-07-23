@@ -5,14 +5,14 @@ const fs = require('fs').promises;
 const os = require('os');
 const axios = require('axios');
 const { Client } = require('ssh2'); // For EC2 SSH connection
-const { Client } = require('ssh2'); // For EC2 SSH connection
+// const { Client } = require('ssh2'); // For EC2 SSH connection
 // Gemini API is used for code analysis and related tasks (see analyzeCode method)
 const WebSocket = require('ws'); // Used for type checking WebSocket.OPEN
 
 // Configure Docker
 const docker = new Docker({
-  host: '13.53.42.198',
-  host: '13.53.42.198',
+  // host: '13.53.42.198',
+  host: '16.170.205.169',
   port: 2375,
   protocol: 'http'
 });
@@ -63,7 +63,7 @@ const docker = new Docker({
 
 // Configure EC2 for Jupyter notebook execution
 const ec2Config = {
-  host: '16.16.214.215',
+  host: '16.16.76.27',
   username: 'ubuntu', // Default for Ubuntu AMI
   // TODO: Configure SSH authentication - options:
   // 1. privateKey: require('fs').readFileSync('/path/to/your/key.pem')

@@ -6,6 +6,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import {
   fetchTeacherNotifications,
+  fetchTeacherUnreadCount,
   markTeacherNotificationAsRead,
   markAllTeacherNotificationsAsRead,
   deleteTeacherNotification
@@ -50,15 +51,46 @@ const TeacherNotifications = () => {
   });
 
   const handleMarkAsRead = (notificationId) => {
-    dispatch(markTeacherNotificationAsRead(notificationId));
+    dispatch(markTeacherNotificationAsRead(notificationId))
+      .then(() => {
+        // Force refresh unread count for immediate sync with sidebar
+        dispatch(fetchTeacherUnreadCount());
+      });
   };
 
   const handleMarkAllAsRead = () => {
-    dispatch(markAllTeacherNotificationsAsRead());
+    dispatch(markAllTeacherNotificationsAsRead())
+      .then(() => {
+        // Force refresh unread count for immediate sync with sidebar
+        dispatch(fetchTeacherUnreadCount());
+      });
   };
 
   const handleDeleteNotification = (notificationId) => {
-    dispatch(deleteTeacherNotification(notificationId));
+    dispatch(deleteTeacherNotification(notificationId))
+      .then(() => {
+        // Force refresh unread count for immediate sync with sidebar
+        dispatch(fetchTeacherUnreadCount());
+      });
+  };
+
+  const handleNotificationClick = (notification) => {
+    // Mark as read if not already read
+    if (!notification.isRead) {
+      dispatch(markTeacherNotificationAsRead(notification._id));
+    }
+
+    // Navigate based on notification type and metadata
+    if (notification.type === 'general' && notification.metadata) {
+      if (notification.metadata.assignmentId) {
+        // Navigate to assignment submissions page
+        navigate(`/teacher/assignment/${notification.metadata.assignmentId}/submissions`);
+      } else if (notification.metadata.quizId) {
+        // Navigate to quiz submissions page
+        navigate(`/teacher/quiz/${notification.metadata.quizId}/submissions`);
+      }
+    }
+    // Add more navigation cases for other notification types as needed
   };
 
   const getNotificationIcon = (type) => {
@@ -73,6 +105,8 @@ const TeacherNotifications = () => {
         return <FileText size={20} className="text-purple-500" />;
       case 'discussion':
         return <MessageCircle size={20} className="text-indigo-500" />;
+      case 'general':
+        return <MessageCircle size={20} className="text-blue-600" />;
       default:
         return <Bell size={20} className="text-gray-500" />;
     }
@@ -92,6 +126,8 @@ const TeacherNotifications = () => {
         return 'bg-purple-50 border-purple-200';
       case 'discussion':
         return 'bg-indigo-50 border-indigo-200';
+      case 'general':
+        return 'bg-blue-50 border-blue-200';
       default:
         return 'bg-gray-50 border-gray-200';
     }
@@ -205,7 +241,8 @@ const TeacherNotifications = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className={`rounded-xl border-2 border-l-4 p-6 transition-all hover:shadow-md ${getNotificationColor(notification.type, notification.isRead)}`}
+                className={`rounded-xl border-2 border-l-4 p-6 transition-all hover:shadow-md cursor-pointer ${getNotificationColor(notification.type, notification.isRead)}`}
+                onClick={() => handleNotificationClick(notification)}
               >
                 <div className="flex items-start space-x-4">
                   <div className="flex-shrink-0 mt-1">
@@ -219,7 +256,10 @@ const TeacherNotifications = () => {
                       <div className="flex items-center space-x-2">
                         {!notification.isRead && (
                           <button
-                            onClick={() => handleMarkAsRead(notification._id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsRead(notification._id);
+                            }}
                             className="p-2 bg-blue-600 hover:bg-blue-700 rounded-full text-white transition-colors"
                             title="Mark as read"
                           >
@@ -227,7 +267,10 @@ const TeacherNotifications = () => {
                           </button>
                         )}
                         <button
-                          onClick={() => handleDeleteNotification(notification._id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteNotification(notification._id);
+                          }}
                           className="p-2 bg-red-600 hover:bg-red-700 rounded-full text-white transition-colors"
                           title="Delete notification"
                         >
@@ -240,7 +283,17 @@ const TeacherNotifications = () => {
                       {notification.message}
                     </p>
                     
-                    <div className="flex items-center justify-between">
+                    {/* Show comment preview for private comment notifications */}
+                    {notification.type === 'general' && notification.metadata?.commentPreview && (
+                      <div className="mb-4 p-3 bg-gray-100 rounded-lg border">
+                        <p className="text-sm text-gray-600 mb-1 font-medium">Comment Preview:</p>
+                        <p className="text-sm text-gray-800 italic">"{notification.metadata.commentPreview}"</p>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center justify-between"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="flex items-center space-x-4 text-sm text-gray-500">
                         <div className="flex items-center space-x-1">
                           <Clock size={14} />

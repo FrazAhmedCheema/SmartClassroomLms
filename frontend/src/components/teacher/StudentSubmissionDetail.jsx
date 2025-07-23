@@ -7,7 +7,8 @@ import { FitAddon } from 'xterm-addon-fit';
 // import { WebLinksAddon } from 'xterm-addon-web-links'; // Optional: for clickable links in terminal
 import 'xterm/css/xterm.css';
 import ExecutionSummary from './ExecutionSummary'; 
-import JupyterResultsScreen from '../shared/JupyterResultsScreen'; 
+import JupyterResultsScreen from '../shared/JupyterResultsScreen';
+import CodeExecutionProgress from './CodeExecutionProgress'; 
 
 
 
@@ -23,6 +24,14 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
   const [executionSummary, setExecutionSummary] = useState(null); // New state for structured summary
   const [summaryLoading, setSummaryLoading] = useState(false); // Loading state for summary generation
   const [currentProcessMessage, setCurrentProcessMessage] = useState(''); // New state for process messages
+
+  // Progress bar state
+  const [progressState, setProgressState] = useState({
+    isVisible: false,
+    executionType: 'batch', // 'batch', 'interactive', 'notebook', 'mern'
+    currentStep: '',
+    progress: 0
+  });
 
   // State for Jupyter notebook viewer
   const [jupyterViewer, setJupyterViewer] = useState({
@@ -240,33 +249,43 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
     setExecutionSummary(null); 
     setCodeExecutionResult(null);
     setError(null);
-    setCurrentProcessMessage("Preparing interactive session..."); 
     
     setInteractiveSession(prev => ({ ...prev, isLoading: true, isRunning: true, containerId: null, isConnected: false, language: null }));
     
 
     if (!submission?.files?.length) {
       setError('No files available to execute.');
-      setCurrentProcessMessage("");
       setInteractiveSession(prev => ({ ...prev, isLoading: false, isRunning: false }));
       return;
     }
     const zipFile = submission.files.find(f => f.fileType === 'application/zip' || f.fileType === 'application/x-zip-compressed');
     if (!zipFile) {
       setError('No zip file found in submission for interactive execution.');
-      setCurrentProcessMessage("");
       setInteractiveSession(prev => ({ ...prev, isLoading: false, isRunning: false }));
       console.error('[RunInteractive] No zip file found.');
       return;
     }
 
+    const stepMessages = [
+      'Analyzing code structure...',
+      'Building container environment...',
+      'Launching interactive session...',
+      'Establishing terminal connection...',
+      'Interactive session is ready!'
+    ];
+
     try {
-      setCurrentProcessMessage("Requesting session from server...");
+      // Start progress simulation
+      const progressPromise = simulateProgress('interactive', stepMessages);
+      
       const response = await axios.post(
         `http://localhost:8080/code/execute-interactive`,
         { fileUrl: zipFile.url, submissionId: submission._id },
         { withCredentials: true }
       );
+
+      // Wait for progress to complete
+      await progressPromise;
 
       // Check if this was a notebook that got redirected to regular execution
       if (response.data.success && response.data.isNotebookRedirect) {
@@ -282,7 +301,7 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
 
       if (response.data.success && response.data.containerId) {
         console.log(`[RunInteractive] Success from backend. Container ID: ${response.data.containerId}, Language: ${response.data.language}`);
-        setCurrentProcessMessage("Session created by server. Initializing terminal window...");
+        setCurrentProcessMessage("Interactive session ready!");
         setInteractiveSession(prev => ({
           ...prev, 
           containerId: response.data.containerId,
@@ -300,6 +319,8 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
       setCurrentProcessMessage(`Error: ${errorMsg}`);
       xtermInstanceRef.current?.writeln(`\r\n\x1b[31mError starting session: ${errorMsg}\x1b[0m\r\n`);
       setInteractiveSession(prev => ({ ...prev, isLoading: false, isRunning: false, containerId: null }));
+    } finally {
+      hideProgress();
     }
   };
   
@@ -610,22 +631,77 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
     }
   };
 
+  // Progress simulation helper function
+  const simulateProgress = async (executionType, stepMessages) => {
+    setProgressState({
+      isVisible: true,
+      executionType,
+      currentStep: stepMessages[0] || '',
+      progress: 0
+    });
+
+    const totalSteps = stepMessages.length;
+    for (let i = 0; i < totalSteps; i++) {
+      const progress = ((i + 1) / totalSteps) * 100;
+      setProgressState(prev => ({
+        ...prev,
+        currentStep: stepMessages[i],
+        progress: Math.min(progress, 95) // Cap at 95% until completion
+      }));
+      
+      // Variable delay based on step (some steps take longer)
+      const delays = [800, 1200, 1500, 1000, 500]; // milliseconds
+      await new Promise(resolve => setTimeout(resolve, delays[i] || 800));
+    }
+  };
+
+  const hideProgress = () => {
+    setProgressState(prev => ({ ...prev, progress: 100 }));
+    setTimeout(() => {
+      setProgressState({
+        isVisible: false,
+        executionType: 'batch',
+        currentStep: '',
+        progress: 0
+      });
+    }, 500);
+  };
+
   const handleRunCode = async () => { // This is the original non-interactive run
     setRunCodeLoading(true);
     setError(null);
     setCodeExecutionResult(null);
     setExecutionSummary(null); // Clear any existing summary
-    setCurrentProcessMessage("Executing code in batch mode...");
     
     if (!submission || !submission.files || submission.files.length === 0) {
       setError('No files available to execute');
-      setCurrentProcessMessage("");
       setRunCodeLoading(false);
       return;
     }
 
+    // Determine execution type based on assignment category
+    const executionType = assignment.category === 'jupyter' ? 'notebook' : 'batch';
+    
+    const stepMessages = executionType === 'notebook' 
+      ? [
+          'Setting up notebook environment...',
+          'Transferring files to execution server...',
+          'Executing notebook cells...',
+          'Generating execution report...',
+          'Execution completed successfully!'
+        ]
+      : [
+          'Analyzing code structure...',
+          'Creating execution environment...',
+          'Running code and capturing output...',
+          'Processing execution results...',
+          'Execution completed successfully!'
+        ];
+
     try {
-      setCurrentProcessMessage("Sending code to server for batch execution...");
+      // Start progress simulation
+      const progressPromise = simulateProgress(executionType, stepMessages);
+      
       const response = await axios.post(
         `http://localhost:8080/code/execute`,
         {
@@ -636,9 +712,12 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
         { withCredentials: true }
       );
 
+      // Wait for progress to complete
+      await progressPromise;
+
       if (response.data.success) {
-        setCodeExecutionResult(response.data.result); 
-        setCurrentProcessMessage("Batch execution finished. Results below.");
+        setCodeExecutionResult(response.data.result);
+        setCurrentProcessMessage("Execution completed successfully!");
         // Optionally, generate summary for batch mode too
         // const batchLog = constructLogFromResult(response.data.result);
         // if (batchLog) { /* call analyze-output */ }
@@ -647,7 +726,7 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
         if(response.data.errorDetails) {
             setCodeExecutionResult({ error: response.data.errorDetails }); 
         }
-        setCurrentProcessMessage(`Batch execution failed: ${response.data.message || 'Unknown error'}`);
+        setCurrentProcessMessage(`Execution failed: ${response.data.message || 'Unknown error'}`);
       }
     } catch (err) {
       console.error('Error executing code:', err);
@@ -655,10 +734,11 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
       if(err.response?.data?.errorDetails) {
         setCodeExecutionResult({ error: err.response.data.errorDetails });
       }
-      setCurrentProcessMessage(`Error during batch execution: ${err.message || 'Network/Server error'}`);
+      setCurrentProcessMessage(`Error during execution: ${err.message || 'Network/Server error'}`);
     } finally {
+      hideProgress();
       setRunCodeLoading(false);
-      // setTimeout(() => setCurrentProcessMessage(""), 5000); // Clear message after a while
+      setTimeout(() => setCurrentProcessMessage(""), 5000); // Clear message after a while
     }
   };
 
@@ -669,12 +749,10 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
     }
 
     setError(null);
-    setCurrentProcessMessage("Preparing JavaScript application execution locally...");
     setMernSession(prev => ({ ...prev, isLoading: true }));
 
     if (!submission?.files?.length) {
       setError('No files available to execute.');
-      setCurrentProcessMessage("");
       setMernSession(prev => ({ ...prev, isLoading: false }));
       return;
     }
@@ -682,18 +760,30 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
     const zipFile = submission.files.find(f => f.fileType === 'application/zip' || f.fileType === 'application/x-zip-compressed');
     if (!zipFile) {
       setError('No zip file found in submission for JavaScript app execution.');
-      setCurrentProcessMessage("");
       setMernSession(prev => ({ ...prev, isLoading: false }));
       return;
     }
 
+    const stepMessages = [
+      'Extracting project files...',
+      'Installing dependencies...',
+      'Building application...',
+      'Starting development servers...',
+      'Application is running!'
+    ];
+
     try {
-      setCurrentProcessMessage("Analyzing project structure and installing dependencies...");
+      // Start progress simulation
+      const progressPromise = simulateProgress('mern', stepMessages);
+      
       const response = await axios.post(
         `http://localhost:8080/code/execute-mern`,
         { fileUrl: zipFile.url, submissionId: submission._id },
         { withCredentials: true }
       );
+
+      // Wait for progress to complete
+      await progressPromise;
 
       if (response.data.success) {
         console.log('[RunJSApp] Success:', response.data);
@@ -706,7 +796,7 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
           isHealthy: false,
           status: response.data.status
         });
-        setCurrentProcessMessage("JavaScript application deployed locally! Starting servers...");
+        setCurrentProcessMessage("Application is running successfully!");
         
         if (response.data.openBrowserUrl) {
           setTimeout(() => {
@@ -729,6 +819,8 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
       setError(errorMsg);
       setCurrentProcessMessage(`Deployment Error: ${errorMsg}`);
       setMernSession(prev => ({ ...prev, isLoading: false }));
+    } finally {
+      hideProgress();
     }
   };
 
@@ -890,11 +982,11 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
                   ))}
                 </div>
 
-                {submission.privateComment && (
+                {submission?.privateComment && submission.privateComment.trim() && (
                   <div className="mt-6">
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Student's Comment</h4>
                     <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                      <p className="text-gray-600 text-sm">{submission.privateComment}</p>
+                      <p className="text-gray-600 text-sm whitespace-pre-wrap break-words">{submission.privateComment}</p>
                     </div>
                   </div>
                 )}
@@ -1698,6 +1790,25 @@ const StudentSubmissionDetail = ({ student, submission, assignment, onBack, onGr
           fileName={jupyterViewer.fileName}
           isOpen={jupyterViewer.isOpen}
           onClose={() => setJupyterViewer({ isOpen: false, htmlContent: null, fileName: null })}
+        />
+
+        {/* Code Execution Progress Bar */}
+        <CodeExecutionProgress
+          isLoading={progressState.isVisible}
+          executionType={progressState.executionType}
+          currentStep={progressState.currentStep}
+          progress={progressState.progress}
+          onCancel={() => {
+            hideProgress();
+            // Cancel any ongoing operations
+            if (runCodeLoading) setRunCodeLoading(false);
+            if (interactiveSession.isLoading) {
+              setInteractiveSession(prev => ({ ...prev, isLoading: false, isRunning: false }));
+            }
+            if (mernSession.isLoading) {
+              setMernSession(prev => ({ ...prev, isLoading: false }));
+            }
+          }}
         />
       </div>
     </>

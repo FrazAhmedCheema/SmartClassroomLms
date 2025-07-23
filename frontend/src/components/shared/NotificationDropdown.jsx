@@ -51,16 +51,28 @@ const NotificationDropdown = () => {
 
   const handleMarkAsRead = (notificationId, event) => {
     event.stopPropagation();
-    dispatch(markNotificationAsRead(notificationId));
+    dispatch(markNotificationAsRead(notificationId))
+      .then(() => {
+        // Force refresh unread count for immediate sync
+        dispatch(fetchUnreadCount());
+      });
   };
 
   const handleMarkAllAsRead = () => {
-    dispatch(markAllNotificationsAsRead());
+    dispatch(markAllNotificationsAsRead())
+      .then(() => {
+        // Force refresh unread count for immediate sync
+        dispatch(fetchUnreadCount());
+      });
   };
 
   const handleDeleteNotification = (notificationId, event) => {
     event.stopPropagation();
-    dispatch(deleteNotification(notificationId));
+    dispatch(deleteNotification(notificationId))
+      .then(() => {
+        // Force refresh unread count for immediate sync
+        dispatch(fetchUnreadCount());
+      });
   };
 
   const getNotificationIcon = (type) => {

@@ -308,8 +308,179 @@ const createDiscussionNotifications = async (classId, discussionTitle, authorNam
     }
 };
 
+/**
+ * Creates notification for teachers when a student adds a private comment
+ * @param {string} assignmentId - The ID of the assignment
+ * @param {string} studentId - The ID of the student who added the comment
+ * @param {string} privateComment - The private comment content (for preview)
+ */
+const createPrivateCommentNotification = async (assignmentId, studentId, privateComment) => {
+    try {
+        console.log(`[NOTIFICATION] Creating private comment notification for assignment: ${assignmentId}, student: ${studentId}`);
+        
+        // Get assignment with class and teacher info
+        const Assignment = require('../models/Assignment');
+        const Student = require('../models/student');
+        
+        console.log(`[NOTIFICATION] Fetching assignment data...`);
+        const assignment = await Assignment.findById(assignmentId)
+            .populate('classId', 'className teacher additionalTeachers')
+            .populate('createdBy', 'name');
+            
+        if (!assignment) {
+            console.error('[NOTIFICATION] Assignment not found:', assignmentId);
+            return false;
+        }
+        console.log(`[NOTIFICATION] Assignment found: ${assignment.title}, Class: ${assignment.classId?.className}`);
+
+        // Get student info
+        console.log(`[NOTIFICATION] Fetching student data...`);
+        const student = await Student.findById(studentId).select('name');
+        if (!student) {
+            console.error('[NOTIFICATION] Student not found:', studentId);
+            return false;
+        }
+        console.log(`[NOTIFICATION] Student found: ${student.name}`);
+
+        // Get all teachers for this class (main teacher + additional teachers)
+        const teacherIds = [assignment.classId.teacher];
+        if (assignment.classId.additionalTeachers && assignment.classId.additionalTeachers.length > 0) {
+            teacherIds.push(...assignment.classId.additionalTeachers);
+        }
+        console.log(`[NOTIFICATION] Teacher IDs to notify: ${teacherIds.join(', ')}`);
+
+        // Create preview of comment (first 50 characters)
+        const commentPreview = privateComment.length > 50 
+            ? privateComment.substring(0, 50) + '...' 
+            : privateComment;
+
+        const notifications = [];
+
+        // Create notification for each teacher
+        for (const teacherId of teacherIds) {
+            console.log(`[NOTIFICATION] Creating notification for teacher: ${teacherId}`);
+            const notification = new TeacherNotification({
+                teacherId: teacherId,
+                classId: assignment.classId._id,
+                type: 'general',
+                title: 'New Private Comment',
+                message: `${student.name} added a private comment on assignment "${assignment.title}" in ${assignment.classId.className}`,
+                studentName: student.name,
+                className: assignment.classId.className,
+                metadata: {
+                    assignmentId: assignmentId,
+                    assignmentTitle: assignment.title,
+                    studentId: studentId,
+                    commentPreview: commentPreview,
+                    submissionType: 'assignment'
+                }
+            });
+
+            try {
+                const savedNotification = await notification.save();
+                notifications.push(savedNotification);
+                console.log(`[NOTIFICATION] Successfully created private comment notification for teacher ${teacherId}, notification ID: ${savedNotification._id}`);
+            } catch (saveError) {
+                console.error(`[NOTIFICATION] Error saving notification for teacher ${teacherId}:`, saveError);
+            }
+        }
+
+        console.log(`[NOTIFICATION] Total notifications created: ${notifications.length}`);
+        return {
+            success: true,
+            count: notifications.length,
+            notifications: notifications
+        };
+
+    } catch (error) {
+        console.error('[NOTIFICATION] Error creating private comment notification:', error);
+        return false;
+    }
+};
+
+/**
+ * Creates notification for teachers when a student adds a private comment on a quiz
+ * @param {string} quizId - The ID of the quiz
+ * @param {string} studentId - The ID of the student who added the comment
+ * @param {string} privateComment - The private comment content (for preview)
+ */
+const createQuizPrivateCommentNotification = async (quizId, studentId, privateComment) => {
+    try {
+        console.log(`Creating private comment notification for quiz: ${quizId}`);
+        
+        // Get quiz with class and teacher info
+        const Quiz = require('../models/Quiz');
+        const Student = require('../models/student');
+        
+        const quiz = await Quiz.findById(quizId)
+            .populate('classId', 'className teacher additionalTeachers')
+            .populate('createdBy', 'name');
+            
+        if (!quiz) {
+            console.error('Quiz not found:', quizId);
+            return false;
+        }
+
+        // Get student info
+        const student = await Student.findById(studentId).select('name');
+        if (!student) {
+            console.error('Student not found:', studentId);
+            return false;
+        }
+
+        // Get all teachers for this class (main teacher + additional teachers)
+        const teacherIds = [quiz.classId.teacher];
+        if (quiz.classId.additionalTeachers && quiz.classId.additionalTeachers.length > 0) {
+            teacherIds.push(...quiz.classId.additionalTeachers);
+        }
+
+        // Create preview of comment (first 50 characters)
+        const commentPreview = privateComment.length > 50 
+            ? privateComment.substring(0, 50) + '...' 
+            : privateComment;
+
+        const notifications = [];
+
+        // Create notification for each teacher
+        for (const teacherId of teacherIds) {
+            const notification = new TeacherNotification({
+                teacherId: teacherId,
+                classId: quiz.classId._id,
+                type: 'general',
+                title: 'New Private Comment',
+                message: `${student.name} added a private comment on quiz "${quiz.title}" in ${quiz.classId.className}`,
+                studentName: student.name,
+                className: quiz.classId.className,
+                metadata: {
+                    quizId: quizId,
+                    quizTitle: quiz.title,
+                    studentId: studentId,
+                    commentPreview: commentPreview,
+                    submissionType: 'quiz'
+                }
+            });
+
+            const savedNotification = await notification.save();
+            notifications.push(savedNotification);
+            console.log(`Created private comment notification for teacher ${teacherId}`);
+        }
+
+        return {
+            success: true,
+            count: notifications.length,
+            notifications: notifications
+        };
+
+    } catch (error) {
+        console.error('Error creating quiz private comment notification:', error);
+        return false;
+    }
+};
+
 module.exports = {
     createClassworkNotifications,
     createGradeNotification,
-    createDiscussionNotifications
+    createDiscussionNotifications,
+    createPrivateCommentNotification,
+    createQuizPrivateCommentNotification
 };

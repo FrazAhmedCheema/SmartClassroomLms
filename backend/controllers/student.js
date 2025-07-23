@@ -339,7 +339,6 @@ const studentController = {
     getStudentStats: async (req, res) => {
         try {
             const studentId = req.user.id;
-            console.log('Fetching stats for student:', studentId);
 
             // Import models
             const Assignment = require('../models/Assignment');
@@ -364,20 +363,26 @@ const studentController = {
             // Get class IDs for the student
             const classIds = student.enrolledClasses.map(classObj => classObj._id);
 
-            // Get all assignments and quizzes in student's classes
+            // Get current date for filtering future due dates
+            const now = new Date();
+
+            // Get all assignments in student's classes with future due dates
             const allAssignments = await Assignment.find({ 
-                classId: { $in: classIds } 
-            }).select('_id');
+                classId: { $in: classIds },
+                dueDate: { $gt: now } // Only assignments with future due dates
+            }).select('_id dueDate');
             
+            // Get all quizzes in student's classes with future due dates  
             const allQuizzes = await Quiz.find({ 
-                classId: { $in: classIds } 
-            }).select('_id');
+                classId: { $in: classIds },
+                dueDate: { $gt: now } // Only quizzes with future due dates
+            }).select('_id dueDate');
 
             // Get all assignment and quiz IDs
             const assignmentIds = allAssignments.map(a => a._id);
             const quizIds = allQuizzes.map(q => q._id);
 
-            // Count completed submissions by this student for assignments and quizzes
+            // Count submissions by this student for these future assignments and quizzes
             const completedAssignmentSubmissions = await Submission.countDocuments({
                 studentId: studentId,
                 assignmentId: { $in: assignmentIds }
@@ -388,22 +393,11 @@ const studentController = {
                 quizId: { $in: quizIds }
             });
 
-            const totalTasks = assignmentIds.length + quizIds.length;
-            const completedSubmissions = completedAssignmentSubmissions + completedQuizSubmissions;
+            const totalFutureTasks = assignmentIds.length + quizIds.length;
+            const completedFutureSubmissions = completedAssignmentSubmissions + completedQuizSubmissions;
 
-            // Calculate todos (pending tasks = total tasks - completed submissions)
-            const todos = Math.max(0, totalTasks - completedSubmissions);
-
-            // Debug logging for todo calculation
-            console.log(`Student ${studentId} todo calculation:`, {
-                totalAssignments: assignmentIds.length,
-                totalQuizzes: quizIds.length,
-                totalTasks,
-                completedAssignmentSubmissions,
-                completedQuizSubmissions,
-                completedSubmissions,
-                todos
-            });
+            // Calculate todos (pending future tasks = total future tasks - completed submissions for future tasks)
+            const todos = Math.max(0, totalFutureTasks - completedFutureSubmissions);
 
             // Count active discussions in student's classes (not terminated)
             const discussions = await Discussion.countDocuments({

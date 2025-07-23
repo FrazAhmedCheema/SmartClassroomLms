@@ -6,6 +6,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import {
   fetchNotifications,
+  fetchUnreadCount,
   markNotificationAsRead,
   markAllNotificationsAsRead,
   deleteNotification,
@@ -75,15 +76,27 @@ const StudentNotifications = () => {
   });
 
   const handleMarkAsRead = (notificationId) => {
-    dispatch(markNotificationAsRead(notificationId));
+    dispatch(markNotificationAsRead(notificationId))
+      .then(() => {
+        // Force refresh unread count for immediate sync with sidebar
+        dispatch(fetchUnreadCount());
+      });
   };
 
   const handleMarkAllAsRead = () => {
-    dispatch(markAllNotificationsAsRead());
+    dispatch(markAllNotificationsAsRead())
+      .then(() => {
+        // Force refresh unread count for immediate sync with sidebar
+        dispatch(fetchUnreadCount());
+      });
   };
 
   const handleDeleteNotification = (notificationId) => {
-    dispatch(deleteNotification(notificationId));
+    dispatch(deleteNotification(notificationId))
+      .then(() => {
+        // Force refresh unread count for immediate sync with sidebar
+        dispatch(fetchUnreadCount());
+      });
   };
 
   const getNotificationIcon = (type) => {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Check, CheckCheck, X, Clock, BookOpen, FileText, MessageCircle, User } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import {
   fetchTeacherNotifications,
@@ -13,6 +14,7 @@ import {
 
 const TeacherNotificationDropdown = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { notifications, unreadCount, loading } = useSelector(state => state.teacherNotifications);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -65,16 +67,50 @@ const TeacherNotificationDropdown = () => {
 
   const handleMarkAsRead = (notificationId, event) => {
     event.stopPropagation();
-    dispatch(markTeacherNotificationAsRead(notificationId));
+    dispatch(markTeacherNotificationAsRead(notificationId))
+      .then(() => {
+        // Force refresh unread count for immediate sync
+        dispatch(fetchTeacherUnreadCount());
+      });
   };
 
   const handleMarkAllAsRead = () => {
-    dispatch(markAllTeacherNotificationsAsRead());
+    dispatch(markAllTeacherNotificationsAsRead())
+      .then(() => {
+        // Force refresh unread count for immediate sync
+        dispatch(fetchTeacherUnreadCount());
+      });
   };
 
   const handleDeleteNotification = (notificationId, event) => {
     event.stopPropagation();
-    dispatch(deleteTeacherNotification(notificationId));
+    dispatch(deleteTeacherNotification(notificationId))
+      .then(() => {
+        // Force refresh unread count for immediate sync
+        dispatch(fetchTeacherUnreadCount());
+      });
+  };
+
+  const handleNotificationClick = (notification) => {
+    // Close dropdown
+    setIsOpen(false);
+    
+    // Mark as read if not already read
+    if (!notification.isRead) {
+      dispatch(markTeacherNotificationAsRead(notification._id));
+    }
+
+    // Navigate based on notification type and metadata
+    if (notification.type === 'general' && notification.metadata) {
+      if (notification.metadata.assignmentId) {
+        // Navigate to assignment submissions page
+        navigate(`/teacher/assignment/${notification.metadata.assignmentId}/submissions`);
+      } else if (notification.metadata.quizId) {
+        // Navigate to quiz submissions page
+        navigate(`/teacher/quiz/${notification.metadata.quizId}/submissions`);
+      }
+    }
+    // Add more navigation cases for other notification types as needed
   };
 
   const getNotificationIcon = (type) => {
@@ -89,6 +125,8 @@ const TeacherNotificationDropdown = () => {
         return <FileText size={16} className="text-purple-500" />;
       case 'discussion':
         return <MessageCircle size={16} className="text-indigo-500" />;
+      case 'general':
+        return <MessageCircle size={16} className="text-blue-600" />;
       default:
         return <Bell size={16} className="text-gray-500" />;
     }
@@ -108,6 +146,8 @@ const TeacherNotificationDropdown = () => {
         return 'bg-purple-50 border-purple-200';
       case 'discussion':
         return 'bg-indigo-50 border-indigo-200';
+      case 'general':
+        return 'bg-blue-50 border-blue-200';
       default:
         return 'bg-gray-50 border-gray-200';
     }
@@ -184,7 +224,8 @@ const TeacherNotificationDropdown = () => {
                       key={notification._id}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className={`p-4 hover:bg-gray-50 transition-colors border-l-4 ${getNotificationColor(notification.type, notification.isRead)}`}
+                      className={`p-4 hover:bg-gray-50 transition-colors border-l-4 cursor-pointer ${getNotificationColor(notification.type, notification.isRead)}`}
+                      onClick={() => handleNotificationClick(notification)}
                     >
                       <div className="flex items-start space-x-3">
                         <div className="flex-shrink-0 mt-1">
@@ -217,6 +258,15 @@ const TeacherNotificationDropdown = () => {
                           <p className={`text-sm mt-1 ${notification.isRead ? 'text-gray-500' : 'text-gray-700'}`}>
                             {notification.message}
                           </p>
+                          
+                          {/* Show comment preview for private comment notifications */}
+                          {notification.type === 'general' && notification.metadata?.commentPreview && (
+                            <div className="mt-2 p-2 bg-gray-100 rounded text-xs">
+                              <span className="text-gray-600 font-medium">Comment: </span>
+                              <span className="text-gray-800 italic">"{notification.metadata.commentPreview}"</span>
+                            </div>
+                          )}
+                          
                           <div className="flex items-center justify-between mt-2">
                             <div className="flex items-center space-x-2 text-xs text-gray-500">
                               <Clock size={12} />
